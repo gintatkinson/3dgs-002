@@ -41,6 +41,10 @@ This plan details the implementation of Feature 01 in `app_flutter`, along with 
 ### 11. Modify `app_flutter/assets/properties_db.db.gz`
 - **Action**: Update the SQLite database asset by importing the migrated data and re-compressing it.
 
+### 12. Modify `app_flutter/lib/domain/repository_resolver.dart`
+- **Action**: Automatically refresh the local database if the existing file is outdated (less than 1,000,000 bytes).
+- **Details**: Inspect database file size in `_createSqliteAdapter` and overwrite it if it's outdated or doesn't exist.
+
 ## Verification Plan
 
 ### Step 1: Run pub get

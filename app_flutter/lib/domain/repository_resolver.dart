@@ -122,7 +122,9 @@ class RepositoryResolver {
 
     if (!inMemory) {
       final dbFile = File(dbPath);
-      if (!await dbFile.exists()) {
+      final exists = await dbFile.exists();
+      final isOutdated = exists && (await dbFile.length() < 1000000);
+      if (!exists || isOutdated) {
         final assetPath = dbAssetPath ?? _defaultDbAsset;
         try {
           final bytes = await rootBundle.load(assetPath);
