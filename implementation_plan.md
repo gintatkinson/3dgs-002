@@ -58,6 +58,10 @@ This plan details the implementation of Feature 01 in `app_flutter`, along with 
   - In `fetchChildrenForNode(String parentId)`, update the SQL `UNION ALL` second query to filter: `AND r.child_type_name IN (SELECT type_name FROM instances WHERE parent_node_id = ?)`
   - Update the query parameter list to pass `parentId` four times: `[parentId, parentId, parentId, parentId]`.
 
+### 14. Modify `app_flutter/lib/features/layout/layout.dart`
+- **Action**: Update `_updateCurrentViewFromLayout()` to check if `_currentView` is the obsolete seed ID `'Master_1'` or if `widget.activeView` is null.
+- **Details**: Implement self-healing initial view selection condition: `if ((widget.activeView == null || _currentView == 'Master_1') && _treeViewModel != null && _treeViewModel!.treeData.isNotEmpty)`.
+
 ## Verification Plan
 
 ### Step 1: Run pub get
@@ -81,4 +85,5 @@ This plan details the implementation of Feature 01 in `app_flutter`, along with 
 
 ### Step 7: Commit and Push Changes
 - Commit changes and push to `origin/feat/1-3d-network-visualization`.
+
 

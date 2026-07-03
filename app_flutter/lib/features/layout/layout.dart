@@ -309,7 +309,7 @@ class _LayoutState extends State<Layout> {
   /// [widget.activeView] is null and tree data is available, sets the current
   /// view to the first tree node and resubscribes properties.
   void _updateCurrentViewFromLayout() {
-    if (widget.activeView == null && _treeViewModel != null && _treeViewModel!.treeData.isNotEmpty) {
+    if ((widget.activeView == null || _currentView == 'Master_1') && _treeViewModel != null && _treeViewModel!.treeData.isNotEmpty) {
       _currentView = _treeViewModel!.treeData.first.id;
       _subscribeProperties(_currentView);
       _propertiesViewModel?.loadType(_currentView);
