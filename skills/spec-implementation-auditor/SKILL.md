@@ -40,7 +40,7 @@ Return a structured inventory: one entry per spec document with its requirements
 ## Step 2 — Codebase Coverage Subagent
 
 Dispatch a subagent to: For each verifiable claim from Step 1, search the codebase for corresponding implementation:
-- Check Flutter (`lib/`), React (`web_react/src/`), and Python (`scripts/`) as applicable.
+- Check Flutter (`lib/`) and Python (`scripts/`) as applicable.
 - Search by semantic keywords, class names, widget names, route paths, API endpoints.
 - Check test files for corresponding test coverage.
 - Do NOT assume — verify each claim against actual file content.

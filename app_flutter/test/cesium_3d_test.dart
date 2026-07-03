@@ -1,5 +1,5 @@
 import 'dart:ui';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:app_flutter/domain/cesium_3d/virtual_camera.dart';
 import 'package:app_flutter/domain/cesium_3d/coordinate_transformer.dart';
@@ -164,9 +164,10 @@ void main() {
 
     testWidgets('Scene3DViewport builds successfully', (tester) async {
       await tester.pumpWidget(
-        Directionality(
-          textDirection: TextDirection.ltr,
-          child: Scene3DViewport(camera: camera),
+        MaterialApp(
+          home: Scaffold(
+            body: Scene3DViewport(camera: camera),
+          ),
         ),
       );
 

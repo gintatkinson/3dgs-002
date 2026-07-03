@@ -63,7 +63,7 @@ The contamination of the root workspace has several critical negative consequenc
 - **Documentation Overwrite and Drift**:
   - The root `README.md` (which defines the digital pipeline setup, rules, and architecture instructions) was overwritten with generic Flutter template instructions, leading to a critical loss of developer onboarding and governance documentation.
 - **Blocking Downstream Integration**:
-  - Verification scripts (like `verify_downstream_baseline.py`) and deployment pipelines are blocked because they expect structural separation between `app_flutter`, `web_react`, and other platform components. Commingled root files make it impossible to isolate builds.
+  - Verification scripts (like `verify_downstream_baseline.py`) and deployment pipelines are blocked because they expect structural separation between `app_flutter` and other platform components. Commingled root files make it impossible to isolate builds.
 
 ---
 
@@ -130,7 +130,6 @@ To prevent future root-level contamination, append the following rules to the pr
   - `tessl.json`
 - **Application Directory Scoping**: All application-specific codebase modifications, testing, and dependency files must reside exclusively within their designated subdirectories:
   - Flutter Application: `app_flutter/` (e.g., `app_flutter/lib/`, `app_flutter/test/`, `app_flutter/pubspec.yaml`)
-  - React Web Application: `web_react/` (e.g., `web_react/src/`, `web_react/package.json`)
   - Integration/Test Harness: `app_test_harness/` or `tests/`
 - **Command Execution Cwd Validation**: Prior to running any CLI tool (such as `flutter`, `npm`, `firebase`, `python3`), the agent MUST explicitly set the `Cwd` to the correct sub-directory. Running project initialization or package management commands (e.g. `flutter create`, `npm install`, `flutter pub get`) in the root directory is strictly prohibited.
 - **Repository Cleanliness Check**: Before completing any task, the agent must verify that no untracked files or directories have been created in the repository root by running `git status` and cleaning up any transient directories (such as `.dart_tool/` or `build/` generated at the root).

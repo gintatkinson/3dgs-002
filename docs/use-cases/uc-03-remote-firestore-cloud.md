@@ -9,7 +9,7 @@ issue_id: 47
 # Use Case: Shared Cloud Sync via Remote Firestore Flow
 
 ## Parent Epic
-- [ ] #0 - Standalone Persistence Epic (https://github.com/gintatkinson/digital-pipeline-repo/blob/master/docs/epics/epic-00-persistence.md) (Aggregates all persistence layers and adapters for React and Flutter desktop configurations)
+- [ ] #0 - Standalone Persistence Epic (https://github.com/gintatkinson/digital-pipeline-repo/blob/master/docs/epics/epic-00-persistence.md) (Aggregates all persistence layers and adapters for Flutter desktop configurations)
 
 ## 1. Actors
 - **Primary Actor:** Operator/Engineer
@@ -83,15 +83,6 @@ stateDiagram-v2
     SchemaConstraintError --> ListeningToRemote : Display Error / Revert UI State
 ```
 
-## 7. Operational Context
-```
-The React baseline (web_react) acts as the web-based console interface. It supports two primary deployment profiles:
-Configuration B: Production Mode (Cloud Firestore)
-- Target Environment: Live hosted environments (Firebase App Hosting or Google Cloud Run).
-- Mechanism:
-  - Connects to the live Google Cloud Firestore production instance over HTTPS/WSS.
-  - Enforces strict read/write security rules (checking user authentication tokens) and encrypts all telemetry data in transit.
-```
 
 ## 8. Realization Matrix
 ### Required User Stories
