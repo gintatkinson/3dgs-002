@@ -77,6 +77,12 @@ Future<Database> createTestDatabase() async {
     'child_type_name': 'SubItem',
     'child_label': 'Sub Items',
   });
+  await db.insert('instances', {
+    'id': 'inst_Master_1_SubItem_1',
+    'parent_node_id': 'Master_1',
+    'type_name': 'SubItem',
+    'data_json': '{}',
+  });
   return db;
 }
 

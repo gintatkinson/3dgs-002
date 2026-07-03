@@ -113,6 +113,18 @@ def main():
                 items.append((new_key, v))
         return dict(items)
 
+    def flatten_hw(d, parent_key='', sep='.'):
+        items = []
+        for k, v in d.items():
+            new_key = f"{parent_key}{sep}{k}" if parent_key else k
+            if isinstance(v, dict):
+                items.extend(flatten_hw(v, new_key, sep=sep).items())
+            elif isinstance(v, list):
+                continue
+            else:
+                items.append((new_key, v))
+        return dict(items)
+
     # Step 2: Iterate over each node and populate tables
     for node in nodes:
         node_uuid = node.get('uuid')
@@ -181,27 +193,47 @@ def main():
         hardware_list = node.get('hardware', [])
         for hw in hardware_list:
             hw_uuid = hw.get('uuid')
-            hw_class = hw.get('class')
-            if not hw_uuid or not hw_class:
+            hw_name = hw.get('name')
+            if not hw_uuid:
                 continue
 
-            # Register hardware class in type_definitions with icon 'settings'
+            hw_parent = hw.get('parentUuid')
+            if not hw_parent:
+                hw_parent = node_uuid
+
+            # Register hardware in type_definitions
             cursor.execute('''
                 INSERT OR IGNORE INTO type_definitions (type_name, display_name, icon_name)
                 VALUES (?, ?, ?)
-            ''', (hw_class, hw_class.capitalize(), 'settings'))
+            ''', (hw_uuid, hw_name, 'settings'))
 
-            # Insert relation row in type_relations matching parent_type_name = node_uuid
-            cursor.execute('''
-                INSERT OR IGNORE INTO type_relations (parent_type_name, relation_name, child_type_name, child_label)
-                VALUES (?, ?, ?, ?)
-            ''', (node_uuid, 'contains', hw_class, hw_class.capitalize()))
+            # Flatten hardware attributes and register them in type_attributes
+            flat_hw = flatten_hw(hw)
+            for attr_key, attr_value in flat_hw.items():
+                parent_prefix = get_parent_prefix(attr_key)
+                sec_label = parent_prefix_to_section_label(parent_prefix)
+                label = key_to_label(attr_key)
+                
+                if isinstance(attr_value, bool):
+                    attr_type = 'string'
+                elif isinstance(attr_value, int):
+                    attr_type = 'int'
+                elif isinstance(attr_value, float):
+                    attr_type = 'double'
+                else:
+                    attr_type = 'string'
 
-            # Insert hardware instance row in instances table
-            cursor.execute('''
-                INSERT INTO instances (id, parent_node_id, type_name, data_json)
-                VALUES (?, ?, ?, ?)
-            ''', (hw_uuid, node_uuid, hw_class, json.dumps(hw)))
+                cursor.execute('''
+                    INSERT OR IGNORE INTO type_attributes 
+                    (type_name, attr_key, label, attr_type, section_label, section_order, is_required)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', (hw_uuid, attr_key, label, attr_type, sec_label, 0, 0))
+
+            # Insert hardware row in properties table
+            cursor.execute(
+                "INSERT INTO properties (node_id, parent_node_id, data_json) VALUES (?, ?, ?)",
+                (hw_uuid, hw_parent, json.dumps(hw))
+            )
 
         # Iterate over interfaces list items
         interfaces_list = node.get('ietfInterfaces', [])

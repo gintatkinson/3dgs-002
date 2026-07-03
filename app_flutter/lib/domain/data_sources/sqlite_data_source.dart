@@ -264,9 +264,10 @@ class SqliteDataSource implements DataSource {
           WHERE r.parent_type_name = ? AND r.relation_name = 'contains'
             AND r.child_type_name NOT IN ('Detail_A', 'Detail_B', 'Detail_C')
             AND r.child_type_name NOT IN (SELECT node_id FROM properties WHERE parent_node_id = ?)
+            AND r.child_type_name IN (SELECT type_name FROM instances WHERE parent_node_id = ?)
         )
         ORDER BY (CASE WHEN node_id LIKE '%_Child_%' OR node_id LIKE '%_Grandchild_%' THEN 1 ELSE 0 END), node_id
-      ''', [parentId, parentId, parentId]);
+      ''', [parentId, parentId, parentId, parentId]);
       return rows.map((r) {
         final id = r['node_id'] as String;
         final label = (r['display_name'] as String?) ?? id.replaceAll('_', ' ');

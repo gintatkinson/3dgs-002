@@ -125,18 +125,22 @@ class RepositoryResolver {
       bool isOutdated = false;
       final exists = await dbFile.exists();
       if (exists) {
+        Database? tempDb;
         try {
-          final tempDb = await databaseFactory.openDatabase(dbPath);
+          tempDb = await databaseFactory.openDatabase(dbPath);
           final rows = await tempDb.rawQuery(
-            "SELECT COUNT(*) as count FROM properties WHERE node_id = 'L3 (IP/MPLS)'"
+            "SELECT COUNT(*) as count FROM type_attributes WHERE attr_key = 'raw_json'"
           );
           final count = rows.first['count'] as int? ?? 0;
-          await tempDb.close();
           if (count == 0) {
             isOutdated = true;
           }
         } catch (_) {
           isOutdated = true;
+        } finally {
+          if (tempDb != null) {
+            await tempDb.close();
+          }
         }
       }
 
