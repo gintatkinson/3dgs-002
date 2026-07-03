@@ -1,0 +1,9 @@
+{
+  "_copyright": "Copyright Gint Atkinson, gint.atkinson@gmail.com",
+  "name": "gintatkinson/digital-pipeline",
+  "version": "2.0.0",
+  "description": "Digital Systems Engineering Pipeline — autonomous AI agent skills for protocol specification engineering and feature-driven TDD implementation, with always-loaded governance rules enforcing serial execution, TDD, verification, and platform independence.",
+  "private": false,
+  "rules": "rules",
+  "skills": "skills"
+}
