@@ -1,0 +1,43 @@
+file(REMOVE_RECURSE
+  "CMakeFiles/CesiumGltf.dir/src/Accessor.cpp.o"
+  "CMakeFiles/CesiumGltf.dir/src/Accessor.cpp.o.d"
+  "CMakeFiles/CesiumGltf.dir/src/AccessorUtility.cpp.o"
+  "CMakeFiles/CesiumGltf.dir/src/AccessorUtility.cpp.o.d"
+  "CMakeFiles/CesiumGltf.dir/src/FeatureIdTextureView.cpp.o"
+  "CMakeFiles/CesiumGltf.dir/src/FeatureIdTextureView.cpp.o.d"
+  "CMakeFiles/CesiumGltf.dir/src/InstanceAttributeSemantics.cpp.o"
+  "CMakeFiles/CesiumGltf.dir/src/InstanceAttributeSemantics.cpp.o.d"
+  "CMakeFiles/CesiumGltf.dir/src/KhrTextureTransform.cpp.o"
+  "CMakeFiles/CesiumGltf.dir/src/KhrTextureTransform.cpp.o.d"
+  "CMakeFiles/CesiumGltf.dir/src/Model.cpp.o"
+  "CMakeFiles/CesiumGltf.dir/src/Model.cpp.o.d"
+  "CMakeFiles/CesiumGltf.dir/src/PropertyAttributePropertyView.cpp.o"
+  "CMakeFiles/CesiumGltf.dir/src/PropertyAttributePropertyView.cpp.o.d"
+  "CMakeFiles/CesiumGltf.dir/src/PropertyAttributeView.cpp.o"
+  "CMakeFiles/CesiumGltf.dir/src/PropertyAttributeView.cpp.o.d"
+  "CMakeFiles/CesiumGltf.dir/src/PropertyTablePropertyView.cpp.o"
+  "CMakeFiles/CesiumGltf.dir/src/PropertyTablePropertyView.cpp.o.d"
+  "CMakeFiles/CesiumGltf.dir/src/PropertyTableView.cpp.o"
+  "CMakeFiles/CesiumGltf.dir/src/PropertyTableView.cpp.o.d"
+  "CMakeFiles/CesiumGltf.dir/src/PropertyTexturePropertyView.cpp.o"
+  "CMakeFiles/CesiumGltf.dir/src/PropertyTexturePropertyView.cpp.o.d"
+  "CMakeFiles/CesiumGltf.dir/src/PropertyTextureView.cpp.o"
+  "CMakeFiles/CesiumGltf.dir/src/PropertyTextureView.cpp.o.d"
+  "CMakeFiles/CesiumGltf.dir/src/PropertyType.cpp.o"
+  "CMakeFiles/CesiumGltf.dir/src/PropertyType.cpp.o.d"
+  "CMakeFiles/CesiumGltf.dir/src/PropertyView.cpp.o"
+  "CMakeFiles/CesiumGltf.dir/src/PropertyView.cpp.o.d"
+  "CMakeFiles/CesiumGltf.dir/src/SamplerUtility.cpp.o"
+  "CMakeFiles/CesiumGltf.dir/src/SamplerUtility.cpp.o.d"
+  "CMakeFiles/CesiumGltf.dir/src/TextureView.cpp.o"
+  "CMakeFiles/CesiumGltf.dir/src/TextureView.cpp.o.d"
+  "CMakeFiles/CesiumGltf.dir/src/VertexAttributeSemantics.cpp.o"
+  "CMakeFiles/CesiumGltf.dir/src/VertexAttributeSemantics.cpp.o.d"
+  "libCesiumGltf.dylib"
+  "libCesiumGltf.pdb"
+)
+
+# Per-language clean rules from dependency scanning.
+foreach(lang CXX)
+  include(CMakeFiles/CesiumGltf.dir/cmake_clean_${lang}.cmake OPTIONAL)
+endforeach()
