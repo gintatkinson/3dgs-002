@@ -84,6 +84,9 @@ This plan details the implementation of Feature 01 in `app_flutter`, along with 
     - Draws a futuristic glassmorphic HUD overlay on top listing camera stats (Latitude, Longitude, Altitude, Pitch/Yaw/Roll) and tile status ("Mapped & loaded tiles from Cesium FFI").
   - Use an animation ticker to keep the wireframe globe slowly rotating in 3D.
 
+### 17. Create `docs/designs/feat-1-solution.md`
+- **Action**: Create a solution walkthrough document detailing the design and implementation of Feature 01.
+
 ## Verification Plan
 
 ### Step 1: Run pub get
