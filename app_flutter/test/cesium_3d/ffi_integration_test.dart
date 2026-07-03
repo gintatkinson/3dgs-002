@@ -1,21 +1,14 @@
 import 'dart:ffi';
-import 'dart:io';
 import 'package:ffi/ffi.dart';
 import 'package:app_flutter/domain/cesium_3d/native/bridge_bindings.dart';
-import 'package:app_flutter/domain/cesium_3d/native/error_handler.dart';
 
 void main() {
   print("=== cesium-native FFI integration test ===\n");
 
   DynamicLibrary lib;
   try {
-    if (Platform.isMacOS) {
-      lib = DynamicLibrary.open('/Users/perkunas/jail/3dgs-002/build/libcesium_native_bridge.dylib');
-      print('Loaded dylib successfully');
-    } else {
-      print('SKIP: not running on macOS');
-      return;
-    }
+    lib = DynamicLibrary.open('/Users/perkunas/jail/3dgs-002/build/libcesium_native_bridge.dylib');
+    print('Loaded dylib successfully');
   } catch (e) {
     print('FAIL: could not load dylib: $e');
     return;
