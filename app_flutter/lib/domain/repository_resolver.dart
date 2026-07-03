@@ -122,9 +122,30 @@ class RepositoryResolver {
 
     if (!inMemory) {
       final dbFile = File(dbPath);
+      bool isOutdated = false;
       final exists = await dbFile.exists();
-      final isOutdated = exists && (await dbFile.length() < 1000000);
+      if (exists) {
+        try {
+          final tempDb = await databaseFactory.openDatabase(dbPath);
+          final rows = await tempDb.rawQuery(
+            "SELECT COUNT(*) as count FROM properties WHERE node_id = 'L3 (IP/MPLS)'"
+          );
+          final count = rows.first['count'] as int? ?? 0;
+          await tempDb.close();
+          if (count == 0) {
+            isOutdated = true;
+          }
+        } catch (_) {
+          isOutdated = true;
+        }
+      }
+
       if (!exists || isOutdated) {
+        if (exists) {
+          try {
+            await dbFile.delete();
+          } catch (_) {}
+        }
         final assetPath = dbAssetPath ?? _defaultDbAsset;
         try {
           final bytes = await rootBundle.load(assetPath);

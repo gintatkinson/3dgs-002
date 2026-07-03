@@ -42,8 +42,8 @@ This plan details the implementation of Feature 01 in `app_flutter`, along with 
 - **Action**: Update the SQLite database asset by importing the migrated data and re-compressing it.
 
 ### 12. Modify `app_flutter/lib/domain/repository_resolver.dart`
-- **Action**: Automatically refresh the local database if the existing file is outdated (less than 1,000,000 bytes).
-- **Details**: Inspect database file size in `_createSqliteAdapter` and overwrite it if it's outdated or doesn't exist.
+- **Action**: Automatically refresh the local database if the existing file is outdated by querying `node_id = 'L3 (IP/MPLS)'` in the `properties` table.
+- **Details**: In `_createSqliteAdapter`, check if the file exists. If it does, open it, query the properties table for the key, close it, and mark outdated if query count is 0 or throws. If outdated or not exists, delete existing file and extract asset to `dbPath`.
 
 ## Verification Plan
 
