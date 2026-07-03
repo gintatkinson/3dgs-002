@@ -76,6 +76,7 @@ flutter:
     - assets/properties_db.db.gz
     - assets/topology_data.json
     - assets/strings.json
+    - assets/cesium/cesium_viewer.html
 
   # To add assets to your application, add an assets section, like this:
   # assets:
