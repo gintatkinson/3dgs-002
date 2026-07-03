@@ -37,6 +37,11 @@ This plan details the implementation of Feature 01 in `app_flutter`, along with 
 
 ### 10. Create `scripts/import_data.py`
 - **Action**: Create the migration script to parse `firestore-export.json` and populate the SQLite database.
+- **Details**:
+  - Construct node payloads in properties table as nested JSON structures with "position" blocks and pretty-printed "raw_json".
+  - Recursively flatten node keys (excluding hardware/interfaces) and register them in `type_attributes` using their parent prefix as `section_label`.
+  - Map `ietfInterfaces` list items as related tab records in `instances` with `type_name = 'interface'`, registering interface attributes under "Interface Config".
+  - Map `hardware` list items as nested tree children (`relation_name = 'contains'`) registered in `type_definitions` and `instances`.
 
 ### 11. Modify `app_flutter/assets/properties_db.db.gz`
 - **Action**: Update the SQLite database asset by importing the migrated data and re-compressing it.
@@ -44,6 +49,10 @@ This plan details the implementation of Feature 01 in `app_flutter`, along with 
 ### 12. Modify `app_flutter/lib/domain/repository_resolver.dart`
 - **Action**: Automatically refresh the local database if the existing file is outdated by querying `node_id = 'L3 (IP/MPLS)'` in the `properties` table.
 - **Details**: In `_createSqliteAdapter`, check if the file exists. If it does, open it, query the properties table for the key, close it, and mark outdated if query count is 0 or throws. If outdated or not exists, delete existing file and extract asset to `dbPath`.
+
+### 13. Modify `app_flutter/lib/domain/data_sources/sqlite_data_source.dart`
+- **Action**: Add helper methods `_flatten` and `_unflatten` for recursive map flattening/unflattening.
+- **Details**: Call `_flatten` in `fetchProperties`, and call `_unflatten` in `saveProperties`.
 
 ## Verification Plan
 
@@ -59,4 +68,13 @@ This plan details the implementation of Feature 01 in `app_flutter`, along with 
 
 ### Step 4: Run Database Migration
 - Execute `python3 scripts/import_data.py` to process the JSON file and update `app_flutter/assets/properties_db.db.gz`.
+
+### Step 5: Run Database Migration Verification
+- Run `python3 scripts/import_data.py`.
+
+### Step 6: Run Flutter Tests
+- Run `flutter test`.
+
+### Step 7: Commit and Push Changes
+- Commit changes and push to `origin/feat/1-3d-network-visualization`.
 

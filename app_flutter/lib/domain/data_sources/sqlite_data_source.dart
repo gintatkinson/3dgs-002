@@ -144,7 +144,8 @@ class SqliteDataSource implements DataSource {
       if (maps.isEmpty) return {};
       final dataJson = maps.first['data_json'] as String?;
       if (dataJson == null) return {};
-      return jsonDecode(dataJson) as Map<String, dynamic>;
+      final decoded = Map<String, dynamic>.from(jsonDecode(dataJson) as Map);
+      return _flatten(decoded);
     } catch (e, stackTrace) {
       debugPrint('Error in fetchProperties($nodeId): $e\n$stackTrace');
       return {};
@@ -161,7 +162,8 @@ class SqliteDataSource implements DataSource {
   @override
   Future<void> saveProperties(String nodeId, Map<String, dynamic> data) async {
     try {
-      final dataJson = jsonEncode(data);
+      final unflattened = _unflatten(data);
+      final dataJson = jsonEncode(unflattened);
       await _db.insert(
         'properties',
         {'node_id': nodeId, 'data_json': dataJson},
@@ -333,5 +335,35 @@ class SqliteDataSource implements DataSource {
       defaultValue: row['default_value'],
       inputFormatters: parseJsonList(row['input_formatters'] as String?),
     );
+  }
+
+  Map<String, dynamic> _flatten(Map<String, dynamic> map, {String prefix = ''}) {
+    final result = <String, dynamic>{};
+    map.forEach((key, value) {
+      final newKey = prefix.isEmpty ? key : '$prefix.$key';
+      if (value is Map) {
+        result.addAll(_flatten(Map<String, dynamic>.from(value), prefix: newKey));
+      } else {
+        result[newKey] = value;
+      }
+    });
+    return result;
+  }
+
+  Map<String, dynamic> _unflatten(Map<String, dynamic> map) {
+    final result = <String, dynamic>{};
+    map.forEach((key, value) {
+      final parts = key.split('.');
+      Map<String, dynamic> current = result;
+      for (int i = 0; i < parts.length - 1; i++) {
+        final part = parts[i];
+        if (!current.containsKey(part) || current[part] is! Map) {
+          current[part] = <String, dynamic>{};
+        }
+        current = current[part] as Map<String, dynamic>;
+      }
+      current[parts.last] = value;
+    });
+    return result;
   }
 }

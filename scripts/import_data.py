@@ -3,6 +3,7 @@ import gzip
 import shutil
 import json
 import sqlite3
+import re
 
 def main():
     db_gz_path = 'app_flutter/assets/properties_db.db.gz'
@@ -53,6 +54,65 @@ def main():
             (layer, None, '{}')
         )
 
+    # Register the base 'interface' type definition
+    cursor.execute('''
+        INSERT OR IGNORE INTO type_definitions (type_name, display_name, icon_name)
+        VALUES (?, ?, ?)
+    ''', ('interface', 'Interface', 'settings'))
+
+    # Register interface attributes under "Interface Config"
+    iface_fields = [
+        ('name', 'Name', 'string'),
+        ('type', 'Type', 'string'),
+        ('physAddress', 'Physical Address', 'string'),
+        ('enabled', 'Enabled', 'string'),
+        ('adminStatus', 'Admin Status', 'string'),
+        ('operStatus', 'Oper Status', 'string'),
+        ('speed', 'Speed', 'int'),
+        ('description', 'Description', 'string')
+    ]
+    for attr_key, label, attr_type in iface_fields:
+        cursor.execute('''
+            INSERT OR IGNORE INTO type_attributes 
+            (type_name, attr_key, label, attr_type, section_label, section_order, is_required)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', ('interface', attr_key, label, attr_type, 'Interface Config', 0, 0))
+
+    # Helper function for camelCase / dotted split to title case
+    def parent_prefix_to_section_label(parent_prefix):
+        if not parent_prefix:
+            return "General"
+        parts = parent_prefix.split('.')
+        words = []
+        for part in parts:
+            subparts = re.findall(r'[A-Za-z][a-z0-9]*', part)
+            if not subparts:
+                subparts = [part]
+            words.extend(subparts)
+        return ' '.join(w.capitalize() for w in words)
+
+    def key_to_label(key):
+        last_segment = key.split('.')[-1]
+        words = re.findall(r'[A-Za-z][a-z0-9]*', last_segment)
+        if not words:
+            words = [last_segment]
+        return ' '.join(w.capitalize() for w in words)
+
+    def get_parent_prefix(key):
+        if '.' in key:
+            return key.rsplit('.', 1)[0]
+        return ''
+
+    def flatten_dict(d, parent_key='', sep='.'):
+        items = []
+        for k, v in d.items():
+            new_key = f"{parent_key}{sep}{k}" if parent_key else k
+            if isinstance(v, dict):
+                items.extend(flatten_dict(v, new_key, sep=sep).items())
+            else:
+                items.append((new_key, v))
+        return dict(items)
+
     # Step 2: Iterate over each node and populate tables
     for node in nodes:
         node_uuid = node.get('uuid')
@@ -73,19 +133,15 @@ def main():
         height = ellipsoid.get('height', 0.0)
 
         # Build properties dictionary
-        properties_dict = {
-            "name": node_name,
-            "type": node_type,
-            "layer": node_layer,
-            "location": node_location,
-            "position": {
-                "dim_0": latitude,
-                "dim_1": longitude,
-                "dim_2": height,
-                "time_index": 1.0,
-                "vector": [0.0, 0.0, 0.0]
-            }
+        properties_dict = {k: v for k, v in node.items() if k not in ('uuid', 'hardware', 'ietfInterfaces')}
+        properties_dict["position"] = {
+            "dim_0": latitude,
+            "dim_1": longitude,
+            "dim_2": height,
+            "time_index": 1.0,
+            "vector": [0.0, 0.0, 0.0]
         }
+        properties_dict["raw_json"] = json.dumps(node, indent=2)
 
         # Register the node in type_definitions
         cursor.execute(
@@ -93,19 +149,27 @@ def main():
             (node_uuid, node_name, 'dns')
         )
 
-        # Register dynamic form fields (name, type, layer, location) in type_attributes
-        fields_to_register = [
-            ('name', 'Name'),
-            ('type', 'Type'),
-            ('layer', 'Layer'),
-            ('location', 'Location')
-        ]
-        for attr_key, label in fields_to_register:
+        # Flatten node payload attributes (excluding hardware and ietfInterfaces)
+        flat_payload = flatten_dict(properties_dict)
+        for attr_key, attr_value in flat_payload.items():
+            parent_prefix = get_parent_prefix(attr_key)
+            sec_label = parent_prefix_to_section_label(parent_prefix)
+            label = key_to_label(attr_key)
+            
+            if isinstance(attr_value, bool):
+                attr_type = 'string'
+            elif isinstance(attr_value, int):
+                attr_type = 'int'
+            elif isinstance(attr_value, float):
+                attr_type = 'double'
+            else:
+                attr_type = 'string'
+
             cursor.execute('''
                 INSERT OR IGNORE INTO type_attributes 
                 (type_name, attr_key, label, attr_type, section_label, section_order, is_required)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (node_uuid, attr_key, label, 'string', 'General', 0, 0))
+            ''', (node_uuid, attr_key, label, attr_type, sec_label, 0, 0))
 
         # Insert node row in properties table
         cursor.execute(
@@ -138,6 +202,28 @@ def main():
                 INSERT INTO instances (id, parent_node_id, type_name, data_json)
                 VALUES (?, ?, ?, ?)
             ''', (hw_uuid, node_uuid, hw_class, json.dumps(hw)))
+
+        # Iterate over interfaces list items
+        interfaces_list = node.get('ietfInterfaces', [])
+        for iface in interfaces_list:
+            iface_name = iface.get('name')
+            if not iface_name:
+                continue
+
+            # Register relation in type_relations
+            cursor.execute('''
+                INSERT OR IGNORE INTO type_relations (parent_type_name, relation_name, child_type_name, child_label)
+                VALUES (?, ?, ?, ?)
+            ''', (node_uuid, 'interfaces', 'interface', 'Interfaces'))
+
+            # Unique interface instance ID
+            iface_id = f"{node_uuid}_{iface_name}"
+
+            # Insert interface instance row in instances table
+            cursor.execute('''
+                INSERT INTO instances (id, parent_node_id, type_name, data_json)
+                VALUES (?, ?, ?, ?)
+            ''', (iface_id, node_uuid, 'interface', json.dumps(iface)))
 
     # Re-enable foreign keys and commit
     cursor.execute("PRAGMA foreign_keys = ON;")
