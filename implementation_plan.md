@@ -87,6 +87,12 @@ This plan details the implementation of Feature 01 in `app_flutter`, along with 
 ### 17. Create `docs/designs/feat-1-solution.md`
 - **Action**: Create a solution walkthrough document detailing the design and implementation of Feature 01.
 
+## Layout Stability Fixes
+
+### 1. Custom Tree Node Layout
+- **Action**: Replace `ListTile` with custom `Ink` / `InkWell` / `Row` layout inside `app_flutter/lib/features/tree/tree_node_widget.dart`.
+- **Details**: Prevent Flutter's native `ListTile` layout validator from throwing layout constraint crashes in deeply nested sidebar views by wrapping the node label text inside an `Expanded` widget with `TextOverflow.ellipsis` overflow behavior.
+
 ## Verification Plan
 
 ### Step 1: Run pub get
