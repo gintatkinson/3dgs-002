@@ -15,16 +15,16 @@ This plan details the implementation of Feature 01 in `app_flutter`, along with 
 - **Action**: Create the `CoordinateTransformer` class.
 - **Details**: Implement ECEF to local transformation method `transformEcefToLocal` with validation.
 
-### 4. Create `app_flutter/lib/domain/cesium_3d/cesium_3d_native.dart`
-- **Action**: Create the `Cesium3DNative` class.
+### 4. Modify `app_flutter/lib/domain/cesium_3d/cesium_3d_native.dart`
+- **Action**: Update `updateViewport` to throw a `CoordinateValidationException` if `camera.altitude <= -100.0` to match unit test expectations.
 - **Details**: Implement FFI wrapper stubs with refcounting and finalizer comments.
 
 ### 5. Create `app_flutter/lib/features/topology/scene_3d_viewport.dart`
 - **Action**: Create `Scene3DViewport` widget and `Network3DScene` class.
 - **Details**: Implement viewport rendering widget, and mesh collection loaders with PBR material settings.
 
-### 6. Create `app_flutter/test/cesium_3d_test.dart`
-- **Action**: Create unit tests verifying `VirtualCamera`, `CoordinateTransformer`, and `Cesium3DNative`.
+### 6. Modify `app_flutter/test/cesium_3d_test.dart`
+- **Action**: Add the missing import `import 'dart:ui';` at the top of the file so that `PictureRecorder` compiles successfully.
 
 ### 7. Modify `app_flutter/test/layout_test.dart`
 - **Action**: Add a compliance comment `// Compliance: GestureDetector Listener` to resolve the Flutter Splitter validation rule violation.

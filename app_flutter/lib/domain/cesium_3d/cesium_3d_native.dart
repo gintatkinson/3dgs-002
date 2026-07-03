@@ -20,7 +20,7 @@ class Cesium3DNative {
   ///
   /// Clamps the altitude and throws exception if the altitude drops below -100.0.
   bool updateViewport(VirtualCamera camera) {
-    if (camera.altitude < -100.0) {
+    if (camera.altitude <= -100.0) {
       // Clamp altitude and throw exception
       VirtualCamera.clamped(
         latitude: camera.latitude,
