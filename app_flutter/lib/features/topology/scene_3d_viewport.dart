@@ -213,6 +213,7 @@ class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProv
                       userRotationX: _userRotationX,
                       userTilt: _userTilt,
                       zoomScale: _zoomScale,
+                      autoRotate: _autoRotate,
                     ),
                   ),
                 ),
@@ -605,6 +606,7 @@ class Scene3DViewportPainter extends CustomPainter {
   final double userRotationX;
   final double userTilt;
   final double zoomScale;
+  final bool autoRotate;
 
   Scene3DViewportPainter({
     required this.camera,
@@ -620,9 +622,10 @@ class Scene3DViewportPainter extends CustomPainter {
     required this.userRotationX,
     required this.userTilt,
     required this.zoomScale,
+    required this.autoRotate,
   });
 
-  ProjectedPoint _project(double lat, double lng, double sphereRadius, Offset center, double rotationY) {
+  ProjectedPoint _project(double lat, double lng, double sphereRadius, Offset center, double rotationY, double tilt) {
     final double x = sphereRadius * math.cos(lat) * math.sin(lng);
     final double y = sphereRadius * math.sin(lat);
     final double z = sphereRadius * math.cos(lat) * math.cos(lng);
@@ -634,8 +637,7 @@ class Scene3DViewportPainter extends CustomPainter {
     final double yRot = y;
     final double zRot = -x * sinY + z * cosY;
 
-    // Tilt slightly downwards: rotate around X axis by tilt = -0.3 radians
-    final double tilt = -0.3 + userTilt;
+    // Tilt: rotate around X axis by tilt radians
     final double cosT = math.cos(tilt);
     final double sinT = math.sin(tilt);
     
@@ -762,8 +764,11 @@ class Scene3DViewportPainter extends CustomPainter {
       ).createShader(Rect.fromCircle(center: center, radius: sphereRadius));
     canvas.drawCircle(center, sphereRadius, spherePaint);
 
-    // Rotation angle based on animation controller
-    final double rotationAngle = animationValue * 2 * math.pi + userRotationX;
+    // Rotation angle and tilt based on camera and user inputs
+    final double baseRotation = -_rad(camera.longitude);
+    final double baseTilt = -_rad(camera.latitude);
+    final double rotationAngle = baseRotation + userRotationX + (autoRotate ? animationValue * 2 * math.pi : 0.0);
+    final double tilt = baseTilt + userTilt;
 
     // 5. Draw Grid lines (Meridians & Parallels) - front hemisphere only
     final Paint frontGridPaint = Paint()
@@ -779,8 +784,8 @@ class Scene3DViewportPainter extends CustomPainter {
         final double lat1 = -math.pi / 2 + j * (math.pi / meridianSteps);
         final double lat2 = -math.pi / 2 + (j + 1) * (math.pi / meridianSteps);
         
-        final ProjectedPoint p1 = _project(lat1, lng, sphereRadius, center, rotationAngle);
-        final ProjectedPoint p2 = _project(lat2, lng, sphereRadius, center, rotationAngle);
+        final ProjectedPoint p1 = _project(lat1, lng, sphereRadius, center, rotationAngle, tilt);
+        final ProjectedPoint p2 = _project(lat2, lng, sphereRadius, center, rotationAngle, tilt);
         
         if (p1.z >= 0 && p2.z >= 0) {
           canvas.drawLine(p1.offset, p2.offset, frontGridPaint);
@@ -796,8 +801,8 @@ class Scene3DViewportPainter extends CustomPainter {
         final double lng1 = j * (2 * math.pi / parallelSteps);
         final double lng2 = (j + 1) * (2 * math.pi / parallelSteps);
         
-        final ProjectedPoint p1 = _project(lat, lng1, sphereRadius, center, rotationAngle);
-        final ProjectedPoint p2 = _project(lat, lng2, sphereRadius, center, rotationAngle);
+        final ProjectedPoint p1 = _project(lat, lng1, sphereRadius, center, rotationAngle, tilt);
+        final ProjectedPoint p2 = _project(lat, lng2, sphereRadius, center, rotationAngle, tilt);
         
         if (p1.z >= 0 && p2.z >= 0) {
           canvas.drawLine(p1.offset, p2.offset, frontGridPaint);
@@ -892,7 +897,7 @@ class Scene3DViewportPainter extends CustomPainter {
         final List<ProjectedPoint> projectedPts = [];
         double totalZ = 0.0;
         for (final pt in landmass) {
-          final proj = _project(pt.x, pt.y, sphereRadius, center, rotationAngle);
+          final proj = _project(pt.x, pt.y, sphereRadius, center, rotationAngle, tilt);
           projectedPts.add(proj);
           totalZ += proj.z;
         }
@@ -1076,12 +1081,8 @@ class Scene3DViewportPainter extends CustomPainter {
       if (isSatellite) {
         type = 'space';
         orbitRadius = sphereRadius * 1.35;
-        // Deterministic orbital speed
-        if (id.contains('1')) speed = 1.0;
-        else if (id.contains('2')) speed = -0.8;
-        else if (id.contains('3')) speed = 1.2;
-        else if (id.contains('4')) speed = -1.1;
-        else speed = ((id.hashCode % 4 + 1) * 0.4 * (id.hashCode.isEven ? 1 : -1));
+        // Deterministic orbital speed is 0.0 for geostationary constellation
+        speed = 0.0;
       } else if (isUnderwater) {
         type = 'underwater';
         orbitRadius = sphereRadius * 0.95;
@@ -1108,7 +1109,7 @@ class Scene3DViewportPainter extends CustomPainter {
         const int steps = 60;
         for (int step = 0; step <= steps; step++) {
           final double stepLng = baseLng + (step / steps) * 2 * math.pi;
-          final stepProj = _project(lat, stepLng, orbitRadius, center, rotationAngle);
+          final stepProj = _project(lat, stepLng, orbitRadius, center, rotationAngle, tilt);
           
           if (stepProj.z >= -sphereRadius * 0.2) {
             if (!orbitStarted) {
@@ -1126,14 +1127,14 @@ class Scene3DViewportPainter extends CustomPainter {
       }
 
       // Project the node
-      final proj = _project(lat, currentLng, orbitRadius, center, rotationAngle);
+      final proj = _project(lat, currentLng, orbitRadius, center, rotationAngle, tilt);
       
       if (proj.z >= 0) {
         allProjectedNodes[id] = proj;
 
         // Draw vertical drop line from satellite to surface
         if (type == 'space' && showDropLines) {
-          final surfaceProj = _project(lat, currentLng, sphereRadius, center, rotationAngle);
+          final surfaceProj = _project(lat, currentLng, sphereRadius, center, rotationAngle, tilt);
           final Paint dropPaint = Paint()
             ..color = const Color(0x80FFFFFF)
             ..style = PaintingStyle.stroke
@@ -1203,7 +1204,26 @@ class Scene3DViewportPainter extends CustomPainter {
               textDirection: TextDirection.ltr,
             );
             textPainter.layout();
-            textPainter.paint(canvas, proj.offset + const Offset(8, -4));
+            final Offset textPos = proj.offset + const Offset(8, -4);
+            final RRect capsuleRRect = RRect.fromRectAndRadius(
+              Rect.fromLTWH(
+                textPos.dx - 6,
+                textPos.dy - 3,
+                textPainter.width + 12,
+                textPainter.height + 6,
+              ),
+              const Radius.circular(8),
+            );
+            final Paint bgPaint = Paint()
+              ..color = const Color(0xE6000000)
+              ..style = PaintingStyle.fill;
+            final Paint borderPaint = Paint()
+              ..color = textColor.withOpacity(0.4)
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 1.0;
+            canvas.drawRRect(capsuleRRect, bgPaint);
+            canvas.drawRRect(capsuleRRect, borderPaint);
+            textPainter.paint(canvas, textPos);
           }
         }
       }
@@ -1285,7 +1305,8 @@ class Scene3DViewportPainter extends CustomPainter {
         oldDelegate.showDropLines != showDropLines ||
         oldDelegate.userRotationX != userRotationX ||
         oldDelegate.userTilt != userTilt ||
-        oldDelegate.zoomScale != zoomScale;
+        oldDelegate.zoomScale != zoomScale ||
+        oldDelegate.autoRotate != autoRotate;
   }
 }
 

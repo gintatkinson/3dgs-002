@@ -378,7 +378,6 @@ class SqliteDataSource implements DataSource {
 
       for (final r in rows) {
         final nodeId = r['node_id'] as String;
-        final parentId = r['parent_node_id'] as String?;
         final dataJson = r['data_json'] as String?;
         if (dataJson == null || dataJson.isEmpty || dataJson == '{}') continue;
 
@@ -410,7 +409,7 @@ class SqliteDataSource implements DataSource {
 
         nodes.add(TopologyNode(
           id: nodeId,
-          label: nodeId,
+          label: decoded['name']?.toString() ?? nodeId,
           position: TopologyNodePosition(
             dim0: lngVal,
             dim1: latVal,
@@ -421,14 +420,34 @@ class SqliteDataSource implements DataSource {
           status: decoded['status']?.toString() ?? 'Active',
           rawProperties: decoded,
         ));
+      }
 
-        if (parentId != null && parentId.isNotEmpty && !parentId.startsWith('L')) {
-          links.add(TopologyLink(
-            source: nodeId,
-            target: parentId,
-            type: 'depends_on',
-          ));
-        }
+      // Query the instances table for all interface records to parse connection links
+      final interfaceRows = await _db.query(
+        'instances',
+        where: "type_name = 'interface'",
+      );
+      final regExp = RegExp(r'link to node\s+([\w\-]+)');
+      for (final row in interfaceRows) {
+        final parentNodeId = row['parent_node_id'] as String;
+        final dataJson = row['data_json'] as String?;
+        if (dataJson == null || dataJson.isEmpty || dataJson == '{}') continue;
+
+        try {
+          final decoded = Map<String, dynamic>.from(jsonDecode(dataJson) as Map);
+          final description = decoded['description']?.toString();
+          if (description != null) {
+            final match = regExp.firstMatch(description);
+            if (match != null) {
+              final targetNodeId = match.group(1)!;
+              links.add(TopologyLink(
+                source: parentNodeId,
+                target: targetNodeId,
+                type: 'interface',
+              ));
+            }
+          }
+        } catch (_) {}
       }
 
       return TopologyData(
