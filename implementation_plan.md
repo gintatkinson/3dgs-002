@@ -1,90 +1,43 @@
-# Implementation Plan - Complete Removal of React Application
+# Implementation Plan - Interactive Camera Controls & DB-Backed Topology on 3D Globe
 
-This plan details the steps to completely remove the React application (`web_react/`) from the workspace and clean up all associated references, validation rules, configurations, design solutions, audit scripts, and tests.
+This plan details the steps to implement interactive camera gestures (pan/rotate and zoom) for the 3D Globe and retrieve active node and link topology dynamically from the local SQLite database instead of using static template assets.
 
 ## Proposed Changes
 
-### 1. Delete the React Application Directory
-- **Action**: Delete the React source codebase directory.
-  - `[DELETE] web_react/`
+### 1. Implement Interactive Navigation Controls
+- **File**: [`app_flutter/lib/features/topology/scene_3d_viewport.dart`](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/scene_3d_viewport.dart)
+- **Action**: Wrap the `CustomPaint` widget inside the `build` method of `_Scene3DViewportState` in a `GestureDetector` and `Listener`:
+  - **Panning / Rotation**:
+    - Listen to `onPanUpdate` to dynamically update the camera's `latitude` and `longitude` coordinates based on drag offsets.
+    - Damping will be applied to keep the drag-to-rotate interaction smooth.
+  - **Zooming**:
+    - Listen to `onPointerSignal` (catching `PointerScrollEvent`) to adjust the camera's `altitude` dynamically (clamped to a safe minimum/maximum range).
+  - **Auto-Rotation Control**:
+    - Add an interactive "Auto-Rotate" switch in the Map Configuration panel to toggle the automatic rotation animation.
 
-### 2. Update Workspace Agent Rules
-- **File**: [`/Users/perkunas/jail/3dgs-002/.agents/AGENTS.md`](file:///Users/perkunas/jail/3dgs-002/.agents/AGENTS.md)
-- **Action**: Remove the rule enforcing `web_react/` location constraints.
-- **Changes**:
-  - Remove line 59: ` - All source code, assets, configurations, and tests for the React application MUST reside exclusively under web_react/.`
+### 2. Populate Nodes Dynamically from the Database
+- **File**: [`app_flutter/lib/domain/data_source.dart`](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/data_source.dart)
+  - **Action**: Add abstract method declaration `fetchTopologyData` and import the topology model.
+- **File**: [`app_flutter/lib/domain/data_sources/sqlite_data_source.dart`](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/data_sources/sqlite_data_source.dart)
+  - **Action**: Implement `fetchTopologyData` by querying the `properties` table, decoding JSON, extracting geolocation, and creating node/link structures.
+- **File**: [`app_flutter/lib/domain/data_sources/firebase_data_source.dart`](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/data_sources/firebase_data_source.dart)
+  - **Action**: Implement a dummy `fetchTopologyData` returning empty topology data to conform to the interface.
+- **File**: [`app_flutter/lib/features/layout/layout.dart`](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/layout/layout.dart)
+  - **Action**: In `_preloadTopologyData()`, query the database via the active `DataSource` to retrieve physical nodes, falling back to asset loading if no nodes are found.
+- **Files**:
+  - [`app_flutter/test/features/tables/data_table_benchmark_test.dart`](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/features/tables/data_table_benchmark_test.dart)
+  - [`app_flutter/test/features/tables/table_view_widget_test.dart`](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/features/tables/table_view_widget_test.dart)
+  - [`app_flutter/test/features/tables/view_models/tables_view_model_test.dart`](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/features/tables/view_models/tables_view_model_test.dart)
+  - **Action**: Implement dummy `fetchTopologyData` in mock data sources to satisfy the updated `DataSource` interface contract.
 
-### 3. Update Codebase Rules Schema
-- **File**: [`/Users/perkunas/jail/3dgs-002/.pipeline/logical-ui/codebase_rules.json`](file:///Users/perkunas/jail/3dgs-002/.pipeline/logical-ui/codebase_rules.json)
-- **Action**: Remove the React target directory config and the entire `react_rules` block.
-- **Changes**:
-  - In `target_directories`, delete: `"react": "web_react",` (line 51)
-  - Delete `react_rules` object completely (lines 54 to 70).
 
-### 4. Clean Up Solution Walkthrough for Feature 11
-- **File**: [`/Users/perkunas/jail/3dgs-002/docs/designs/feat-11-solution.md`](file:///Users/perkunas/jail/3dgs-002/docs/designs/feat-11-solution.md)
-- **Action**: Remove React-specific component descriptions, Code Realization Table entries mapping React components, and React build/compilation verification steps.
-- **Changes**:
-  - Remove "React Implementation" description section (lines 7 to 13).
-  - Remove rows from the Code Realization Table that map elements to React (`web_react`) code (e.g., breadcrumbs, contextual-panel, topology-map, layout, HierarchyTreeSelector, ResizableSplitter, TabbedContainer, TableView).
-  - Remove the "React Type Safety" validation step from section 3 (lines 43 to 47).
 
-### 5. Clean Up Solution Walkthrough for Feature 44
-- **File**: [`/Users/perkunas/jail/3dgs-002/docs/designs/feat-44-solution.md`](file:///Users/perkunas/jail/3dgs-002/docs/designs/feat-44-solution.md)
-- **Action**: Remove references to React within downstream seeding descriptions, class constraints, Code Realization mapping, and React verification results.
-- **Changes**:
-  - Update overview and script usage to reference Flutter exclusively instead of React/Flutter.
-  - Remove React files (`package.json`, `tsconfig.json`, `vite.config.ts`, `src/types.ts`) from baseline file checklists.
-  - Remove React mapping rows from the Code Realization Table.
-  - Delete the entire "React Baseline Verification" result segment (Section 5.1).
-
-### 6. Clean Up Remediation Plan
-- **File**: [`/Users/perkunas/jail/3dgs-002/docs/remediation_plan.md`](file:///Users/perkunas/jail/3dgs-002/docs/remediation_plan.md)
-- **Action**: Remove React-specific references from directory separation descriptions and governance rules.
-- **Changes**:
-  - Remove mention of `web_react` and downstream separation rules referencing React (line 66).
-  - Remove the scoping rule listing React Web Application in `web_react/` (line 133).
-
-### 7. Clean Up Persistence Use Case
-- **File**: [`/Users/perkunas/jail/3dgs-002/docs/use-cases/uc-03-remote-firestore-cloud.md`](file:///Users/perkunas/jail/3dgs-002/docs/use-cases/uc-03-remote-firestore-cloud.md)
-- **Action**: Remove references to the React web console configuration, React persistence mapping, and React deployment profiles.
-- **Changes**:
-  - Remove React references in parent epic description (line 12).
-  - Delete the entire "Operational Context" section (Section 7, lines 86 to 94) which details the `web_react` deployment configuration.
-
-### 8. Update Spec Implementation Auditor Skill
-- **File**: [`/Users/perkunas/jail/3dgs-002/skills/spec-implementation-auditor/SKILL.md`](file:///Users/perkunas/jail/3dgs-002/skills/spec-implementation-auditor/SKILL.md)
-- **Action**: Remove React directory scanning path from Step 2 of the auditor protocol.
-- **Changes**:
-  - Modify step 2 directory checklist to only search Flutter (`lib/`) and Python (`scripts/`), removing `React (web_react/src/)`.
-
-### 9. Update Parity Auditor Models
-- **File**: [`/Users/perkunas/jail/3dgs-002/skills/spec-orchestrator/parity_auditor/src/parity_auditor/core/models.py`](file:///Users/perkunas/jail/3dgs-002/skills/spec-orchestrator/parity_auditor/src/parity_auditor/core/models.py)
-- **Action**: Remove `ReactRules` data class, remove `react` field from `TargetDirectories`, and remove the corresponding parser properties from `CodebaseRules`.
-- **Changes**:
-  - Remove `react` attribute from `TargetDirectories` class (line 27).
-  - Remove `ReactRules` data class definition (lines 30 to 46).
-  - Remove `react_rules` attribute from `CodebaseRules` class (line 132).
-  - Remove `react_rules` initialization and extraction logic from `load_from_dict` (lines 148-149, 168).
-
-### 10. Update Linter Reliability Tests
-- **File**: [`/Users/perkunas/jail/3dgs-002/tests/test_linter_reliability.py`](file:///Users/perkunas/jail/3dgs-002/tests/test_linter_reliability.py)
-- **Action**: Adapt base configurations and linter bypass test scenarios to target the remaining Flutter platform rather than React.
-- **Changes**:
-  - Remove `react` and `react_rules` from the `base_config` test fixture (lines 31, 34-38).
-  - Remove `react_files` processing logic from the `setup_workspace` helper method.
-  - Refactor `test_comment_only_bypass` and `test_unrelated_variable_bypass` to write mock file contents into `lib/domain/Location.dart` and `lib/domain/MathController.dart` under the `app_flutter` target directories, instead of components inside `web_react/`.
+---
 
 ## Verification Plan
 
-### Step 1: Execute Linter Tests
-- Verify that `parity_auditor` tests execute successfully with the updated schemas and adapted test configs:
-  `pytest tests/test_linter_reliability.py`
-
-### Step 2: Validate Flutter Codebase
-- Verify that the Flutter application compiles and passes validation:
-  `cd app_flutter && flutter analyze && flutter test`
-
-### Step 3: Run Model Coverage Checks
-- Run the coverage verification command to confirm that the removed targets do not cause validation blockages:
-  `python3 skills/spec-orchestrator/scripts/verify_model_coverage.py`
+### Manual Verification
+1. **Interactive Panning**: Click and drag on the 3D globe. Verify that it pans and rotates in sync with the drag direction.
+2. **Scroll Zooming**: Use the mouse scroll wheel on the globe. Verify that it zooms in and out.
+3. **Auto-Rotation Toggle**: Toggle the "Auto-Rotate" setting in the config panel and verify it pauses/starts the automatic rotation.
+4. **Real Database Nodes**: Verify that actual network devices loaded from the database are drawn on the globe.

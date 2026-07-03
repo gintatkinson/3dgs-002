@@ -189,7 +189,11 @@ class _LayoutState extends State<Layout> {
   /// logged and do not crash the widget.
   Future<void> _preloadTopologyData() async {
     try {
-      final data = await loadTopologyData();
+      final dataSource = context.read<DataSource>();
+      var data = await dataSource.fetchTopologyData();
+      if (data.nodes.isEmpty) {
+        data = await loadTopologyData();
+      }
       if (mounted) {
         setState(() {
           _topologyData = data;

@@ -6,6 +6,7 @@ import 'package:app_flutter/domain/instance_record.dart';
 import 'package:app_flutter/domain/type_descriptor.dart';
 import 'package:app_flutter/domain/data_source.dart';
 import 'package:app_flutter/features/tree/tree_node.dart';
+import 'package:app_flutter/features/topology/topology_map.dart' show TopologyData, TopologyNode, TopologyLink, TopologyNodePosition;
 
 /// [DataSource] implementation backed by the local SQLite database.
 ///
@@ -367,4 +368,78 @@ class SqliteDataSource implements DataSource {
     });
     return result;
   }
+
+  @override
+  Future<TopologyData> fetchTopologyData() async {
+    try {
+      final rows = await _db.query('properties');
+      final List<TopologyNode> nodes = [];
+      final List<TopologyLink> links = [];
+
+      for (final r in rows) {
+        final nodeId = r['node_id'] as String;
+        final parentId = r['parent_node_id'] as String?;
+        final dataJson = r['data_json'] as String?;
+        if (dataJson == null || dataJson.isEmpty || dataJson == '{}') continue;
+
+        final decoded = Map<String, dynamic>.from(jsonDecode(dataJson) as Map);
+        
+        // Geolocation is stored under ietfGeoLocation or position
+        final geo = decoded['ietfGeoLocation'] ?? decoded['location'] ?? decoded['position'];
+        if (geo == null) continue;
+
+        double? latVal;
+        double? lngVal;
+        double? altVal;
+
+        if (geo is Map) {
+          final loc = geo['location'] ?? geo;
+          if (loc is Map) {
+            final ellip = loc['ellipsoid'] ?? loc;
+            if (ellip is Map) {
+              latVal = double.tryParse(ellip['latitude']?.toString() ?? '');
+              lngVal = double.tryParse(ellip['longitude']?.toString() ?? '');
+              altVal = double.tryParse(ellip['height']?.toString() ?? ellip['altitude']?.toString() ?? '');
+            }
+          }
+        }
+
+        if (latVal == null || lngVal == null) {
+          continue;
+        }
+
+        nodes.add(TopologyNode(
+          id: nodeId,
+          label: nodeId,
+          position: TopologyNodePosition(
+            dim0: lngVal,
+            dim1: latVal,
+            dim2: altVal ?? 0.0,
+            timeIndex: 0,
+            vector: const [],
+          ),
+          status: decoded['status']?.toString() ?? 'Active',
+          rawProperties: decoded,
+        ));
+
+        if (parentId != null && parentId.isNotEmpty && !parentId.startsWith('L')) {
+          links.add(TopologyLink(
+            source: nodeId,
+            target: parentId,
+            type: 'depends_on',
+          ));
+        }
+      }
+
+      return TopologyData(
+        coordinateMapping: const {},
+        nodes: nodes,
+        links: links,
+      );
+    } catch (e, stackTrace) {
+      debugPrint('Error in fetchTopologyData: $e\n$stackTrace');
+      return const TopologyData(coordinateMapping: {}, nodes: [], links: []);
+    }
+  }
 }
+
