@@ -2,6 +2,7 @@
 
 import 'dart:math' as math;
 import 'dart:ui';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:app_flutter/domain/cesium_3d/virtual_camera.dart';
 import 'package:app_flutter/features/topology/topology_map.dart';
@@ -35,6 +36,11 @@ class Scene3DViewport extends StatefulWidget {
 
 class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
+
+  bool _autoRotate = true;
+  double _userRotationX = 0.0;
+  double _userTilt = 0.0;
+  double _zoomScale = 1.0;
 
   // Interactive configurations
   String _activeStyle = 'Satellite Map';
@@ -177,18 +183,38 @@ class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProv
           children: [
             // Background & 3D Globe custom paint
             Positioned.fill(
-              child: CustomPaint(
-                painter: Scene3DViewportPainter(
-                  camera: widget.camera,
-                  animationValue: _controller.value,
-                  activeStyle: _activeStyle,
-                  astronomicalBody: _astronomicalBody,
-                  elevationActive: _elevationActive,
-                  showDevices: _showDevices,
-                  showLinks: _showLinks,
-                  showLabels: _showLabels,
-                  showDropLines: _showDropLines,
-                  topologyData: widget.topologyData,
+              child: GestureDetector(
+                onPanUpdate: (details) {
+                  setState(() {
+                    _userRotationX += details.delta.dx * 0.01;
+                    _userTilt = (_userTilt + details.delta.dy * 0.01).clamp(-1.2, 1.2);
+                  });
+                },
+                child: Listener(
+                  onPointerSignal: (pointerSignal) {
+                    if (pointerSignal is PointerScrollEvent) {
+                      setState(() {
+                        _zoomScale = (_zoomScale - pointerSignal.scrollDelta.dy * 0.001).clamp(0.5, 3.0);
+                      });
+                    }
+                  },
+                  child: CustomPaint(
+                    painter: Scene3DViewportPainter(
+                      camera: widget.camera,
+                      animationValue: _controller.value,
+                      activeStyle: _activeStyle,
+                      astronomicalBody: _astronomicalBody,
+                      elevationActive: _elevationActive,
+                      showDevices: _showDevices,
+                      showLinks: _showLinks,
+                      showLabels: _showLabels,
+                      showDropLines: _showDropLines,
+                      topologyData: widget.topologyData,
+                      userRotationX: _userRotationX,
+                      userTilt: _userTilt,
+                      zoomScale: _zoomScale,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -471,6 +497,21 @@ class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProv
                             ),
                           ),
                           const SizedBox(height: 8),
+                          _buildVisibilityToggle(
+                            'AUTO ROTATION',
+                            _autoRotate,
+                            (val) {
+                              setState(() {
+                                _autoRotate = val;
+                                if (_autoRotate) {
+                                  _controller.repeat();
+                                } else {
+                                  _controller.stop();
+                                }
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 8),
                           _buildVisibilityToggle('Devices / Nodes', _showDevices, (val) {
                             setState(() {
                               _showDevices = val;
@@ -561,6 +602,9 @@ class Scene3DViewportPainter extends CustomPainter {
   final bool showLabels;
   final bool showDropLines;
   final TopologyData? topologyData;
+  final double userRotationX;
+  final double userTilt;
+  final double zoomScale;
 
   Scene3DViewportPainter({
     required this.camera,
@@ -573,6 +617,9 @@ class Scene3DViewportPainter extends CustomPainter {
     required this.showLabels,
     required this.showDropLines,
     this.topologyData,
+    required this.userRotationX,
+    required this.userTilt,
+    required this.zoomScale,
   });
 
   ProjectedPoint _project(double lat, double lng, double sphereRadius, Offset center, double rotationY) {
@@ -588,7 +635,7 @@ class Scene3DViewportPainter extends CustomPainter {
     final double zRot = -x * sinY + z * cosY;
 
     // Tilt slightly downwards: rotate around X axis by tilt = -0.3 radians
-    const double tilt = -0.3;
+    final double tilt = -0.3 + userTilt;
     final double cosT = math.cos(tilt);
     final double sinT = math.sin(tilt);
     
@@ -605,7 +652,7 @@ class Scene3DViewportPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final double sphereRadius = size.shortestSide * 0.32;
+    final double sphereRadius = size.shortestSide * 0.32 * zoomScale;
     // Shift center to the left to give space to the config overlay sidebar
     final Offset center = Offset(size.width * 0.45, size.height * 0.5);
 
@@ -716,7 +763,7 @@ class Scene3DViewportPainter extends CustomPainter {
     canvas.drawCircle(center, sphereRadius, spherePaint);
 
     // Rotation angle based on animation controller
-    final double rotationAngle = animationValue * 2 * math.pi;
+    final double rotationAngle = animationValue * 2 * math.pi + userRotationX;
 
     // 5. Draw Grid lines (Meridians & Parallels) - front hemisphere only
     final Paint frontGridPaint = Paint()
@@ -1235,7 +1282,10 @@ class Scene3DViewportPainter extends CustomPainter {
         oldDelegate.showDevices != showDevices ||
         oldDelegate.showLinks != showLinks ||
         oldDelegate.showLabels != showLabels ||
-        oldDelegate.showDropLines != showDropLines;
+        oldDelegate.showDropLines != showDropLines ||
+        oldDelegate.userRotationX != userRotationX ||
+        oldDelegate.userTilt != userTilt ||
+        oldDelegate.zoomScale != zoomScale;
   }
 }
 
