@@ -3,6 +3,8 @@ import 'package:app_flutter/features/layout/breadcrumbs.dart';
 import 'package:app_flutter/features/topology/topology_map.dart';
 import 'package:app_flutter/features/layout/split_workspace.dart';
 import 'package:app_flutter/features/tree/tree_node.dart';
+import 'package:app_flutter/features/topology/scene_3d_viewport.dart';
+import 'package:app_flutter/domain/cesium_3d/virtual_camera.dart';
 
 /// The top-level topology view: breadcrumb header + split workspace
 /// (topology map + detail child) or standalone topology map.
@@ -20,7 +22,7 @@ import 'package:app_flutter/features/tree/tree_node.dart';
 /// available size is less than [splitMinFirstPaneSize], the first pane
 /// takes its minimum and the trailing pane fills the remainder (which
 /// may be smaller than [splitMinFirstPaneSize]).
-class TopographicalView extends StatelessWidget {
+class TopographicalView extends StatefulWidget {
   final String currentView;
   final ValueChanged<String> onViewSelected;
   final Widget? child;
@@ -79,25 +81,70 @@ class TopographicalView extends StatelessWidget {
   });
 
   @override
+  State<TopographicalView> createState() => _TopographicalViewState();
+}
+
+class _TopographicalViewState extends State<TopographicalView> {
+  bool _is3d = true;
+
+  @override
   Widget build(BuildContext context) {
-    final body = child != null
-        ? SplitWorkspace(
-            leading: TopologyMap(
-              activeFocusedNode: currentView,
-              onNodeSelect: onViewSelected,
-              data: topologyData,
-            ),
-            trailing: child!,
-            direction: splitDirection,
-            minFirstPaneSize: splitMinFirstPaneSize,
-            initialRatio: splitInitialRatio,
-            splitterKey: splitterKey,
-          )
+    double latitude;
+    double longitude;
+
+    TopologyNode? activeNode;
+    for (final node in widget.topologyData.nodes) {
+      if (node.id == widget.currentView) {
+        activeNode = node;
+        break;
+      }
+    }
+
+    if (activeNode != null) {
+      final double latVal = activeNode.resolveCoordinate('y', widget.topologyData.coordinateMapping);
+      final double lngVal = activeNode.resolveCoordinate('x', widget.topologyData.coordinateMapping);
+      if (latVal == 0.0 && lngVal == 0.0) {
+        latitude = 35.6074;
+        longitude = 140.1063;
+      } else {
+        latitude = latVal;
+        longitude = lngVal;
+      }
+    } else {
+      latitude = 35.6074;
+      longitude = 140.1063;
+    }
+
+    latitude = latitude.clamp(-90.0, 90.0);
+    longitude = longitude.clamp(-180.0, 180.0);
+
+    final camera = VirtualCamera(
+      latitude: latitude,
+      longitude: longitude,
+      altitude: 500.0,
+      heading: 0.0,
+      pitch: -45.0,
+      roll: 0.0,
+    );
+
+    final Widget leadingWidget = _is3d
+        ? Scene3DViewport(camera: camera)
         : TopologyMap(
-            activeFocusedNode: currentView,
-            onNodeSelect: onViewSelected,
-            data: topologyData,
+            activeFocusedNode: widget.currentView,
+            onNodeSelect: widget.onViewSelected,
+            data: widget.topologyData,
           );
+
+    final body = widget.child != null
+        ? SplitWorkspace(
+            leading: leadingWidget,
+            trailing: widget.child!,
+            direction: widget.splitDirection,
+            minFirstPaneSize: widget.splitMinFirstPaneSize,
+            initialRatio: widget.splitInitialRatio,
+            splitterKey: widget.splitterKey,
+          )
+        : leadingWidget;
 
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
@@ -110,16 +157,45 @@ class TopographicalView extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Active View: $currentView',
-                  style: Theme.of(context).textTheme.titleSmall,
+                Flexible(
+                  child: Text(
+                    'Active View: ${widget.currentView}',
+                    style: Theme.of(context).textTheme.titleSmall,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ElevatedButton(
+                      key: const Key('toggle_2d'),
+                      onPressed: () => setState(() => _is3d = false),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: !_is3d ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surfaceContainerHighest,
+                        foregroundColor: !_is3d ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface,
+                      ),
+                      child: const Text('2D Map'),
+                    ),
+                    const SizedBox(width: 4),
+                    ElevatedButton(
+                      key: const Key('toggle_3d'),
+                      onPressed: () => setState(() => _is3d = true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _is3d ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surfaceContainerHighest,
+                        foregroundColor: _is3d ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface,
+                      ),
+                      child: const Text('3D Globe'),
+                    ),
+                  ],
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Align(
                     alignment: Alignment.centerRight,
                     child: NavigationBreadcrumbs(
-                      items: getBreadcrumbsItems(currentView, treeData, onSelectView: onViewSelected),
+                      items: getBreadcrumbsItems(widget.currentView, widget.treeData, onSelectView: widget.onViewSelected),
                     ),
                   ),
                 ),

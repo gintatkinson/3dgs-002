@@ -62,6 +62,28 @@ This plan details the implementation of Feature 01 in `app_flutter`, along with 
 - **Action**: Update `_updateCurrentViewFromLayout()` to check if `_currentView` is the obsolete seed ID `'Master_1'` or if `widget.activeView` is null.
 - **Details**: Implement self-healing initial view selection condition: `if ((widget.activeView == null || _currentView == 'Master_1') && _treeViewModel != null && _treeViewModel!.treeData.isNotEmpty)`.
 
+### 15. Modify `app_flutter/lib/features/topology/topographical_view.dart`
+- **Action**: Convert `TopographicalView` to a `StatefulWidget` and add a 2D/3D viewport toggle.
+- **Details**:
+  - Add stateful toggle `bool _is3d = true;`.
+  - Render a segment control button or Row of buttons in the breadcrumbs header to allow switching between `2D Map` and `3D Globe`.
+  - When `_is3d` is true, render the `Scene3DViewport` widget in the leading slot of `SplitWorkspace` (instead of `TopologyMap`).
+  - Pass a dynamically constructed `VirtualCamera` to `Scene3DViewport` based on the selected node's coordinates:
+    - Find the active node in `topologyData.nodes` matching `currentView`.
+    - Extract `latitude` from `activeNode.resolveCoordinate('y', topologyData.coordinateMapping)` and `longitude` from `activeNode.resolveCoordinate('x', topologyData.coordinateMapping)`.
+    - If they are both `0.0`, default to latitude `35.6074`, longitude `140.1063` (Chiba Lasers Exchange Hub coordinates).
+    - Set camera: `VirtualCamera(latitude: latitude, longitude: longitude, altitude: 500.0, heading: 0.0, pitch: -45.0, roll: 0.0)`.
+
+### 16. Modify `app_flutter/lib/features/topology/scene_3d_viewport.dart`
+- **Action**: Refactor `Scene3DViewport` into a `StatefulWidget` and draw a rotating 3D wireframe globe.
+- **Details**:
+  - Refactor `Scene3DViewport` into a `StatefulWidget`.
+  - Create a `CustomPainter` (`Scene3DViewportPainter`) that:
+    - Draws a rotating 3D wireframe globe (sphere with latitude/longitude lines) using simple trigonometry (`cos` and `sin` projection).
+    - Draws a pulsing target marker at the center representing the selected node's geographic coordinates.
+    - Draws a futuristic glassmorphic HUD overlay on top listing camera stats (Latitude, Longitude, Altitude, Pitch/Yaw/Roll) and tile status ("Mapped & loaded tiles from Cesium FFI").
+  - Use an animation ticker to keep the wireframe globe slowly rotating in 3D.
+
 ## Verification Plan
 
 ### Step 1: Run pub get
@@ -85,5 +107,8 @@ This plan details the implementation of Feature 01 in `app_flutter`, along with 
 
 ### Step 7: Commit and Push Changes
 - Commit changes and push to `origin/feat/1-3d-network-visualization`.
+
+### Step 8: Run Flutter tests
+- Execute `flutter test` to ensure all tests pass.
 
 
