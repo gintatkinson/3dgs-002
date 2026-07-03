@@ -35,6 +35,12 @@ This plan details the implementation of Feature 01 in `app_flutter`, along with 
 ### 9. Modify `web_react/src/components/layout.css`
 - **Action**: Change the hardcoded input background `#ffffff` to `rgb(255, 255, 255)` to satisfy design token color checks.
 
+### 10. Create `scripts/import_data.py`
+- **Action**: Create the migration script to parse `firestore-export.json` and populate the SQLite database.
+
+### 11. Modify `app_flutter/assets/properties_db.db.gz`
+- **Action**: Update the SQLite database asset by importing the migrated data and re-compressing it.
+
 ## Verification Plan
 
 ### Step 1: Run pub get
@@ -46,3 +52,7 @@ This plan details the implementation of Feature 01 in `app_flutter`, along with 
 
 ### Step 3: Run Model Coverage Verification
 - Execute `python3 skills/spec-orchestrator/scripts/verify_model_coverage.py` to confirm that all newly added elements are fully covered.
+
+### Step 4: Run Database Migration
+- Execute `python3 scripts/import_data.py` to process the JSON file and update `app_flutter/assets/properties_db.db.gz`.
+
