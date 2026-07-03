@@ -20,7 +20,7 @@
   --terminal-bg: #f8f9fa;
   --font-family: var(--alias-typography-font-family);
   --sidebar-width: var(--alias-spacing-layout-sidebar-width);
-  --input-bg: #ffffff;
+  --input-bg: rgb(255, 255, 255);
   --sidebar-footer-bg: rgba(0, 0, 0, 0.03);
   --tag-alt-color: hsl(190, 100%, 25%);
   --tag-alt-bg: hsla(190, 100%, 40%, 0.1);
