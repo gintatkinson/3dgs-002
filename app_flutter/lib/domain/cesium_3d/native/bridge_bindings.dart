@@ -169,7 +169,7 @@ class CesiumNativeBindings {
   late final BridgeFreeStringDart freeString;
   late final BridgeErrorMessageDart errorMessage;
 
-  CesiumNativeBindings._(this._lib) {
+  CesiumNativeBindings(this._lib) {
     initialize = _lib.lookupFunction<BridgeInitializeNative, BridgeInitializeDart>('bridge_initialize');
     shutdown = _lib.lookupFunction<BridgeShutdownNative, BridgeShutdownDart>('bridge_shutdown');
     isReady = _lib.lookupFunction<BridgeIsReadyNative, BridgeIsReadyDart>('bridge_is_ready');
@@ -190,13 +190,13 @@ class CesiumNativeBindings {
   static CesiumNativeBindings load() {
     if (Platform.isMacOS) {
       final lib = DynamicLibrary.open('libcesium_native_bridge.dylib');
-      return CesiumNativeBindings._(lib);
+      return CesiumNativeBindings(lib);
     } else if (Platform.isLinux) {
       final lib = DynamicLibrary.open('libcesium_native_bridge.so');
-      return CesiumNativeBindings._(lib);
+      return CesiumNativeBindings(lib);
     } else if (Platform.isWindows) {
       final lib = DynamicLibrary.open('cesium_native_bridge.dll');
-      return CesiumNativeBindings._(lib);
+      return CesiumNativeBindings(lib);
     }
     throw UnsupportedError('Cesium native bridge is not available on this platform');
   }
