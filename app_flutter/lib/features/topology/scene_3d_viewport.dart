@@ -9,6 +9,7 @@ import 'package:app_flutter/domain/cesium_3d/cesium_engine.dart';
 import 'package:app_flutter/domain/cesium_3d/globe_tile_renderer.dart';
 import 'package:app_flutter/domain/cesium_3d/projected_point.dart';
 import 'package:app_flutter/domain/cesium_3d/tile_fetcher.dart';
+import 'package:app_flutter/domain/cesium_3d/camera_controller.dart';
 import 'package:app_flutter/domain/cesium_3d/virtual_camera.dart';
 import 'package:app_flutter/features/topology/topology_map.dart';
 
@@ -41,11 +42,14 @@ class Scene3DViewport extends StatefulWidget {
 
 class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
+  late CameraController _cameraController;
 
-  late VirtualCamera _camera;
   final FocusNode _globeFocusNode = FocusNode();
 
   bool _autoRotate = true;
+  bool _shiftHeld = false;
+  bool _ctrlHeld = false;
+  int _activeButtons = 0;
 
   // Interactive configurations
   String _activeStyle = 'Satellite Map';
@@ -76,7 +80,7 @@ class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProv
   @override
   void initState() {
     super.initState();
-    _camera = widget.camera;
+    _cameraController = CameraController(widget.camera);
 
     final fetcher = TileFetcher();
     _tileRenderer = GlobeTileRenderer(
@@ -95,7 +99,7 @@ class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProv
     super.didUpdateWidget(oldWidget);
     if (oldWidget.camera != widget.camera) {
       setState(() {
-        _camera = widget.camera;
+        _cameraController.updateCamera(widget.camera);
       });
     }
   }
@@ -107,70 +111,52 @@ class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProv
     super.dispose();
   }
 
-  double _wrapLng(double lng) {
-    while (lng > 180) {
-      lng -= 360;
-    }
-    while (lng < -180) {
-      lng += 360;
-    }
-    return lng;
-  }
-
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    final key = event.logicalKey;
+
+    if (key == LogicalKeyboardKey.shiftLeft || key == LogicalKeyboardKey.shiftRight) {
+      if (event is KeyDownEvent) {
+        _shiftHeld = true;
+      } else if (event is KeyUpEvent) {
+        _shiftHeld = false;
+      }
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.controlLeft || key == LogicalKeyboardKey.controlRight ||
+        key == LogicalKeyboardKey.metaLeft || key == LogicalKeyboardKey.metaRight) {
+      if (event is KeyDownEvent) {
+        _ctrlHeld = true;
+      } else if (event is KeyUpEvent) {
+        _ctrlHeld = false;
+      }
+      return KeyEventResult.handled;
+    }
+
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
       return KeyEventResult.ignored;
     }
-    final key = event.logicalKey;
+
     if (key == LogicalKeyboardKey.arrowLeft) {
       setState(() {
-        _camera = VirtualCamera(
-          latitude: _camera.latitude,
-          longitude: _wrapLng(_camera.longitude - 5),
-          altitude: _camera.altitude,
-          heading: _camera.heading,
-          pitch: _camera.pitch,
-          roll: _camera.roll,
-        );
+        _cameraController.keyboardRotate(-CameraController.keyboardStep);
       });
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.arrowRight) {
       setState(() {
-        _camera = VirtualCamera(
-          latitude: _camera.latitude,
-          longitude: _wrapLng(_camera.longitude + 5),
-          altitude: _camera.altitude,
-          heading: _camera.heading,
-          pitch: _camera.pitch,
-          roll: _camera.roll,
-        );
+        _cameraController.keyboardRotate(CameraController.keyboardStep);
       });
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.arrowUp) {
       setState(() {
-        _camera = VirtualCamera(
-          latitude: _camera.latitude,
-          longitude: _camera.longitude,
-          altitude: _camera.altitude,
-          heading: _camera.heading,
-          pitch: (_camera.pitch + 5).clamp(-89.0, 89.0),
-          roll: _camera.roll,
-        );
+        _cameraController.keyboardTilt(CameraController.keyboardStep);
       });
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.arrowDown) {
       setState(() {
-        _camera = VirtualCamera(
-          latitude: _camera.latitude,
-          longitude: _camera.longitude,
-          altitude: _camera.altitude,
-          heading: _camera.heading,
-          pitch: (_camera.pitch - 5).clamp(-89.0, 89.0),
-          roll: _camera.roll,
-        );
+        _cameraController.keyboardTilt(-CameraController.keyboardStep);
       });
       return KeyEventResult.handled;
     }
@@ -291,7 +277,7 @@ class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProv
       key: const Key('scene_3d_viewport_container'),
       animation: _controller,
       builder: (context, child) {
-        final zoomScale = 500.0 / _camera.altitude;
+        final zoomScale = 500.0 / _cameraController.current.altitude;
         return Stack(
           children: [
             // Background & 3D Globe custom paint
@@ -300,59 +286,71 @@ class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProv
                 focusNode: _globeFocusNode,
                 autofocus: true,
                 onKeyEvent: _handleKeyEvent,
-                child: GestureDetector(
-                  onPanStart: (_) {
+                child: Listener(
+                  onPointerDown: (event) {
+                    _activeButtons = event.buttons;
                     _globeFocusNode.requestFocus();
                   },
-                  onPanUpdate: (details) {
-                    setState(() {
-                      final newLat = (_camera.latitude - details.delta.dy * 0.15).clamp(-90.0, 90.0);
-                      final newLng = _wrapLng(_camera.longitude - details.delta.dx * 0.15);
-                      _camera = VirtualCamera(
-                        latitude: newLat,
-                        longitude: newLng,
-                        altitude: _camera.altitude,
-                        heading: _camera.heading,
-                        pitch: _camera.pitch,
-                        roll: _camera.roll,
-                      );
-                    });
-                  },
-                  child: Listener(
-                    onPointerSignal: (pointerSignal) {
-                      if (pointerSignal is PointerScrollEvent) {
-                        setState(() {
-                          final newAlt = (_camera.altitude + pointerSignal.scrollDelta.dy * 0.5).clamp(100.0, 40000000.0);
-                          _camera = VirtualCamera(
-                            latitude: _camera.latitude,
-                            longitude: _camera.longitude,
-                            altitude: newAlt,
-                            heading: _camera.heading,
-                            pitch: _camera.pitch,
-                            roll: _camera.roll,
-                          );
-                        });
-                      }
+                  onPointerUp: (_) => _activeButtons = 0,
+                  child: GestureDetector(
+                    onPanStart: (_) {
+                      _globeFocusNode.requestFocus();
                     },
-                    child: CustomPaint(
-                                          painter: Scene3DViewportPainter(
-                                            camera: _camera,
-                                            animationValue: _controller.value,
-                                            activeStyle: _activeStyle,
-                                            astronomicalBody: _astronomicalBody,
-                                            elevationActive: _elevationActive,
-                                            showDevices: _showDevices,
-                                            showLinks: _showLinks,
-                                            showLabels: _showLabels,
-                                            showDropLines: _showDropLines,
-                                            topologyData: widget.topologyData,
-                                            userRotationX: 0.0,
-                                            userTilt: 0.0,
-                                            zoomScale: zoomScale,
-                                            autoRotate: _autoRotate,
-                                            tileRenderer: _tileRenderer,
-                                            imageryProvider: _providerForStyle(_activeStyle),
-                                          ),
+                    onPanUpdate: (details) {
+                      setState(() {
+                        if (_activeButtons == kSecondaryMouseButton || _shiftHeld) {
+                          _cameraController.tilt(details.delta);
+                        } else if (_ctrlHeld) {
+                          _cameraController.rotateHeading(details.delta);
+                        } else {
+                          _cameraController.pan(details.delta);
+                        }
+                      });
+                    },
+                    onDoubleTap: () {
+                      final targetAlt = (_cameraController.current.altitude * 0.5).clamp(
+                        CameraController.minAltitude,
+                        CameraController.maxAltitude,
+                      );
+                      setState(() {
+                        _cameraController.updateCamera(VirtualCamera.clamped(
+                          latitude: _cameraController.current.latitude,
+                          longitude: _cameraController.current.longitude,
+                          altitude: targetAlt,
+                          heading: _cameraController.current.heading,
+                          pitch: _cameraController.current.pitch,
+                          roll: _cameraController.current.roll,
+                        ));
+                      });
+                    },
+                    child: Listener(
+                      onPointerSignal: (pointerSignal) {
+                        if (pointerSignal is PointerScrollEvent) {
+                          setState(() {
+                            _cameraController.zoom(pointerSignal.scrollDelta.dy);
+                          });
+                        }
+                      },
+                      child: CustomPaint(
+                        painter: Scene3DViewportPainter(
+                          camera: _cameraController.current,
+                          animationValue: _controller.value,
+                          activeStyle: _activeStyle,
+                          astronomicalBody: _astronomicalBody,
+                          elevationActive: _elevationActive,
+                          showDevices: _showDevices,
+                          showLinks: _showLinks,
+                          showLabels: _showLabels,
+                          showDropLines: _showDropLines,
+                          topologyData: widget.topologyData,
+                          userRotationX: 0.0,
+                          userTilt: 0.0,
+                          zoomScale: zoomScale,
+                          autoRotate: _autoRotate,
+                          tileRenderer: _tileRenderer,
+                          imageryProvider: _providerForStyle(_activeStyle),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -399,7 +397,7 @@ class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProv
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Latitude: ${_camera.latitude.toStringAsFixed(6)}',
+                          'Latitude: ${_cameraController.current.latitude.toStringAsFixed(6)}',
                           style: const TextStyle(
                             color: Color(0xFFE0E0E0),
                             fontFamily: 'monospace',
@@ -407,7 +405,7 @@ class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProv
                           ),
                         ),
                         Text(
-                          'Longitude: ${_camera.longitude.toStringAsFixed(6)}',
+                          'Longitude: ${_cameraController.current.longitude.toStringAsFixed(6)}',
                           style: const TextStyle(
                             color: Color(0xFFE0E0E0),
                             fontFamily: 'monospace',
@@ -415,7 +413,7 @@ class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProv
                           ),
                         ),
                         Text(
-                          'Altitude: ${_camera.altitude} meters',
+                          'Altitude: ${_cameraController.current.altitude} meters',
                           style: const TextStyle(
                             color: Color(0xFFE0E0E0),
                             fontFamily: 'monospace',
@@ -423,7 +421,7 @@ class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProv
                           ),
                         ),
                         Text(
-                          'Pitch/Yaw/Roll: ${_camera.pitch} / ${_camera.heading} / ${_camera.roll}',
+                          'Pitch/Yaw/Roll: ${_cameraController.current.pitch} / ${_cameraController.current.heading} / ${_cameraController.current.roll}',
                           style: const TextStyle(
                             color: Color(0xFFE0E0E0),
                             fontFamily: 'monospace',
