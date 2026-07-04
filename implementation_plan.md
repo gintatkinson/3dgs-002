@@ -761,3 +761,98 @@ This phase documents the introduction of a 1-line horizon culling check to preve
   cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
   ```
 
+## Phase 14: Coordinate Projection Cull Values and Lines Stretching Fix
+
+This phase documents the changes required to fix coordinate projection culling values and update climate bands and orbit loops to resolve lines stretching to the top-left corner.
+
+### Core App Code
+
+#### [MODIFY] [scene_3d_viewport.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/scene_3d_viewport.dart)
+- Calculate actual projected coordinates instead of returning `Offset.zero` when a point is behind the horizon, setting depth to `-1.0` if culled.
+  - Target:
+    ```dart
+        // Horizon culling check: is the point blocked by the Earth's sphere?
+        final double distancePixels = sphereRadius * (1.0 + camera.altitude / 6378137.0);
+        final double horizonLimit = sphereRadius * (sphereRadius / distancePixels);
+        if (xRot < horizonLimit) {
+          return ProjectedPoint(Offset.zero, -1.0);
+        }
+    ```
+  - Replacement:
+    ```dart
+        // Horizon culling check: is the point blocked by the Earth's sphere?
+        final double distancePixels = sphereRadius * (1.0 + camera.altitude / 6378137.0);
+        final double horizonLimit = sphereRadius * (sphereRadius / distancePixels);
+        final double depthVal = xRot < horizonLimit ? -1.0 : depth;
+    ```
+- Update `paint` climate bands loop to only add vertices where `p.z >= 0.0`.
+  - Target:
+    ```dart
+        final List<ProjectedPoint> pts = [];
+        for (int s = 0; s <= steps; s++) {
+          final double lng = s * (2 * math.pi / steps);
+          pts.add(project(latMin, lng, sphereRadius * 1.002, center, rotationAngle, tilt));
+        }
+        for (int s = steps; s >= 0; s--) {
+          final double lng = s * (2 * math.pi / steps);
+          pts.add(project(latMax, lng, sphereRadius * 1.002, center, rotationAngle, tilt));
+        }
+
+        final double avgZ = pts.fold(0.0, (sum, p) => sum + p.z) / pts.length;
+        if (avgZ >= -sphereRadius * 0.2) {
+          final Path path = Path();
+          path.moveTo(pts.first.offset.dx, pts.first.offset.dy);
+          for (int i = 1; i < pts.length; i++) {
+            path.lineTo(pts[i].offset.dx, pts[i].offset.dy);
+          }
+          path.close();
+          canvas.drawPath(path, bandPaint);
+          canvas.drawPath(path, bandBorder);
+        }
+    ```
+  - Replacement:
+    ```dart
+        final List<ProjectedPoint> pts = [];
+        for (int s = 0; s <= steps; s++) {
+          final double lng = s * (2 * math.pi / steps);
+          final p = project(latMin, lng, sphereRadius * 1.002, center, rotationAngle, tilt);
+          if (p.z >= 0.0) pts.add(p);
+        }
+        for (int s = steps; s >= 0; s--) {
+          final double lng = s * (2 * math.pi / steps);
+          final p = project(latMax, lng, sphereRadius * 1.002, center, rotationAngle, tilt);
+          if (p.z >= 0.0) pts.add(p);
+        }
+
+        if (pts.length >= 3) {
+          final Path path = Path();
+          path.moveTo(pts.first.offset.dx, pts.first.offset.dy);
+          for (int i = 1; i < pts.length; i++) {
+            path.lineTo(pts[i].offset.dx, pts[i].offset.dy);
+          }
+          path.close();
+          canvas.drawPath(path, bandPaint);
+          canvas.drawPath(path, bandBorder);
+        }
+    ```
+- Update `paint` space trajectory loops to use `stepProj.z >= 0.0` instead of `stepProj.z >= -sphereRadius * 0.2`.
+  - Target:
+    ```dart
+          if (stepProj.z >= -sphereRadius * 0.2) {
+    ```
+  - Replacement:
+    ```dart
+          if (stepProj.z >= 0.0) {
+    ```
+
+### Phase 14 Verification Plan
+
+### Automated Tests
+- Run all unit and integration tests to verify correctness:
+  ```bash
+  cd app_flutter && flutter test test/cesium_3d/
+  cd app_flutter && flutter test integration_test/globe_camera_drag_test.dart -d macos
+  cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
+  ```
+
+

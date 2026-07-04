@@ -937,9 +937,6 @@ class Scene3DViewportPainter extends CustomPainter {
     // Horizon culling check: is the point blocked by the Earth's sphere?
     final double distancePixels = sphereRadius * (1.0 + camera.altitude / 6378137.0);
     final double horizonLimit = sphereRadius * (sphereRadius / distancePixels);
-    if (xRot < horizonLimit) {
-      return ProjectedPoint(Offset.zero, -1.0);
-    }
 
     // 3. Translate along camera line of sight (camera is at distance D)
     final double xCam = xRot - distancePixels;
@@ -964,12 +961,13 @@ class Scene3DViewportPainter extends CustomPainter {
 
     // 6. Perspective projection
     final double depth = -xFinal;
+    final double depthVal = xRot < horizonLimit ? -1.0 : depth;
     final double pScale = depth <= 0.0 ? 1.0 : distancePixels / depth;
 
     final double rx = zFinal * pScale;
     final double ry = yFinal * pScale;
 
-    return ProjectedPoint(Offset(center.dx + rx, center.dy - ry), depth);
+    return ProjectedPoint(Offset(center.dx + rx, center.dy - ry), depthVal);
   }
 
   // Convert degrees to radians
@@ -1167,15 +1165,16 @@ class Scene3DViewportPainter extends CustomPainter {
         final List<ProjectedPoint> pts = [];
         for (int s = 0; s <= steps; s++) {
           final double lng = s * (2 * math.pi / steps);
-          pts.add(project(latMin, lng, sphereRadius * 1.002, center, rotationAngle, tilt));
+          final p = project(latMin, lng, sphereRadius * 1.002, center, rotationAngle, tilt);
+          if (p.z >= 0.0) pts.add(p);
         }
         for (int s = steps; s >= 0; s--) {
           final double lng = s * (2 * math.pi / steps);
-          pts.add(project(latMax, lng, sphereRadius * 1.002, center, rotationAngle, tilt));
+          final p = project(latMax, lng, sphereRadius * 1.002, center, rotationAngle, tilt);
+          if (p.z >= 0.0) pts.add(p);
         }
 
-        final double avgZ = pts.fold(0.0, (sum, p) => sum + p.z) / pts.length;
-        if (avgZ >= -sphereRadius * 0.2) {
+        if (pts.length >= 3) {
           final Path path = Path();
           path.moveTo(pts.first.offset.dx, pts.first.offset.dy);
           for (int i = 1; i < pts.length; i++) {
@@ -1378,7 +1377,7 @@ class Scene3DViewportPainter extends CustomPainter {
           final double stepLng = baseLng + (step / steps) * 2 * math.pi;
           final stepProj = project(lat, stepLng, orbitRadius, center, rotationAngle, tilt);
           
-          if (stepProj.z >= -sphereRadius * 0.2) {
+          if (stepProj.z >= 0.0) {
             if (!orbitStarted) {
               orbitPath.moveTo(stepProj.offset.dx, stepProj.offset.dy);
               orbitStarted = true;
