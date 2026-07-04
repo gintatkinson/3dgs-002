@@ -5,8 +5,11 @@ import 'dart:ui';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:app_flutter/domain/cesium_3d/virtual_camera.dart';
 import 'package:app_flutter/domain/cesium_3d/cesium_engine.dart';
+import 'package:app_flutter/domain/cesium_3d/globe_tile_renderer.dart';
+import 'package:app_flutter/domain/cesium_3d/projected_point.dart';
+import 'package:app_flutter/domain/cesium_3d/tile_fetcher.dart';
+import 'package:app_flutter/domain/cesium_3d/virtual_camera.dart';
 import 'package:app_flutter/features/topology/topology_map.dart';
 
 // Compliance: spatial-temporal playhead rate clamps enforced: 0.9 and 1.1 bounds.
@@ -53,10 +56,34 @@ class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProv
   bool _showLabels = true;
   bool _showDropLines = true;
 
+  GlobeTileRenderer? _tileRenderer;
+
+  ImageryProvider _providerForStyle(String style) {
+    switch (style) {
+      case 'Dark Map':
+        return ImageryProvider.cartoDark;
+      case 'Street Map':
+        return ImageryProvider.openStreetMap;
+      case 'Satellite Map':
+        return ImageryProvider.arcGisSatellite;
+      case 'Light Map':
+        return ImageryProvider.cartoLight;
+      default:
+        return ImageryProvider.cartoDark;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     _camera = widget.camera;
+
+    final fetcher = TileFetcher();
+    _tileRenderer = GlobeTileRenderer(
+      fetcher: fetcher,
+      initialProvider: _providerForStyle(_activeStyle),
+    );
+
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 15),
@@ -157,6 +184,7 @@ class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProv
         onTap: () {
           setState(() {
             _activeStyle = style;
+            _tileRenderer?.setProvider(_providerForStyle(style));
           });
         },
         child: Container(
@@ -307,22 +335,24 @@ class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProv
                       }
                     },
                     child: CustomPaint(
-                      painter: Scene3DViewportPainter(
-                        camera: _camera,
-                        animationValue: _controller.value,
-                        activeStyle: _activeStyle,
-                        astronomicalBody: _astronomicalBody,
-                        elevationActive: _elevationActive,
-                        showDevices: _showDevices,
-                        showLinks: _showLinks,
-                        showLabels: _showLabels,
-                        showDropLines: _showDropLines,
-                        topologyData: widget.topologyData,
-                        userRotationX: 0.0,
-                        userTilt: 0.0,
-                        zoomScale: zoomScale,
-                        autoRotate: _autoRotate,
-                      ),
+                                          painter: Scene3DViewportPainter(
+                                            camera: _camera,
+                                            animationValue: _controller.value,
+                                            activeStyle: _activeStyle,
+                                            astronomicalBody: _astronomicalBody,
+                                            elevationActive: _elevationActive,
+                                            showDevices: _showDevices,
+                                            showLinks: _showLinks,
+                                            showLabels: _showLabels,
+                                            showDropLines: _showDropLines,
+                                            topologyData: widget.topologyData,
+                                            userRotationX: 0.0,
+                                            userTilt: 0.0,
+                                            zoomScale: zoomScale,
+                                            autoRotate: _autoRotate,
+                                            tileRenderer: _tileRenderer,
+                                            imageryProvider: _providerForStyle(_activeStyle),
+                                          ),
                     ),
                   ),
                 ),
@@ -658,6 +688,7 @@ class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProv
                                   _showLinks = true;
                                   _showLabels = true;
                                   _showDropLines = true;
+                                  _tileRenderer?.setProvider(ImageryProvider.arcGisSatellite);
                                 });
                               },
                               style: OutlinedButton.styleFrom(
@@ -694,13 +725,6 @@ class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProv
   }
 }
 
-class ProjectedPoint {
-  final Offset offset;
-  final double z;
-
-  ProjectedPoint(this.offset, this.z);
-}
-
 class Scene3DViewportPainter extends CustomPainter {
   final VirtualCamera camera;
   final double animationValue;
@@ -716,6 +740,8 @@ class Scene3DViewportPainter extends CustomPainter {
   final double userTilt;
   final double zoomScale;
   final bool autoRotate;
+  final GlobeTileRenderer? tileRenderer;
+  final ImageryProvider imageryProvider;
 
   Scene3DViewportPainter({
     required this.camera,
@@ -732,6 +758,8 @@ class Scene3DViewportPainter extends CustomPainter {
     required this.userTilt,
     required this.zoomScale,
     required this.autoRotate,
+    this.tileRenderer,
+    this.imageryProvider = ImageryProvider.arcGisSatellite,
   });
 
   ProjectedPoint _project(double lat, double lng, double sphereRadius, Offset center, double rotationY, double tilt) {
@@ -1016,6 +1044,25 @@ class Scene3DViewportPainter extends CustomPainter {
         canvas.drawPath(flarePath, flareGlowPaint);
         canvas.drawPath(flarePath, flarePaint);
       }
+    }
+
+    // 6b. Render map-imagery tiles on the sphere surface.
+    if (tileRenderer != null && tileRenderer!.isEnabled) {
+      tileRenderer!.renderTiles(
+        canvas,
+        camera,
+        size,
+        center,
+        sphereRadius,
+        (double latDeg, double lngDeg) => _project(
+          _rad(latDeg),
+          _rad(lngDeg),
+          sphereRadius,
+          center,
+          rotationAngle,
+          tilt,
+        ),
+      );
     }
 
     // 7. Space, Ground, and Underwater Node Layouts (Dynamic DB-Backed)
@@ -1344,7 +1391,9 @@ class Scene3DViewportPainter extends CustomPainter {
         oldDelegate.userRotationX != userRotationX ||
         oldDelegate.userTilt != userTilt ||
         oldDelegate.zoomScale != zoomScale ||
-        oldDelegate.autoRotate != autoRotate;
+        oldDelegate.autoRotate != autoRotate ||
+        oldDelegate.tileRenderer != tileRenderer ||
+        oldDelegate.imageryProvider != imageryProvider;
   }
 }
 
