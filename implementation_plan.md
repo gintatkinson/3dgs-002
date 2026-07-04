@@ -682,4 +682,30 @@ This phase details the changes required to implement true 3D camera translation 
   ```
 
 
+## Phase 12: Correct Globe Projection and Dynamic Sphere Alignment
 
+This phase details the changes required to correct the camera pitch offset and project the background sphere and atmosphere glows dynamically, eliminating multiple globes and vertical oval distortion.
+
+### Core App Code
+
+#### [MODIFY] [scene_3d_viewport.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/scene_3d_viewport.dart)
+- In `Scene3DViewportPainter.project`, change the pitch angle calculation to use the original `camera.pitch + 45.0` offset:
+  - Target:
+    ```dart
+      final double P = camera.pitch * math.pi / 180.0;
+    ```
+  - Replacement:
+    ```dart
+      final double P = (camera.pitch + 45.0) * math.pi / 180.0;
+    ```
+- In `Scene3DViewportPainter.paint`, calculate the perspective-projected center and radius of the Earth sphere dynamically and replace references to the static `center` and `sphereRadius` for the starry corona, atmospheric glow, and planetary sphere.
+
+### Phase 12 Verification Plan
+
+### Automated Tests
+- Run the unit and integration tests to verify correctness:
+  ```bash
+  cd app_flutter && flutter test test/cesium_3d/
+  cd app_flutter && flutter test integration_test/globe_camera_drag_test.dart -d macos
+  cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
+  ```

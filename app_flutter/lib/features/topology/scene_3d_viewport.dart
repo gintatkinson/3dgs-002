@@ -941,7 +941,7 @@ class Scene3DViewportPainter extends CustomPainter {
     final double zCam = zRot;
 
     // 4. Apply camera pitch (tilt around local East horizontal axis)
-    final double P = camera.pitch * math.pi / 180.0;
+    final double P = (camera.pitch + 45.0) * math.pi / 180.0;
     final double cosP = math.cos(P);
     final double sinP = math.sin(P);
     final double xPitch = xCam * cosP - yCam * sinP;
@@ -975,17 +975,35 @@ class Scene3DViewportPainter extends CustomPainter {
     // Shift center to the left to give space to the config overlay sidebar
     final Offset center = Offset(size.width * 0.45, size.height * 0.5);
 
+    // Calculate perspective-projected center and radius of the Earth sphere dynamically
+    final double P = (camera.pitch + 45.0) * math.pi / 180.0;
+    final double H = camera.heading * math.pi / 180.0;
+    final double cosP = math.cos(P);
+    final double sinP = math.sin(P);
+    final double cosH = math.cos(H);
+    final double sinH = math.sin(H);
+
+    final double distanceRatio = 1.0 + camera.altitude / 6378137.0;
+    final double distancePixels = sphereRadius * distanceRatio;
+
+    final double rx = -distancePixels * math.tan(P) * sinH;
+    final double ry = -distancePixels * math.tan(P) * cosH;
+    final Offset projectedCenter = Offset(center.dx + rx, center.dy - ry);
+
+    final double radDiff = distancePixels * distancePixels - sphereRadius * sphereRadius;
+    final double projectedRadius = sphereRadius * distancePixels / math.sqrt(radDiff <= 0.0 ? 1.0 : radDiff);
+
     // 1. Draw Starry Space Background (~100 stars)
     final math.Random rand = math.Random(42);
     for (int i = 0; i < 100; i++) {
-      final double rx = rand.nextDouble() * size.width;
-      final double ry = rand.nextDouble() * size.height;
+      final double rxVal = rand.nextDouble() * size.width;
+      final double ryVal = rand.nextDouble() * size.height;
       final double rSize = rand.nextDouble() * 1.5 + 0.5;
       final double rOpacity = rand.nextDouble() * 0.7 + 0.3;
       final Paint starPaint = Paint()
         ..color = Color.fromRGBO(255, 255, 255, rOpacity)
         ..style = PaintingStyle.fill;
-      canvas.drawCircle(Offset(rx, ry), rSize, starPaint);
+      canvas.drawCircle(Offset(rxVal, ryVal), rSize, starPaint);
     }
 
     // 2. Astronomical Body customization (corona, atmospheric glows)
@@ -998,8 +1016,8 @@ class Scene3DViewportPainter extends CustomPainter {
             Color(0x44FF9100), // glowing orange
             Color(0x00000000),
           ],
-        ).createShader(Rect.fromCircle(center: center, radius: sphereRadius * 1.8));
-      canvas.drawCircle(center, sphereRadius * 1.8, coronaPaint1);
+        ).createShader(Rect.fromCircle(center: projectedCenter, radius: projectedRadius * 1.8));
+      canvas.drawCircle(projectedCenter, projectedRadius * 1.8, coronaPaint1);
 
       final Paint coronaPaint2 = Paint()
         ..shader = RadialGradient(
@@ -1008,8 +1026,8 @@ class Scene3DViewportPainter extends CustomPainter {
             Color(0x33FF9100),
             Color(0x00000000),
           ],
-        ).createShader(Rect.fromCircle(center: center, radius: sphereRadius * 1.45));
-      canvas.drawCircle(center, sphereRadius * 1.45, coronaPaint2);
+        ).createShader(Rect.fromCircle(center: projectedCenter, radius: projectedRadius * 1.45));
+      canvas.drawCircle(projectedCenter, projectedRadius * 1.45, coronaPaint2);
     } else if (astronomicalBody == 'Mars') {
       // Dusty reddish-orange atmospheric glow
       final Paint marsAtmosphere = Paint()
@@ -1019,8 +1037,8 @@ class Scene3DViewportPainter extends CustomPainter {
             Color(0x22FF8A65),
             Color(0x00000000),
           ],
-        ).createShader(Rect.fromCircle(center: center, radius: sphereRadius * 1.35));
-      canvas.drawCircle(center, sphereRadius * 1.35, marsAtmosphere);
+        ).createShader(Rect.fromCircle(center: projectedCenter, radius: projectedRadius * 1.35));
+      canvas.drawCircle(projectedCenter, projectedRadius * 1.35, marsAtmosphere);
     } else {
       // Earth: Glowing atmospheric blue/cyan radial glow
       final Paint atmospherePaint = Paint()
@@ -1031,8 +1049,8 @@ class Scene3DViewportPainter extends CustomPainter {
             Color(0x00000000),
           ],
           stops: const [0.0, 0.7, 1.0],
-        ).createShader(Rect.fromCircle(center: center, radius: sphereRadius * 1.35));
-      canvas.drawCircle(center, sphereRadius * 1.35, atmospherePaint);
+        ).createShader(Rect.fromCircle(center: projectedCenter, radius: projectedRadius * 1.35));
+      canvas.drawCircle(projectedCenter, projectedRadius * 1.35, atmospherePaint);
     }
 
     // 3. Earth's / astronomical sphere style variables
@@ -1071,8 +1089,8 @@ class Scene3DViewportPainter extends CustomPainter {
     final Paint spherePaint = Paint()
       ..shader = RadialGradient(
         colors: oceanColors,
-      ).createShader(Rect.fromCircle(center: center, radius: sphereRadius));
-    canvas.drawCircle(center, sphereRadius, spherePaint);
+      ).createShader(Rect.fromCircle(center: projectedCenter, radius: projectedRadius));
+    canvas.drawCircle(projectedCenter, projectedRadius, spherePaint);
 
     // Rotation angle and tilt based on camera and user inputs
     final double baseRotation = -_rad(camera.longitude);
@@ -1183,16 +1201,16 @@ class Scene3DViewportPainter extends CustomPainter {
         final double angleMid = baseAngle + 0.125;
         
         final Offset ptStart = Offset(
-          center.dx + sphereRadius * math.cos(angleStart),
-          center.dy + sphereRadius * math.sin(angleStart),
+          projectedCenter.dx + projectedRadius * math.cos(angleStart),
+          projectedCenter.dy + projectedRadius * math.sin(angleStart),
         );
         final Offset ptEnd = Offset(
-          center.dx + sphereRadius * math.cos(angleEnd),
-          center.dy + sphereRadius * math.sin(angleEnd),
+          projectedCenter.dx + projectedRadius * math.cos(angleEnd),
+          projectedCenter.dy + projectedRadius * math.sin(angleEnd),
         );
         final Offset ptControl = Offset(
-          center.dx + sphereRadius * 1.25 * pulse * math.cos(angleMid),
-          center.dy + sphereRadius * 1.25 * pulse * math.sin(angleMid),
+          projectedCenter.dx + projectedRadius * 1.25 * pulse * math.cos(angleMid),
+          projectedCenter.dy + projectedRadius * 1.25 * pulse * math.sin(angleMid),
         );
         
         final Path flarePath = Path()
