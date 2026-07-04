@@ -133,3 +133,14 @@ Replaces the custom-painted 3D globe with a native C++ cesium-native + Impeller 
 | `app_flutter/lib/features/topology/scene_3d_viewport.dart` | 1. Add `onCameraChanged` callback constructor parameter. <br> 2. Wrap viewport in `Focus` widget, request focus when tapped, release focus on Escape. <br> 3. Register `Listener.onPointerMove` for Shift/Ctrl/Right-click modifiers. <br> 4. Add `_clickToCamera` mathematical inverse projection mapping screen offset to sphere surface coordinates. <br> 5. Update double tap zoom-in/fly-to animation. <br> 6. Register a callback from `GlobeTileRenderer` to trigger `setState` when tile downloads complete. |
 | `app_flutter/lib/domain/cesium_3d/globe_tile_renderer.dart` | 1. Add `onTileLoaded` callback parameter to constructor. <br> 2. Call `onTileLoaded` when a tile has been successfully fetched and decoded. |
 | `app_flutter/lib/domain/cesium_3d/camera_controller.dart` | 1. Extend `ChangeNotifier` to notify listeners of any state changes. |
+
+## Phase 8: Integration Test Database Schema Drift Fix
+
+**Goal:** Resolve database schema drift in integration tests by updating `properties` table structure.
+
+| File | Change Details |
+|---|---|
+| `app_flutter/integration_test/globe_camera_drag_test.dart` | Remove `createTestDatabase()` helper and use `DatabaseInitializer.create(dbPath: inMemoryDatabasePath, seed: true)`. |
+| `app_flutter/integration_test/globe_camera_reset_test.dart` | Remove `createTestDatabase()` helper and use `DatabaseInitializer.create(dbPath: inMemoryDatabasePath, seed: true)`. |
+| `app_flutter/integration_test/app_e2e_test.dart` | Remove `createTestDatabase()` helper and use `DatabaseInitializer.create(dbPath: inMemoryDatabasePath, seed: true)`. |
+
