@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'dart:ui' as ui;
 
@@ -238,25 +239,75 @@ class GlobeTileRenderer {
       final double lonW = _tile2lon(x, z);
       final double lonE = _tile2lon(x + 1, z);
 
-      // Project the four corners to screen space.
-      final nw = projectFn(latN, lonW);
-      final ne = projectFn(latN, lonE);
-      final se = projectFn(latS, lonE);
-      final sw = projectFn(latS, lonW);
+      const int subdivisions = 4;
+      final List<ui.Offset> positions = [];
+      final List<ui.Offset> textureCoordinates = [];
+      final List<double> zs = [];
 
-      // Cull tiles entirely on the back hemisphere.
-      if (nw.z < 0 && ne.z < 0 && se.z < 0 && sw.z < 0) continue;
+      for (int r = 0; r <= subdivisions; r++) {
+        final double v = r / subdivisions;
+        final double lat = latN + (latS - latN) * v;
+        final double texY = v * 256.0;
 
-      // Compute an axis-aligned bounding box for the destination rect.
-      final left = _min4(nw.offset.dx, ne.offset.dx, se.offset.dx, sw.offset.dx);
-      final top = _min4(nw.offset.dy, ne.offset.dy, se.offset.dy, sw.offset.dy);
-      final right = _max4(nw.offset.dx, ne.offset.dx, se.offset.dx, sw.offset.dx);
-      final bottom = _max4(nw.offset.dy, ne.offset.dy, se.offset.dy, sw.offset.dy);
+        for (int c = 0; c <= subdivisions; c++) {
+          final double u = c / subdivisions;
+          final double lon = lonW + (lonE - lonW) * u;
+          final double texX = u * 256.0;
 
-      final destRect = ui.Rect.fromLTRB(left, top, right, bottom);
-      const srcRect = ui.Rect.fromLTWH(0, 0, 256, 256);
+          final projected = projectFn(lat, lon);
+          positions.add(projected.offset);
+          textureCoordinates.add(ui.Offset(texX, texY));
+          zs.add(projected.z);
+        }
+      }
 
-      canvas.drawImageRect(entry.value, srcRect, destRect, ui.Paint());
+      final List<int> indices = [];
+      for (int r = 0; r < subdivisions; r++) {
+        for (int c = 0; c < subdivisions; c++) {
+          final int i0 = r * (subdivisions + 1) + c;
+          final int i1 = i0 + 1;
+          final int i2 = (r + 1) * (subdivisions + 1) + c;
+          final int i3 = i2 + 1;
+
+          // Triangle 1: (i0, i1, i2)
+          if (zs[i0] >= 0.0 && zs[i1] >= 0.0 && zs[i2] >= 0.0) {
+            indices.add(i0);
+            indices.add(i1);
+            indices.add(i2);
+          }
+
+          // Triangle 2: (i1, i3, i2)
+          if (zs[i1] >= 0.0 && zs[i3] >= 0.0 && zs[i2] >= 0.0) {
+            indices.add(i1);
+            indices.add(i3);
+            indices.add(i2);
+          }
+        }
+      }
+
+      if (indices.isEmpty) continue;
+
+      final vertices = ui.Vertices(
+        ui.VertexMode.triangles,
+        positions,
+        textureCoordinates: textureCoordinates,
+        indices: indices,
+      );
+
+      final paint = ui.Paint()
+        ..shader = ui.ImageShader(
+          entry.value,
+          ui.TileMode.clamp,
+          ui.TileMode.clamp,
+          Float64List.fromList([
+            1.0, 0.0, 0.0, 0.0,
+            0.0, 1.0, 0.0, 0.0,
+            0.0, 0.0, 1.0, 0.0,
+            0.0, 0.0, 0.0, 1.0,
+          ]),
+        );
+
+      canvas.drawVertices(vertices, ui.BlendMode.srcOver, paint);
     }
   }
 

@@ -610,3 +610,25 @@ This phase documents the implementation of exponential interactive zoom and sync
   cd app_flutter && flutter test integration_test/globe_camera_drag_test.dart -d macos
   cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
   ```
+
+## Phase 9: Warp Map Tiles using drawVertices
+
+This phase details the changes required to warp map tiles onto the spherical surface of the globe using `canvas.drawVertices` to resolve flat rectangular tile stacking.
+
+### Core App Code
+
+#### [MODIFY] [globe_tile_renderer.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/cesium_3d/globe_tile_renderer.dart)
+- Import `dart:typed_data` at the top of the file.
+- Update `renderTiles` to subdivide each tile into a 4x4 mesh of vertices, project each vertex using `projectFn`, construct a `ui.Vertices` object using texture coordinates mapping to the 256x256 image bounds, construct a `ui.ImageShader` with the tile image, and draw using `canvas.drawVertices`.
+- Perform back-hemisphere culling on a per-triangle basis: only include indices for a triangle if all three of its vertices have `z >= 0.0`.
+
+## Phase 9 Verification Plan
+
+### Automated Tests
+- Run the unit and integration tests to verify correctness:
+  ```bash
+  cd app_flutter && flutter test test/cesium_3d/camera_controller_test.dart
+  cd app_flutter && flutter test integration_test/globe_camera_drag_test.dart -d macos
+  cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
+  ```
+
