@@ -1,8 +1,10 @@
 import 'dart:math' as math;
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
+import 'package:clock/clock.dart';
 import 'virtual_camera.dart';
 
-class CameraController {
+class CameraController extends ChangeNotifier {
   VirtualCamera _camera;
 
   VirtualCamera? _startCamera;
@@ -24,29 +26,33 @@ class CameraController {
   bool get isFlying => _targetCamera != null;
 
   void updateCamera(VirtualCamera camera) {
+    if (_camera == camera) return;
     _camera = camera;
     _targetCamera = null;
     _startCamera = null;
+    notifyListeners();
   }
 
   void flyTo(VirtualCamera target) {
     _startCamera = _camera;
     _targetCamera = target;
-    _animationStart = DateTime.now();
+    _animationStart = clock.now();
   }
 
   bool tick() {
     if (_startCamera == null || _targetCamera == null) return true;
-    final elapsed = DateTime.now().difference(_animationStart);
+    final elapsed = clock.now().difference(_animationStart);
     final duration = const Duration(milliseconds: 500);
     final progress =
         (elapsed.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
     final t = _easeInOutCubic(progress);
     _camera = _lerpCamera(_startCamera!, _targetCamera!, t);
+    notifyListeners();
     if (progress >= 1.0) {
       _camera = _targetCamera!;
       _startCamera = null;
       _targetCamera = null;
+      notifyListeners();
       return true;
     }
     return false;
@@ -100,6 +106,7 @@ class CameraController {
       altitude: _camera.altitude, heading: _camera.heading,
       pitch: _camera.pitch, roll: _camera.roll,
     );
+    notifyListeners();
   }
 
   void tilt(Offset delta) {
@@ -110,6 +117,7 @@ class CameraController {
       pitch: (_camera.pitch - delta.dy * dragSensitivity).clamp(minPitch, maxPitch),
       roll: _camera.roll,
     );
+    notifyListeners();
   }
 
   void rotateHeading(Offset delta) {
@@ -119,6 +127,7 @@ class CameraController {
       heading: _wrapHeading(_camera.heading - delta.dx * dragSensitivity),
       pitch: _camera.pitch, roll: _camera.roll,
     );
+    notifyListeners();
   }
 
   void zoom(double scrollDelta) {
@@ -128,6 +137,7 @@ class CameraController {
       altitude: newAlt, heading: _camera.heading,
       pitch: _camera.pitch, roll: _camera.roll,
     );
+    notifyListeners();
   }
 
   void keyboardRotate(double degrees) {
@@ -136,6 +146,7 @@ class CameraController {
       altitude: _camera.altitude, heading: _camera.heading,
       pitch: _camera.pitch, roll: _camera.roll,
     );
+    notifyListeners();
   }
 
   void keyboardTilt(double degrees) {
@@ -145,6 +156,7 @@ class CameraController {
       pitch: (_camera.pitch + degrees).clamp(minPitch, maxPitch),
       roll: _camera.roll,
     );
+    notifyListeners();
   }
 
   double _wrapLng(double lng) {

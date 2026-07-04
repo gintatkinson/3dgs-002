@@ -17,11 +17,13 @@ import 'package:app_flutter/features/topology/topology_map.dart';
 class Scene3DViewport extends StatefulWidget {
   final VirtualCamera camera;
   final TopologyData? topologyData;
+  final ValueChanged<VirtualCamera>? onCameraChanged;
 
   const Scene3DViewport({
     super.key,
     required this.camera,
     this.topologyData,
+    this.onCameraChanged,
   });
 
   /// Initializes the 3D scene rendering state.
@@ -44,11 +46,18 @@ class _Scene3DViewportState extends State<Scene3DViewport> {
   @visibleForTesting
   CameraController get cameraController => _cameraController;
 
+  @visibleForTesting
+  FocusNode get globeFocusNode => _globeFocusNode;
+
+  @visibleForTesting
+  GlobeTileRenderer? get tileRenderer => _tileRenderer;
+
   final FocusNode _globeFocusNode = FocusNode();
 
   bool _shiftHeld = false;
   bool _ctrlHeld = false;
   bool _rightButtonDown = false;
+  bool _isUpdatingWidget = false;
 
   // Interactive configurations
   String _activeStyle = 'Satellite Map';
@@ -81,26 +90,38 @@ class _Scene3DViewportState extends State<Scene3DViewport> {
   void initState() {
     super.initState();
     _cameraController = CameraController(widget.camera);
+    _cameraController.addListener(_onCameraChangedInside);
 
     final fetcher = TileFetcher();
     _tileRenderer = GlobeTileRenderer(
       fetcher: fetcher,
       initialProvider: _providerForStyle(_activeStyle),
+      onTileLoaded: () {
+        if (mounted) {
+          setState(() {});
+        }
+      },
     );
 
     _globeFocusNode.addListener(() {
       if (mounted) setState(() {});
     });
+  }
 
+  void _onCameraChangedInside() {
+    if (mounted && !_isUpdatingWidget) {
+      setState(() {});
+      widget.onCameraChanged?.call(_cameraController.current);
+    }
   }
 
   @override
   void didUpdateWidget(covariant Scene3DViewport oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.camera != widget.camera) {
-      setState(() {
-        _cameraController.updateCamera(widget.camera);
-      });
+      _isUpdatingWidget = true;
+      _cameraController.updateCamera(widget.camera);
+      _isUpdatingWidget = false;
     }
   }
 
@@ -108,11 +129,18 @@ class _Scene3DViewportState extends State<Scene3DViewport> {
   void dispose() {
     _flyTimer?.cancel();
     _globeFocusNode.dispose();
+    _cameraController.removeListener(_onCameraChangedInside);
+    _cameraController.dispose();
     super.dispose();
   }
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     final key = event.logicalKey;
+
+    if (key == LogicalKeyboardKey.escape) {
+      _globeFocusNode.unfocus();
+      return KeyEventResult.handled;
+    }
 
     if (key == LogicalKeyboardKey.shiftLeft || key == LogicalKeyboardKey.shiftRight) {
       if (event is KeyDownEvent) {
@@ -272,20 +300,74 @@ class _Scene3DViewportState extends State<Scene3DViewport> {
     );
   }
 
+  VirtualCamera? _clickToCamera(Offset localPosition, Size size) {
+    final double zoomScale = 500.0 / _cameraController.current.altitude;
+    final double sphereRadius = size.shortestSide * 0.32 * zoomScale;
+    final Offset center = Offset(size.width * 0.45, size.height * 0.5);
+
+    final double dx = localPosition.dx - center.dx;
+    final double dy = -(localPosition.dy - center.dy);
+
+    if (dx * dx + dy * dy > sphereRadius * sphereRadius) {
+      return null;
+    }
+
+    final double zFinal = math.sqrt(sphereRadius * sphereRadius - dx * dx - dy * dy);
+
+    final double baseRotation = -(_cameraController.current.longitude * math.pi / 180.0);
+    final double baseTilt = -(_cameraController.current.latitude * math.pi / 180.0);
+
+    final double cosT = math.cos(baseTilt);
+    final double sinT = math.sin(baseTilt);
+    final double yRot = dy * cosT + zFinal * sinT;
+    final double zRot = -dy * sinT + zFinal * cosT;
+
+    final double cosY = math.cos(baseRotation);
+    final double sinY = math.sin(baseRotation);
+    final double x = dx * cosY - zRot * sinY;
+    final double y = yRot;
+    final double z = dx * sinY + zRot * cosY;
+
+    final double lat = math.asin((y / sphereRadius).clamp(-1.0, 1.0));
+    final double lng = math.atan2(x, z);
+
+    final double latDeg = lat * 180.0 / math.pi;
+    final double lngDeg = lng * 180.0 / math.pi;
+
+    final targetAlt = (_cameraController.current.altitude * 0.5).clamp(
+      CameraController.minAltitude,
+      CameraController.maxAltitude,
+    );
+
+    return VirtualCamera.clamped(
+      latitude: latDeg,
+      longitude: lngDeg,
+      altitude: targetAlt,
+      heading: _cameraController.current.heading,
+      pitch: _cameraController.current.pitch,
+      roll: _cameraController.current.roll,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final zoomScale = 500.0 / _cameraController.current.altitude;
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onSecondaryTapDown: (_) {},
-      onScaleStart: (_) {
-        _globeFocusNode.requestFocus();
-      },
-      onScaleUpdate: (details) {
-        final delta = details.focalPointDelta;
-        if (delta.distance <= 2.0) return;
-        if (details.scale == 1.0) {
-          setState(() {
+    return Focus(
+      focusNode: _globeFocusNode,
+      autofocus: true,
+      onKeyEvent: _handleKeyEvent,
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTapDown: (_) {
+          _globeFocusNode.requestFocus();
+        },
+        onScaleStart: (_) {
+          _globeFocusNode.requestFocus();
+        },
+        onScaleUpdate: (details) {
+          final delta = details.focalPointDelta;
+          if (delta.distance <= 2.0) return;
+          if (details.scale == 1.0) {
             if (_rightButtonDown) {
               _cameraController.tilt(delta);
             } else if (_shiftHeld) {
@@ -295,47 +377,53 @@ class _Scene3DViewportState extends State<Scene3DViewport> {
             } else {
               _cameraController.pan(delta);
             }
-          });
-        } else {
-          setState(() {
+          } else {
             _cameraController.zoom(
               (details.scale - 1.0).sign * 10.0,
             );
-          });
-        }
-      },
-      onDoubleTapDown: (details) {
-        final current = _cameraController.current;
-        final targetAlt = (current.altitude * 0.5).clamp(
-          CameraController.minAltitude,
-          CameraController.maxAltitude,
-        );
-        _cameraController.flyTo(VirtualCamera.clamped(
-          latitude: current.latitude,
-          longitude: current.longitude,
-          altitude: targetAlt,
-          heading: current.heading,
-          pitch: current.pitch,
-          roll: current.roll,
-        ));
-
-        _flyTimer?.cancel();
-        _flyTimer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
-          final done = _cameraController.tick();
-          if (done) {
-            timer.cancel();
-            _flyTimer = null;
           }
-          if (mounted) setState(() {});
-        });
-      },
-      child: Stack(
+        },
+        onDoubleTapDown: (details) {
+          final Size? size = context.size;
+          VirtualCamera? targetCam;
+          if (size != null) {
+            targetCam = _clickToCamera(details.localPosition, size);
+          }
+          if (targetCam == null) {
+            final current = _cameraController.current;
+            final targetAlt = (current.altitude * 0.5).clamp(
+              CameraController.minAltitude,
+              CameraController.maxAltitude,
+            );
+            targetCam = VirtualCamera.clamped(
+              latitude: current.latitude,
+              longitude: current.longitude,
+              altitude: targetAlt,
+              heading: current.heading,
+              pitch: current.pitch,
+              roll: current.roll,
+            );
+          }
+  
+          _cameraController.flyTo(targetCam);
+  
+          _flyTimer?.cancel();
+          _flyTimer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
+            final done = _cameraController.tick();
+            if (done) {
+              timer.cancel();
+              _flyTimer = null;
+            }
+          });
+        },
+        child: Stack(
       key: const Key('scene_3d_viewport_container'),
       children: [
             // Background & 3D Globe custom paint
             Positioned.fill(
               child: Listener(
                 onPointerDown: (event) {
+                  _globeFocusNode.requestFocus();
                   if (event.buttons & kSecondaryMouseButton != 0) {
                     _rightButtonDown = true;
                   }
@@ -348,32 +436,25 @@ class _Scene3DViewportState extends State<Scene3DViewport> {
                 },
                 onPointerSignal: (event) {
                   if (event is PointerScrollEvent) {
-                    setState(() {
-                      _cameraController.zoom(event.scrollDelta.dy);
-                    });
+                    _cameraController.zoom(event.scrollDelta.dy);
                   }
                 },
-                child: Focus(
-                  focusNode: _globeFocusNode,
-                  autofocus: true,
-                  onKeyEvent: _handleKeyEvent,
-                  child: CustomPaint(
-                    painter: Scene3DViewportPainter(
-                      camera: _cameraController.current,
-                      activeStyle: _activeStyle,
-                      astronomicalBody: _astronomicalBody,
-                      elevationActive: _elevationActive,
-                      showDevices: _showDevices,
-                      showLinks: _showLinks,
-                      showLabels: _showLabels,
-                      showDropLines: _showDropLines,
-                      topologyData: widget.topologyData,
-                      userRotationX: 0.0,
-                      userTilt: 0.0,
-                      zoomScale: zoomScale,
-                      tileRenderer: _tileRenderer,
-                      imageryProvider: _providerForStyle(_activeStyle),
-                    ),
+                child: CustomPaint(
+                  painter: Scene3DViewportPainter(
+                    camera: _cameraController.current,
+                    activeStyle: _activeStyle,
+                    astronomicalBody: _astronomicalBody,
+                    elevationActive: _elevationActive,
+                    showDevices: _showDevices,
+                    showLinks: _showLinks,
+                    showLabels: _showLabels,
+                    showDropLines: _showDropLines,
+                    topologyData: widget.topologyData,
+                    userRotationX: 0.0,
+                    userTilt: 0.0,
+                    zoomScale: zoomScale,
+                    tileRenderer: _tileRenderer,
+                    imageryProvider: _providerForStyle(_activeStyle),
                   ),
                 ),
               ),
@@ -728,7 +809,8 @@ class _Scene3DViewportState extends State<Scene3DViewport> {
             ),
           ],
         ),
-      );
+      ),
+    );
   }
 }
 

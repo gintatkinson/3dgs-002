@@ -142,7 +142,15 @@ class _TopographicalViewState extends State<TopographicalView> {
     final camera = _resolveCamera();
 
     final Widget leadingWidget = _is3d
-        ? Scene3DViewport(camera: camera, topologyData: widget.topologyData)
+        ? Scene3DViewport(
+            camera: camera,
+            topologyData: widget.topologyData,
+            onCameraChanged: (newCamera) {
+              setState(() {
+                _cachedCamera = newCamera;
+              });
+            },
+          )
         : TopologyMap(
             activeFocusedNode: widget.currentView,
             onNodeSelect: widget.onViewSelected,

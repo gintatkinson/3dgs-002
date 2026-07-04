@@ -164,6 +164,7 @@ class _LayoutState extends State<Layout> {
 
   /// Preloaded topology data from external JSON asset; null until loaded.
   TopologyData? _topologyData;
+  TopologyData? _cachedTopologyData;
 
   @override
   void initState() {
@@ -199,6 +200,7 @@ class _LayoutState extends State<Layout> {
       if (mounted) {
         setState(() {
           _topologyData = data;
+          _cachedTopologyData = null;
         });
       }
     } catch (e) {
@@ -279,13 +281,17 @@ class _LayoutState extends State<Layout> {
   /// Uses preloaded [_topologyData] if available, otherwise falls back to
   /// [emptyTopologyData].
   TopologyData _resolveTopologyData() {
+    if (_cachedTopologyData != null) {
+      return _cachedTopologyData!;
+    }
     final mapping = _resolveCoordinateMapping();
     final data = _topologyData ?? emptyTopologyData;
-    return TopologyData(
+    _cachedTopologyData = TopologyData(
       coordinateMapping: mapping,
       nodes: data.nodes,
       links: data.links,
     );
+    return _cachedTopologyData!;
   }
 
 
@@ -317,7 +323,7 @@ class _LayoutState extends State<Layout> {
   void _updateCurrentViewFromLayout() {
     if (_layoutInitialized) return;
     if (_treeViewModel == null || _treeViewModel!.treeData.isEmpty) return;
-    if (widget.activeView == null) {
+    if (widget.activeView == null && _currentView == 'root') {
       _currentView = _treeViewModel!.treeData.first.id;
       _subscribeProperties(_currentView);
       _propertiesViewModel?.loadType(_currentView);

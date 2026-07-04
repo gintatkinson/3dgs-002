@@ -105,3 +105,31 @@ Replaces the custom-painted 3D globe with a native C++ cesium-native + Impeller 
 ### Performance
 - 10,000 nodes + 50,000 links rendered at ≥ 60fps on Apple Silicon.
 - Memory footprint < 500MB after 60 seconds of continuous interaction.
+
+## Phase 6: Adversarial Widget Test Suite (Bugs Verification)
+
+**Goal:** Create adversarial widget tests that build the Scene3DViewport widget, simulate inputs/gestures/rebuilds, and explicitly assert that they fail (RED) on the current buggy codebase.
+
+| File | Issue | Description / Assertion |
+|---|---|---|
+| `app_flutter/test/cesium_3d/camera_drag_test.dart` | #41 | Verify camera latitude/longitude do not update, or visual is frozen, on drag gestures. |
+| `app_flutter/test/cesium_3d/scroll_zoom_test.dart` | #42 | Verify camera altitude does not update on scroll/zoom gestures. |
+| `app_flutter/test/cesium_3d/globe_focus_test.dart` | #43 | Verify arrow keys are intercepted or fail to update camera pitch/yaw when focus/ancestors intercept. |
+| `app_flutter/test/cesium_3d/hud_update_test.dart` | #44 | Verify HUD stats reset to stale/initial values on GUI interaction or rebuild. |
+| `app_flutter/test/cesium_3d/shift_drag_test.dart` | #46 | Verify Shift+drag doesn't update tilt/pitch. |
+| `app_flutter/test/cesium_3d/right_click_drag_test.dart` | #47 | Verify right-click drag doesn't update tilt/pitch. |
+| `app_flutter/test/cesium_3d/ctrl_drag_test.dart` | #48 | Verify Ctrl/Cmd drag doesn't update heading/yaw. |
+| `app_flutter/test/cesium_3d/double_click_fly_test.dart` | #49 | Verify double-click doesn't start/execute fly-to animation. |
+| `app_flutter/test/cesium_3d/tile_imagery_repaint_test.dart` | #51 | Verify tile imagery repaint issues (stale or redundant tile repaints). |
+
+## Phase 7: Surgical Fixes for Issues #41 to #51
+
+**Goal:** Surgically fix layout/viewport/tile issues to ensure all tests pass.
+
+| File | Change Details |
+|---|---|
+| `app_flutter/lib/features/layout/layout.dart` | 1. Avoid resetting `_currentView` in `_updateCurrentViewFromLayout` if `_currentView` is already set/initialized. <br> 2. Cache/memoize `TopologyData` in `_resolveTopologyData` and clear/reset the cache in `_preloadTopologyData`. |
+| `app_flutter/lib/features/topology/topographical_view.dart` | 1. Pass `onCameraChanged` callback to `Scene3DViewport` that updates `_cachedCamera` state of `_TopographicalViewState`. |
+| `app_flutter/lib/features/topology/scene_3d_viewport.dart` | 1. Add `onCameraChanged` callback constructor parameter. <br> 2. Wrap viewport in `Focus` widget, request focus when tapped, release focus on Escape. <br> 3. Register `Listener.onPointerMove` for Shift/Ctrl/Right-click modifiers. <br> 4. Add `_clickToCamera` mathematical inverse projection mapping screen offset to sphere surface coordinates. <br> 5. Update double tap zoom-in/fly-to animation. <br> 6. Register a callback from `GlobeTileRenderer` to trigger `setState` when tile downloads complete. |
+| `app_flutter/lib/domain/cesium_3d/globe_tile_renderer.dart` | 1. Add `onTileLoaded` callback parameter to constructor. <br> 2. Call `onTileLoaded` when a tile has been successfully fetched and decoded. |
+| `app_flutter/lib/domain/cesium_3d/camera_controller.dart` | 1. Extend `ChangeNotifier` to notify listeners of any state changes. |

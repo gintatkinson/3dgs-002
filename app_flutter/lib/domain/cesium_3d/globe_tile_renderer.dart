@@ -37,6 +37,7 @@ class TileCoord {
 class GlobeTileRenderer {
   final TileFetcher _fetcher;
   ImageryProvider _activeProvider;
+  final ui.VoidCallback? onTileLoaded;
 
   /// Decoded tile images keyed by "[zoom]/[x]/[y]". Limited to 64 entries.
   final Map<String, ui.Image> _loadedImages = {};
@@ -49,6 +50,7 @@ class GlobeTileRenderer {
   GlobeTileRenderer({
     required TileFetcher fetcher,
     ImageryProvider initialProvider = ImageryProvider.cartoDark,
+    this.onTileLoaded,
   })  : _fetcher = fetcher,
         _activeProvider = initialProvider;
 
@@ -189,6 +191,7 @@ class GlobeTileRenderer {
         if (_loadedImages.length > 64) {
           _loadedImages.remove(_loadedImages.keys.first);
         }
+        onTileLoaded?.call();
       }
     } finally {
       _pendingFetches.remove(tile.key);
