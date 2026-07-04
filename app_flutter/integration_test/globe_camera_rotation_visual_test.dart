@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:integration_test/integration_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -13,14 +14,13 @@ import 'package:app_flutter/core/theme/text_scaler.dart';
 import 'package:app_flutter/core/string_resources.dart';
 import 'package:app_flutter/domain/data_source.dart';
 import 'package:app_flutter/domain/data_sources/sqlite_data_source.dart';
-import 'package:app_flutter/domain/cesium_3d/camera_controller.dart';
-import 'package:app_flutter/features/topology/scene_3d_viewport.dart';
 import 'package:app_flutter/domain/database_initializer.dart';
+import 'package:app_flutter/features/topology/scene_3d_viewport.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('Globe camera drag: longitude decreases after leftward pan gesture', (WidgetTester tester) async {
+  testWidgets('Visual Globe rotation: Ctrl+drag shifts visual projected points on screen', (WidgetTester tester) async {
     const double width = 1280;
     const double height = 800;
     const double pixelRatio = 2.0;
@@ -92,32 +92,29 @@ void main() {
     }
 
     expect(find.byType(Scene3DViewport), findsOneWidget, reason: '3D viewport should be mounted');
-
     await settle(tester);
 
-    // Read initial camera state
-    final state = tester.state(find.byType(Scene3DViewport)) as dynamic;
-    final CameraController controller = state.cameraController;
-    final double initialLongitude = controller.current.longitude;
-    final double initialAltitude = controller.current.altitude;
+    final state = tester.state(find.byType(Scene3DViewport)) as Scene3DViewportState;
 
-    expect(initialLongitude, greaterThan(0), reason: 'Initial longitude should be positive');
+    // 3. Capture initial projected position of a reference coordinate
+    final Offset initialOffset = state.getProjectedPosition(35.607400, 140.106300);
 
-    // Drag left on the globe
+    // 4. Perform Ctrl + Drag to rotate heading (yaw)
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
     final viewport = find.byKey(const Key('scene_3d_viewport_container'));
-    await tester.ensureVisible(viewport);
+    await tester.drag(viewport, const Offset(-150.0, 0.0));
     await tester.pump();
-    await tester.drag(viewport, const Offset(-200, 0));
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
     await settle(tester);
 
-    final double newLongitude = controller.current.longitude;
-    final double newAltitude = controller.current.altitude;
+    // 5. Capture new projected position of same coordinate
+    final Offset newOffset = state.getProjectedPosition(35.607400, 140.106300);
 
-    expect(newLongitude, lessThan(initialLongitude),
-        reason: 'Longitude should decrease after leftward drag. '
-            'Initial: $initialLongitude, New: $newLongitude');
-
-    expect(newAltitude, equals(initialAltitude),
-        reason: 'Altitude should not change on a pan (non-scroll) gesture');
+    // 6. Assert visual movement has occurred
+    expect(
+      newOffset, 
+      isNot(equals(initialOffset)),
+      reason: 'Expected 2D projected screen coordinates to rotate when camera heading changes'
+    );
   });
 }

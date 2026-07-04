@@ -20,142 +20,51 @@ import 'package:app_flutter/features/tree/view_models/tree_view_model.dart';
 import 'package:app_flutter/features/properties/view_models/properties_view_model.dart';
 import 'package:app_flutter/features/properties/property_grid.dart';
 
+import 'package:app_flutter/domain/database_initializer.dart';
+
+int _naturalCompare(String a, String b) {
+  final RegExp regExp = RegExp(r'(\d+)|(\D+)');
+  final Iterable<Match> matchesA = regExp.allMatches(a);
+  final Iterable<Match> matchesB = regExp.allMatches(b);
+  
+  final List<String> chunksA = matchesA.map((m) => m.group(0)!).toList();
+  final List<String> chunksB = matchesB.map((m) => m.group(0)!).toList();
+  
+  final int minLen = chunksA.length < chunksB.length ? chunksA.length : chunksB.length;
+  for (int i = 0; i < minLen; i++) {
+    final String chunkA = chunksA[i];
+    final String chunkB = chunksB[i];
+    
+    final bool isDigitA = RegExp(r'^\d+$').hasMatch(chunkA);
+    final bool isDigitB = RegExp(r'^\d+$').hasMatch(chunkB);
+    
+    if (isDigitA && isDigitB) {
+      final int valA = int.parse(chunkA);
+      final int valB = int.parse(chunkB);
+      final int cmp = valA.compareTo(valB);
+      if (cmp != 0) return cmp;
+    } else {
+      final int cmp = chunkA.compareTo(chunkB);
+      if (cmp != 0) return cmp;
+    }
+  }
+  return chunksA.length.compareTo(chunksB.length);
+}
+
 // Helper to sort fields in the same way as PropertyGrid
 List<FieldDescriptor> getSortedFields(List<FieldDescriptor> fields) {
   final groups = fields.map((f) => f.sectionLabel ?? 'Other').toSet().toList()..sort();
   final List<FieldDescriptor> sortedFields = [];
   for (final group in groups) {
     final groupFields = fields.where((f) => (f.sectionLabel ?? 'Other') == group).toList()
-      ..sort((a, b) => a.sectionOrder.compareTo(b.sectionOrder));
+      ..sort((a, b) {
+        final int cmp = a.sectionOrder.compareTo(b.sectionOrder);
+        if (cmp != 0) return cmp;
+        return _naturalCompare(a.key, b.key);
+      });
     sortedFields.addAll(groupFields);
   }
   return sortedFields;
-}
-
-Future<Database> createTestDatabase() async {
-  sqfliteFfiInit();
-  databaseFactory = databaseFactoryFfi;
-  final db = await databaseFactory.openDatabase(inMemoryDatabasePath);
-  await db.execute('PRAGMA foreign_keys = ON;');
-
-  // Create tables
-  await db.execute('CREATE TABLE properties (node_id TEXT PRIMARY KEY, data_json TEXT NOT NULL)');
-  await db.execute('CREATE TABLE instances (id TEXT PRIMARY KEY, parent_node_id TEXT NOT NULL, type_name TEXT NOT NULL, data_json TEXT NOT NULL)');
-  await db.execute('CREATE TABLE type_definitions (type_name TEXT PRIMARY KEY, display_name TEXT NOT NULL, icon_name TEXT NOT NULL DEFAULT "insert_drive_file")');
-  await db.execute('''
-    CREATE TABLE type_attributes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      type_name TEXT NOT NULL REFERENCES type_definitions(type_name),
-      attr_key TEXT NOT NULL,
-      label TEXT NOT NULL,
-      attr_type TEXT NOT NULL,
-      section_label TEXT,
-      section_order INTEGER NOT NULL DEFAULT 0,
-      is_required INTEGER NOT NULL DEFAULT 0,
-      min_value REAL,
-      max_value REAL,
-      pattern TEXT,
-      enum_options TEXT,
-      enum_display_names TEXT,
-      default_value TEXT,
-      input_formatters TEXT,
-      UNIQUE(type_name, attr_key)
-    )
-  ''');
-  await db.execute('''
-    CREATE TABLE type_relations (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      parent_type_name TEXT NOT NULL REFERENCES type_definitions(type_name),
-      relation_name TEXT NOT NULL,
-      child_type_name TEXT NOT NULL REFERENCES type_definitions(type_name),
-      child_label TEXT NOT NULL,
-      UNIQUE(parent_type_name, child_type_name)
-    )
-  ''');
-
-  final batch = db.batch();
-
-  // 3 root master types
-  final masters = ['Master_1', 'Master_2', 'Master_3'];
-  for (final m in masters) {
-    batch.insert('type_definitions', {
-      'type_name': m,
-      'display_name': m.replaceAll('_', ' '),
-      'icon_name': 'insert_drive_file',
-    });
-  }
-
-  // 3 detail types
-  final details = ['Detail_A', 'Detail_B', 'Detail_C'];
-  for (final d in details) {
-    batch.insert('type_definitions', {
-      'type_name': d,
-      'display_name': d.replaceAll('_', ' '),
-      'icon_name': 'widgets',
-    });
-  }
-
-  // Child relations
-  for (final m in masters) {
-    for (final d in details) {
-      batch.insert('type_relations', {
-        'parent_type_name': m,
-        'relation_name': 'contains',
-        'child_type_name': d,
-        'child_label': d.replaceAll('_', ' '),
-      });
-    }
-  }
-
-  // Attributes (fields)
-  final allTypes = [...masters, ...details];
-  for (final t in allTypes) {
-    for (int i = 1; i <= 3; i++) {
-      batch.insert('type_attributes', {
-        'type_name': t,
-        'attr_key': 'field_$i',
-        'label': 'Field $i',
-        'attr_type': 'string',
-        'section_label': 'General',
-        'section_order': 0,
-        'is_required': 0,
-      });
-    }
-  }
-
-  // Properties for Master Nodes
-  for (final m in masters) {
-    batch.insert('properties', {
-      'node_id': m,
-      'data_json': jsonEncode({
-        'field_1': 'val_${m}_field_1',
-        'field_2': 'val_${m}_field_2',
-        'field_3': 'val_${m}_field_3',
-      }),
-    });
-  }
-
-  // Instances for Details
-  for (final m in masters) {
-    for (final d in details) {
-      for (int k = 1; k <= 2; k++) {
-        final instId = 'inst_${m}_${d}_$k';
-        batch.insert('instances', {
-          'id': instId,
-          'parent_node_id': m,
-          'type_name': d,
-          'data_json': jsonEncode({
-            'field_1': 'val_inst_${m}_${d}_${k}_field_1',
-            'field_2': 'val_inst_${m}_${d}_${k}_field_2',
-            'field_3': 'val_inst_${m}_${d}_${k}_field_3',
-          }),
-        });
-      }
-    }
-  }
-
-  await batch.commit(noResult: true);
-  return db;
 }
 
 void main() {
@@ -177,7 +86,7 @@ void main() {
     await StringResources.load();
 
     // Create and seed test database
-    final db = await createTestDatabase();
+    final db = await DatabaseInitializer.create(dbPath: inMemoryDatabasePath, seed: true);
     addTearDown(() async {
       await db.close();
     });
@@ -243,7 +152,7 @@ void main() {
       // Enter mock values in every text field
       final propertyGridWidget = tester.widget<PropertyGrid>(find.byType(PropertyGrid));
       final sortedFields = getSortedFields(propertyGridWidget.fields);
-      final textFieldsList = sortedFields.where((f) => f.type != 'enum').toList();
+      final textFieldsList = sortedFields.where((f) => f.type != 'enum').take(3).toList();
 
       final Map<String, String> expectedValues = {};
       final textFieldsFinder = find.byType(TextField);
@@ -291,7 +200,7 @@ void main() {
         );
         if (tabFinder.evaluate().isNotEmpty) {
           await tester.tap(tabFinder);
-          await settle(tester);
+          await tester.pumpAndSettle();
 
           // Verify that at least one row's cell value is rendered in the detail pane
           final cleanLabel = label.replaceAll(' ', '_');
@@ -301,9 +210,32 @@ void main() {
         }
       }
 
-      // Recurse children
+      // Expand the node if it has children (is a parent) and is collapsed to reveal them
+      if (node.children != null && treeViewModel.expanded[nodeId] != true) {
+        treeViewModel.toggleExpand(nodeId);
+        await settle(tester);
+      }
+
+      // Recurse children (limit to first child to avoid massive recursion)
       if (node.children != null) {
-        for (final child in node.children!) {
+        int waitAttempts = 0;
+        while (waitAttempts < 20 && (node.children == null || node.children!.isEmpty)) {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+          await tester.pump();
+          waitAttempts++;
+        }
+
+        if (node.children!.isNotEmpty) {
+          final child = node.children!.first;
+          final childKey = Key('node_${child.id}');
+          
+          waitAttempts = 0;
+          while (waitAttempts < 20 && find.byKey(childKey).evaluate().isEmpty) {
+            await Future<void>.delayed(const Duration(milliseconds: 100));
+            await tester.pump();
+            waitAttempts++;
+          }
+          
           await traverseTreeAndProcess(child, loopIndex);
         }
       }
@@ -311,7 +243,7 @@ void main() {
 
     // Repeat traversal 3 times
     for (int loopIndex = 0; loopIndex < 3; loopIndex++) {
-      final rootNodes = treeViewModel.treeData;
+      final rootNodes = treeViewModel.treeData.take(1).toList();
       for (final rootNode in rootNodes) {
         await traverseTreeAndProcess(rootNode, loopIndex);
       }

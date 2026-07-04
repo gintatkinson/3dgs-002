@@ -37,10 +37,10 @@ class Scene3DViewport extends StatefulWidget {
   }
 
   @override
-  State<Scene3DViewport> createState() => _Scene3DViewportState();
+  State<Scene3DViewport> createState() => Scene3DViewportState();
 }
 
-class _Scene3DViewportState extends State<Scene3DViewport> {
+class Scene3DViewportState extends State<Scene3DViewport> {
   late CameraController _cameraController;
 
   @visibleForTesting
@@ -51,6 +51,50 @@ class _Scene3DViewportState extends State<Scene3DViewport> {
 
   @visibleForTesting
   GlobeTileRenderer? get tileRenderer => _tileRenderer;
+
+  Offset getProjectedPosition(double latitude, double longitude) {
+    final Size? size = context.size;
+    if (size == null) return Offset.zero;
+
+    final camera = _cameraController.current;
+    final double zoomScale = 500.0 / camera.altitude;
+    final double sphereRadius = size.shortestSide * 0.32 * zoomScale;
+    final Offset center = Offset(size.width * 0.45, size.height * 0.5);
+
+    final double baseRotation = -(camera.longitude * math.pi / 180.0);
+    final double baseTilt = -(camera.latitude * math.pi / 180.0);
+
+    final double latRad = latitude * math.pi / 180.0;
+    final double lngRad = longitude * math.pi / 180.0;
+
+    final painter = Scene3DViewportPainter(
+      camera: camera,
+      activeStyle: _activeStyle,
+      astronomicalBody: _astronomicalBody,
+      elevationActive: _elevationActive,
+      showDevices: _showDevices,
+      showLinks: _showLinks,
+      showLabels: _showLabels,
+      showDropLines: _showDropLines,
+      topologyData: widget.topologyData,
+      userRotationX: 0.0,
+      userTilt: 0.0,
+      zoomScale: zoomScale,
+      tileRenderer: _tileRenderer,
+      imageryProvider: _providerForStyle(_activeStyle),
+    );
+
+    final ProjectedPoint projected = painter.project(
+      latRad,
+      lngRad,
+      sphereRadius,
+      center,
+      baseRotation,
+      baseTilt,
+    );
+
+    return projected.offset;
+  }
 
   final FocusNode _globeFocusNode = FocusNode();
 
@@ -847,8 +891,12 @@ class Scene3DViewportPainter extends CustomPainter {
     this.imageryProvider = ImageryProvider.arcGisSatellite,
   });
 
-  ProjectedPoint _project(double lat, double lng, double sphereRadius, Offset center, double rotationY, double tilt) {
+  ProjectedPoint project(double lat, double lng, double sphereRadius, Offset center, double rotationY, double tilt) {
     final CesiumEngine? engine = CesiumEngine.instance;
+    final double finalTilt = tilt + (camera.pitch + 45.0) * math.pi / 180.0;
+    final double radHeading = camera.heading * math.pi / 180.0;
+    final double cosH = math.cos(radHeading);
+    final double sinH = math.sin(radHeading);
 
     if (engine != null && engine.isReady) {
       final ecef = engine.cartographicToEcef(lat * 180.0 / math.pi, lng * 180.0 / math.pi, 0.0);
@@ -864,13 +912,16 @@ class Scene3DViewportPainter extends CustomPainter {
         final xRot = sx * cosY + sz * sinY;
         final zRot = -sx * sinY + sz * cosY;
 
-        final cosT = math.cos(tilt);
-        final sinT = math.sin(tilt);
+        final cosT = math.cos(finalTilt);
+        final sinT = math.sin(finalTilt);
         final xFinal = xRot;
         final yFinal = sy * cosT - zRot * sinT;
         final zFinal = sy * sinT + zRot * cosT;
 
-        return ProjectedPoint(Offset(center.dx + xFinal, center.dy - yFinal), zFinal);
+        final double rx = xFinal * cosH - yFinal * sinH;
+        final double ry = xFinal * sinH + yFinal * cosH;
+
+        return ProjectedPoint(Offset(center.dx + rx, center.dy - ry), zFinal);
       }
     }
 
@@ -884,13 +935,16 @@ class Scene3DViewportPainter extends CustomPainter {
     final double yRot = y;
     final double zRot = -x * sinY + z * cosY;
 
-    final double cosT = math.cos(tilt);
-    final double sinT = math.sin(tilt);
+    final double cosT = math.cos(finalTilt);
+    final double sinT = math.sin(finalTilt);
     final double xFinal = xRot;
     final double yFinal = yRot * cosT - zRot * sinT;
     final double zFinal = yRot * sinT + zRot * cosT;
 
-    return ProjectedPoint(Offset(center.dx + xFinal, center.dy - yFinal), zFinal);
+    final double rx = xFinal * cosH - yFinal * sinH;
+    final double ry = xFinal * sinH + yFinal * cosH;
+
+    return ProjectedPoint(Offset(center.dx + rx, center.dy - ry), zFinal);
   }
 
   // Convert degrees to radians
@@ -1021,8 +1075,8 @@ class Scene3DViewportPainter extends CustomPainter {
         final double lat1 = -math.pi / 2 + j * (math.pi / meridianSteps);
         final double lat2 = -math.pi / 2 + (j + 1) * (math.pi / meridianSteps);
         
-        final ProjectedPoint p1 = _project(lat1, lng, sphereRadius, center, rotationAngle, tilt);
-        final ProjectedPoint p2 = _project(lat2, lng, sphereRadius, center, rotationAngle, tilt);
+        final ProjectedPoint p1 = project(lat1, lng, sphereRadius, center, rotationAngle, tilt);
+        final ProjectedPoint p2 = project(lat2, lng, sphereRadius, center, rotationAngle, tilt);
         
         if (p1.z >= 0 && p2.z >= 0) {
           canvas.drawLine(p1.offset, p2.offset, frontGridPaint);
@@ -1038,8 +1092,8 @@ class Scene3DViewportPainter extends CustomPainter {
         final double lng1 = j * (2 * math.pi / parallelSteps);
         final double lng2 = (j + 1) * (2 * math.pi / parallelSteps);
         
-        final ProjectedPoint p1 = _project(lat, lng1, sphereRadius, center, rotationAngle, tilt);
-        final ProjectedPoint p2 = _project(lat, lng2, sphereRadius, center, rotationAngle, tilt);
+        final ProjectedPoint p1 = project(lat, lng1, sphereRadius, center, rotationAngle, tilt);
+        final ProjectedPoint p2 = project(lat, lng2, sphereRadius, center, rotationAngle, tilt);
         
         if (p1.z >= 0 && p2.z >= 0) {
           canvas.drawLine(p1.offset, p2.offset, frontGridPaint);
@@ -1070,11 +1124,11 @@ class Scene3DViewportPainter extends CustomPainter {
         final List<ProjectedPoint> pts = [];
         for (int s = 0; s <= steps; s++) {
           final double lng = s * (2 * math.pi / steps);
-          pts.add(_project(latMin, lng, sphereRadius * 1.002, center, rotationAngle, tilt));
+          pts.add(project(latMin, lng, sphereRadius * 1.002, center, rotationAngle, tilt));
         }
         for (int s = steps; s >= 0; s--) {
           final double lng = s * (2 * math.pi / steps);
-          pts.add(_project(latMax, lng, sphereRadius * 1.002, center, rotationAngle, tilt));
+          pts.add(project(latMax, lng, sphereRadius * 1.002, center, rotationAngle, tilt));
         }
 
         final double avgZ = pts.fold(0.0, (sum, p) => sum + p.z) / pts.length;
@@ -1139,7 +1193,7 @@ class Scene3DViewportPainter extends CustomPainter {
         size,
         center,
         sphereRadius,
-        (double latDeg, double lngDeg) => _project(
+        (double latDeg, double lngDeg) => project(
           _rad(latDeg),
           _rad(lngDeg),
           sphereRadius,
@@ -1279,7 +1333,7 @@ class Scene3DViewportPainter extends CustomPainter {
         const int steps = 60;
         for (int step = 0; step <= steps; step++) {
           final double stepLng = baseLng + (step / steps) * 2 * math.pi;
-          final stepProj = _project(lat, stepLng, orbitRadius, center, rotationAngle, tilt);
+          final stepProj = project(lat, stepLng, orbitRadius, center, rotationAngle, tilt);
           
           if (stepProj.z >= -sphereRadius * 0.2) {
             if (!orbitStarted) {
@@ -1297,14 +1351,14 @@ class Scene3DViewportPainter extends CustomPainter {
       }
 
       // Project the node
-      final proj = _project(lat, currentLng, orbitRadius, center, rotationAngle, tilt);
+      final proj = project(lat, currentLng, orbitRadius, center, rotationAngle, tilt);
       
       if (proj.z >= 0) {
         allProjectedNodes[id] = proj;
 
         // Draw vertical drop line from satellite to surface
         if (type == 'space' && showDropLines) {
-          final surfaceProj = _project(lat, currentLng, sphereRadius, center, rotationAngle, tilt);
+          final surfaceProj = project(lat, currentLng, sphereRadius, center, rotationAngle, tilt);
           final Paint dropPaint = Paint()
             ..color = const Color(0x80FFFFFF)
             ..style = PaintingStyle.stroke
