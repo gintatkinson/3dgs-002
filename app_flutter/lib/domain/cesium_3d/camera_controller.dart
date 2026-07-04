@@ -141,6 +141,17 @@ class CameraController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void zoomInteractive(double scrollDelta) {
+    final double factor = math.exp(scrollDelta * 0.005);
+    final newAlt = (_camera.altitude * factor).clamp(minAltitude, maxAltitude);
+    _camera = VirtualCamera.clamped(
+      latitude: _camera.latitude, longitude: _camera.longitude,
+      altitude: newAlt, heading: _camera.heading,
+      pitch: _camera.pitch, roll: _camera.roll,
+    );
+    notifyListeners();
+  }
+
   void keyboardRotate(double degrees) {
     _camera = VirtualCamera.clamped(
       latitude: _camera.latitude, longitude: _wrapLng(_camera.longitude + degrees),

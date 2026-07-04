@@ -509,3 +509,104 @@ This phase documents the correction of the Earth scale and panning formula to ke
   cd app_flutter && flutter test integration_test/globe_camera_drag_test.dart -d macos
   ```
 
+
+## Phase 8: Exponential Interactive Zoom and Earth Radius Scale baseline sync
+
+This phase documents the implementation of exponential interactive zoom and syncing of the zoom scale in `_clickToCamera` to resolve polar drift and slow zooming.
+
+### Core App Code
+
+#### [MODIFY] [camera_controller.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/cesium_3d/camera_controller.dart)
+- Add `zoomInteractive` method to support smooth exponential scaling:
+  - Target:
+    ```dart
+      void zoom(double scrollDelta) {
+        final newAlt = (_camera.altitude + scrollDelta * scrollSensitivity).clamp(minAltitude, maxAltitude);
+        _camera = VirtualCamera.clamped(
+          latitude: _camera.latitude, longitude: _camera.longitude,
+          altitude: newAlt, heading: _camera.heading,
+          pitch: _camera.pitch, roll: _camera.roll,
+        );
+        notifyListeners();
+      }
+    ```
+  - Replacement:
+    ```dart
+      void zoom(double scrollDelta) {
+        final newAlt = (_camera.altitude + scrollDelta * scrollSensitivity).clamp(minAltitude, maxAltitude);
+        _camera = VirtualCamera.clamped(
+          latitude: _camera.latitude, longitude: _camera.longitude,
+          altitude: newAlt, heading: _camera.heading,
+          pitch: _camera.pitch, roll: _camera.roll,
+        );
+        notifyListeners();
+      }
+
+      void zoomInteractive(double scrollDelta) {
+        final double factor = math.exp(scrollDelta * 0.005);
+        final newAlt = (_camera.altitude * factor).clamp(minAltitude, maxAltitude);
+        _camera = VirtualCamera.clamped(
+          latitude: _camera.latitude, longitude: _camera.longitude,
+          altitude: newAlt, heading: _camera.heading,
+          pitch: _camera.pitch, roll: _camera.roll,
+        );
+        notifyListeners();
+      }
+    ```
+
+#### [MODIFY] [scene_3d_viewport.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/scene_3d_viewport.dart)
+- Update `_clickToCamera` to use the physical Earth radius zoom scale baseline (`6378137.0`):
+  - Target:
+    ```dart
+      final double zoomScale = 500.0 / _cameraController.current.altitude;
+    ```
+  - Replacement:
+    ```dart
+      final double zoomScale = 6378137.0 / _cameraController.current.altitude;
+    ```
+- Update `onScaleUpdate` and `onPointerSignal` to call `_cameraController.zoomInteractive` instead of `zoom`:
+  - Target:
+    ```dart
+            if (details.scale != 1.0) {
+              _cameraController.zoom(
+                (details.scale - 1.0).sign * 10.0,
+              );
+            }
+    ```
+  - Replacement:
+    ```dart
+            if (details.scale != 1.0) {
+              _cameraController.zoomInteractive(
+                (details.scale - 1.0).sign * 20.0,
+              );
+            }
+    ```
+  - Target:
+    ```dart
+                onPointerSignal: (event) {
+                  if (event is PointerScrollEvent) {
+                    _cameraController.zoom(event.scrollDelta.dy);
+                  }
+                },
+    ```
+  - Replacement:
+    ```dart
+                onPointerSignal: (event) {
+                  if (event is PointerScrollEvent) {
+                    _cameraController.zoomInteractive(event.scrollDelta.dy);
+                  }
+                },
+    ```
+
+## Phase 8 Verification Plan
+
+### Automated Tests
+- Run the camera controller unit tests:
+  ```bash
+  cd app_flutter && flutter test test/cesium_3d/camera_controller_test.dart
+  ```
+- Run the integration tests:
+  ```bash
+  cd app_flutter && flutter test integration_test/globe_camera_drag_test.dart -d macos
+  cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
+  ```

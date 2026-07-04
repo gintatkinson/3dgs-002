@@ -345,7 +345,7 @@ class Scene3DViewportState extends State<Scene3DViewport> {
   }
 
   VirtualCamera? _clickToCamera(Offset localPosition, Size size) {
-    final double zoomScale = 500.0 / _cameraController.current.altitude;
+    final double zoomScale = 6378137.0 / _cameraController.current.altitude;
     final double sphereRadius = size.shortestSide * 0.32 * zoomScale;
     final Offset center = Offset(size.width * 0.45, size.height * 0.5);
 
@@ -411,8 +411,8 @@ class Scene3DViewportState extends State<Scene3DViewport> {
         },
         onScaleUpdate: (details) {
           if (details.scale != 1.0) {
-            _cameraController.zoom(
-              (details.scale - 1.0).sign * 10.0,
+            _cameraController.zoomInteractive(
+              (details.scale - 1.0).sign * 20.0,
             );
           }
         },
@@ -482,7 +482,7 @@ class Scene3DViewportState extends State<Scene3DViewport> {
                 },
                 onPointerSignal: (event) {
                   if (event is PointerScrollEvent) {
-                    _cameraController.zoom(event.scrollDelta.dy);
+                    _cameraController.zoomInteractive(event.scrollDelta.dy);
                   }
                 },
                 child: CustomPaint(
