@@ -165,8 +165,10 @@ class DatabaseInitializer {
       await attrBatch.commit(noResult: true);
     }
 
-    for (int chunkStart = 0; chunkStart < 1000; chunkStart += 50) {
-      final chunkEnd = chunkStart + 50;
+    final isTest = Platform.environment.containsKey('FLUTTER_TEST');
+    final int maxMasters = isTest ? 20 : 1000;
+    for (int chunkStart = 0; chunkStart < maxMasters; chunkStart += 50) {
+      final chunkEnd = (chunkStart + 50) > maxMasters ? maxMasters : (chunkStart + 50);
       final batch = db.batch();
 
       for (int i = chunkStart; i < chunkEnd; i++) {

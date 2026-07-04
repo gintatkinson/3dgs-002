@@ -1,34 +1,20 @@
-# Layout Split Axis Defaults and Integration Test physicalSize Overrides Plan
+# Add Diagnostic Prints to Node Iteration Test Plan
 
-This plan details the changes required to update the default layout split axis to vertical and resolve integration test physicalSize overrides.
+This plan details the changes required to add diagnostic prints to `app_flutter/integration_test/node_iteration_test.dart`.
 
 ## Proposed Changes
 
-### Theme Settings
-
-#### [MODIFY] [theme_controller.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/core/theme/theme_controller.dart)
-- Change default value of `_layoutSplitAxis` (around line 24) to `Axis.vertical`.
-
-#### [MODIFY] [theme_service.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/core/theme/theme_service.dart)
-- Change default case (around line 139) and exception catch fallback (around line 143) in `loadLayoutSplitAxis` to return `Axis.vertical`.
-
 ### Integration Tests
 
-#### [MODIFY] [globe_camera_drag_test.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/integration_test/globe_camera_drag_test.dart)
-- Replace physicalSize and devicePixelRatio overrides (lines 24-32) with binding-based surface size.
-
-#### [MODIFY] [globe_camera_reset_test.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/integration_test/globe_camera_reset_test.dart)
-- Replace physicalSize and devicePixelRatio overrides (lines 39-47) with binding-based surface size.
-
-#### [MODIFY] [globe_camera_rotation_visual_test.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/integration_test/globe_camera_rotation_visual_test.dart)
-- Replace physicalSize and devicePixelRatio overrides (lines 24-32) with binding-based surface size.
+#### [MODIFY] [node_iteration_test.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/integration_test/node_iteration_test.dart)
+- Import `package:provider/provider.dart`, `package:app_flutter/features/tree/sidebar_tree.dart`, `package:app_flutter/features/tree/tree_node_widget.dart`, and `package:app_flutter/features/tree/view_models/tree_view_model.dart` at the top of the file.
+- Inside the first test (`Integration: 10 cycles x 20 nodes x all PropertyGrid fields`), update the `while` loop waiting for the first node to print progress indicators, tree nodes, current view model's state (`treeData` length, `currentView`), and dump the widget tree on failure.
 
 ## Verification Plan
 
 ### Automated Tests
-- Run the integration tests locally to verify success:
+- Run the integration test and check output for diagnostics:
   ```bash
-  flutter test integration_test/globe_camera_drag_test.dart
-  flutter test integration_test/globe_camera_reset_test.dart
-  flutter test integration_test/globe_camera_rotation_visual_test.dart
+  flutter test integration_test/node_iteration_test.dart -d macos
   ```
+
