@@ -92,6 +92,8 @@ class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProv
       vsync: this,
       duration: const Duration(seconds: 15),
     )..repeat();
+
+    _controller.addListener(() => setState(() {}));
   }
 
   @override
@@ -273,13 +275,10 @@ class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProv
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
+    final zoomScale = 500.0 / _cameraController.current.altitude;
+    return Stack(
       key: const Key('scene_3d_viewport_container'),
-      animation: _controller,
-      builder: (context, child) {
-        final zoomScale = 500.0 / _cameraController.current.altitude;
-        return Stack(
-          children: [
+      children: [
             // Background & 3D Globe custom paint
             Positioned.fill(
               child: Focus(
@@ -718,8 +717,6 @@ class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProv
             ),
           ],
         );
-      },
-    );
   }
 }
 
