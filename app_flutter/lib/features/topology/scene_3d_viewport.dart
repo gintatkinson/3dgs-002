@@ -934,8 +934,14 @@ class Scene3DViewportPainter extends CustomPainter {
     final double yRot = x1 * sinX + y1 * cosX;
     final double zRot = z1;
 
-    // 3. Translate along camera line of sight (camera is at distance D)
+    // Horizon culling check: is the point blocked by the Earth's sphere?
     final double distancePixels = sphereRadius * (1.0 + camera.altitude / 6378137.0);
+    final double horizonLimit = sphereRadius * (sphereRadius / distancePixels);
+    if (xRot < horizonLimit) {
+      return ProjectedPoint(Offset.zero, -1.0);
+    }
+
+    // 3. Translate along camera line of sight (camera is at distance D)
     final double xCam = xRot - distancePixels;
     final double yCam = yRot;
     final double zCam = zRot;

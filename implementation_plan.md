@@ -709,3 +709,55 @@ This phase details the changes required to correct the camera pitch offset and p
   cd app_flutter && flutter test integration_test/globe_camera_drag_test.dart -d macos
   cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
   ```
+
+## Phase 13: Horizon Culling
+
+This phase documents the introduction of a 1-line horizon culling check to prevent back-hemisphere coordinates from rendering over the front hemisphere.
+
+### Core App Code
+
+#### [MODIFY] [scene_3d_viewport.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/scene_3d_viewport.dart)
+- Insert a horizon culling check right after camera latitude rotation:
+  - Target:
+    ```dart
+        // 2. Rotate around camera East axis by camera latitude
+        final double cosX = math.cos(-radLat);
+        final double sinX = math.sin(-radLat);
+        final double xRot = x1 * cosX - y1 * sinX;
+        final double yRot = x1 * sinX + y1 * cosX;
+        final double zRot = z1;
+
+        // 3. Translate along camera line of sight (camera is at distance D)
+        final double distancePixels = sphereRadius * (1.0 + camera.altitude / 6378137.0);
+        final double xCam = xRot - distancePixels;
+    ```
+  - Replacement:
+    ```dart
+        // 2. Rotate around camera East axis by camera latitude
+        final double cosX = math.cos(-radLat);
+        final double sinX = math.sin(-radLat);
+        final double xRot = x1 * cosX - y1 * sinX;
+        final double yRot = x1 * sinX + y1 * cosX;
+        final double zRot = z1;
+
+        // Horizon culling check: is the point blocked by the Earth's sphere?
+        final double distancePixels = sphereRadius * (1.0 + camera.altitude / 6378137.0);
+        final double horizonLimit = sphereRadius * (sphereRadius / distancePixels);
+        if (xRot < horizonLimit) {
+          return ProjectedPoint(Offset.zero, -1.0);
+        }
+
+        // 3. Translate along camera line of sight (camera is at distance D)
+        final double xCam = xRot - distancePixels;
+    ```
+
+## Phase 13 Verification Plan
+
+### Automated Tests
+- Run all unit and integration tests to verify correctness and no regressions:
+  ```bash
+  cd app_flutter && flutter test test/cesium_3d/
+  cd app_flutter && flutter test integration_test/globe_camera_drag_test.dart -d macos
+  cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
+  ```
+
