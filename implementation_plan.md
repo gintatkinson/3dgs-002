@@ -36,6 +36,22 @@ None.
 
 ---
 
+### Hardcoded Path Cleanup
+
+#### [MODIFY] [DebugProfile.entitlements](file:///Users/perkunas/jail/3dgs-002/app_flutter/macos/Runner/DebugProfile.entitlements)
+- Replace `/jail/digital-pipeline-repo/` with `/jail/3dgs-002/` under `com.apple.security.temporary-exception.files.home-relative-path.read-write`.
+
+#### [MODIFY] [node_iteration_test.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/integration_test/node_iteration_test.dart)
+- Replace hardcoded benchmark results path with a environment variable or a relative fallback.
+
+#### [MODIFY] [integration_test.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/test_driver/integration_test.dart)
+- Replace hardcoded screenshot output directory with a environment variable.
+
+#### [MODIFY] [run_profile_audit.py](file:///Users/perkunas/jail/3dgs-002/scripts/run_profile_audit.py)
+- Replace hardcoded `repo_root` with a dynamically calculated directory based on the file location.
+
+---
+
 ## Verification Plan
 
 ### Automated Tests

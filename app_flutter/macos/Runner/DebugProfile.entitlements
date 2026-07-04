@@ -12,7 +12,7 @@
 	<true/>
 	<key>com.apple.security.temporary-exception.files.home-relative-path.read-write</key>
 	<array>
-		<string>/jail/digital-pipeline-repo/</string>
+		<string>/jail/3dgs-002/</string>
 	</array>
 </dict>
 </plist>
