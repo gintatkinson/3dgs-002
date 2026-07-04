@@ -2,7 +2,6 @@
 
 import 'dart:math' as math;
 import 'dart:ui';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:app_flutter/domain/cesium_3d/cesium_engine.dart';
@@ -48,26 +47,6 @@ class _Scene3DViewportState extends State<Scene3DViewport> {
   bool _shiftHeld = false;
   bool _ctrlHeld = false;
 
-  // Global pointer route for integration test compatibility.
-  // In headless environments tester.drag may not dispatch
-  // events that reach the widget tree via standard hit testing.
-  void _onPointerEvent(PointerEvent event) {
-    if (event is PointerMoveEvent) {
-      final delta = event.delta;
-      if (delta.distance <= 2.0) return;
-      if (mounted) {
-        setState(() {
-          if (_shiftHeld) {
-            _cameraController.tilt(delta);
-          } else if (_ctrlHeld) {
-            _cameraController.rotateHeading(delta);
-          } else {
-            _cameraController.pan(delta);
-          }
-        });
-      }
-    }
-  }
   // Interactive configurations
   String _activeStyle = 'Satellite Map';
   String _astronomicalBody = 'Earth';
@@ -109,7 +88,6 @@ class _Scene3DViewportState extends State<Scene3DViewport> {
       if (mounted) setState(() {});
     });
 
-    GestureBinding.instance.pointerRouter.addGlobalRoute(_onPointerEvent);
   }
 
   @override
@@ -124,7 +102,6 @@ class _Scene3DViewportState extends State<Scene3DViewport> {
 
   @override
   void dispose() {
-    GestureBinding.instance.pointerRouter.removeGlobalRoute(_onPointerEvent);
     _globeFocusNode.dispose();
     super.dispose();
   }
