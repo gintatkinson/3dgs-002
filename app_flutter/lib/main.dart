@@ -19,7 +19,8 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    final isTest = Platform.environment.containsKey('FLUTTER_TEST');
+    final isTest = Platform.environment.containsKey('FLUTTER_TEST') ||
+        WidgetsBinding.instance.runtimeType.toString().contains('Test');
     final dataSource = await RepositoryResolver.resolve(
       dataSourceType: _dataSource,
       sqliteInMemory: isTest,

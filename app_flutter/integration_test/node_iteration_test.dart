@@ -12,10 +12,6 @@ import 'package:app_flutter/main.dart' as app_main;
 import 'package:app_flutter/core/theme/widgets/settings_panel.dart';
 import 'package:app_flutter/features/tree/tree_defaults.dart';
 import 'package:app_flutter/features/tree/tree_node.dart';
-import 'package:provider/provider.dart';
-import 'package:app_flutter/features/tree/sidebar_tree.dart';
-import 'package:app_flutter/features/tree/tree_node_widget.dart';
-import 'package:app_flutter/features/tree/view_models/tree_view_model.dart';
 
 final File benchmarkLogFile = File(
   Platform.environment['BENCHMARK_PATH'] ??
@@ -101,9 +97,9 @@ Future<void> _editTextFields(
 
 Future<void> _changeSettingsViaUI(
     WidgetTester tester, ThemeMode themeMode, double textScale) async {
-  await tester.ensureVisible(find.byIcon(Icons.settings).last);
+  await tester.ensureVisible(find.byIcon(Icons.settings).first);
   await tester.pumpAndSettle();
-  await tester.tap(find.byIcon(Icons.settings).last);
+  await tester.tap(find.byIcon(Icons.settings).first);
   await tester.pumpAndSettle();
 
   final IconData themeIcon;
@@ -143,6 +139,9 @@ void main() {
 
   testWidgets('Integration: 10 cycles x 20 nodes x all PropertyGrid fields',
       (tester) async {
+    addTearDown(() async {
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
     tester.binding.setSurfaceSize(const Size(1000, 800));
 
     await app_main.main();
@@ -151,35 +150,8 @@ void main() {
     await tester.pump();
     int attempts = 0;
     while (attempts < 20 && find.byKey(Key('node_${allNodeIds.first}')).evaluate().isEmpty) {
-      final treeNodesCount = find.byType(TreeNodeWidget).evaluate().length;
-      final circularProgressCount = find.byType(CircularProgressIndicator).evaluate().length;
-      int treeDataLength = -1;
-      String currentView = 'N/A';
-      List<String> treeNodeIds = [];
-      Map<String, bool> loadingState = {};
-      try {
-        final sidebarFinder = find.byType(SidebarTree);
-        if (sidebarFinder.evaluate().isNotEmpty) {
-          final viewModel = tester.element(sidebarFinder).read<TreeViewModel>();
-          treeDataLength = viewModel.treeData.length;
-          currentView = viewModel.currentView;
-          treeNodeIds = viewModel.treeData.map((n) => n.id).toList();
-          loadingState = Map<String, bool>.from(viewModel.loadingNodes);
-        }
-      } catch (e) {
-        // ignore
-      }
-      print('DIAGNOSTIC: attempt=$attempts, treeNodes=$treeNodesCount, progressIndicators=$circularProgressCount, treeDataLength=$treeDataLength, currentView=$currentView, treeNodeIds=$treeNodeIds, loadingState=$loadingState');
       await tester.pump(const Duration(milliseconds: 500));
       attempts++;
-    }
-    if (find.byKey(Key('node_${allNodeIds.first}')).evaluate().isEmpty) {
-      print('DIAGNOSTIC FAILURE: node_Master_1 not found after 10s. Dumping widget tree tags:');
-      for (final widget in tester.allWidgets) {
-        if (widget.key != null) {
-          print('  - Found Widget with Key: ${widget.key}');
-        }
-      }
     }
 
     for (int cycle = 0; cycle < 10; cycle++) {
@@ -206,6 +178,9 @@ void main() {
 
   testWidgets('Stress test: cycle theme + text size between each full 20-node pass',
       (tester) async {
+    addTearDown(() async {
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
     tester.binding.setSurfaceSize(const Size(1000, 800));
 
     await app_main.main();
@@ -377,11 +352,15 @@ void main() {
 
         print('STRESS_RESULT: ${jsonEncode(results)}');
 
-        final logFile = benchmarkLogFile;
-        await logFile.writeAsString(
-          '${jsonEncode({...results, "timestamp": DateTime.now().toIso8601String()})}\n',
-          mode: FileMode.append,
-        );
+        try {
+          final logFile = benchmarkLogFile;
+          await logFile.writeAsString(
+            '${jsonEncode({...results, "timestamp": DateTime.now().toIso8601String()})}\n',
+            mode: FileMode.append,
+          );
+        } catch (e) {
+          print('WARNING: Failed to write to benchmark log file: $e');
+        }
 
         passCount++;
 
