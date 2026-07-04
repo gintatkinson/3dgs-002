@@ -410,19 +410,7 @@ class Scene3DViewportState extends State<Scene3DViewport> {
           _globeFocusNode.requestFocus();
         },
         onScaleUpdate: (details) {
-          final delta = details.focalPointDelta;
-          if (delta.distance <= 2.0) return;
-          if (details.scale == 1.0) {
-            if (_rightButtonDown) {
-              _cameraController.tilt(delta);
-            } else if (_shiftHeld) {
-              _cameraController.tilt(delta);
-            } else if (_ctrlHeld) {
-              _cameraController.rotateHeading(delta);
-            } else {
-              _cameraController.pan(delta);
-            }
-          } else {
+          if (details.scale != 1.0) {
             _cameraController.zoom(
               (details.scale - 1.0).sign * 10.0,
             );
@@ -478,6 +466,19 @@ class Scene3DViewportState extends State<Scene3DViewport> {
                 },
                 onPointerCancel: (event) {
                   _rightButtonDown = false;
+                },
+                onPointerMove: (event) {
+                  final delta = event.localDelta;
+                  if (delta.distance <= 0.5) return;
+                  final Size? size = context.size;
+                  final double shortestSide = size?.shortestSide ?? 800.0;
+                  if (event.buttons & kSecondaryMouseButton != 0 || _shiftHeld) {
+                    _cameraController.tilt(delta);
+                  } else if (_ctrlHeld) {
+                    _cameraController.rotateHeading(delta);
+                  } else if (event.buttons & kPrimaryMouseButton != 0) {
+                    _cameraController.pan(delta, shortestSide);
+                  }
                 },
                 onPointerSignal: (event) {
                   if (event is PointerScrollEvent) {

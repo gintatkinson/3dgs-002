@@ -149,7 +149,7 @@ void main() {
         expect(controller.current.longitude, 140.0);
 
         // Simulate user panning: move the camera
-        controller.pan(const Offset(100, 0));
+        controller.pan(const Offset(-100, 0));
         final double pannedLongitude = controller.current.longitude;
         expect(pannedLongitude, greaterThan(140.0),
             reason: 'Camera should have panned right');
@@ -178,7 +178,7 @@ void main() {
         final CameraController controller = _findCameraController(tester);
 
         // Pan the camera
-        controller.pan(const Offset(50, 50));
+        controller.pan(const Offset(-50, -50));
         final double pannedLat = controller.current.latitude;
         final double pannedLng = controller.current.longitude;
 
@@ -220,7 +220,7 @@ void main() {
         final CameraController controller = _findCameraController(tester);
 
         // Pan to a different position
-        controller.pan(const Offset(200, 100));
+        controller.pan(const Offset(-200, -100));
         expect(controller.current.longitude, isNot(135.0));
 
         // Parent rebuild passes a NEW camera instance with different values
@@ -275,7 +275,7 @@ void main() {
         await tester.pumpAndSettle();
 
         final CameraController controller = _findCameraController(tester);
-        controller.pan(const Offset(200, 0));
+        controller.pan(const Offset(-200, 0));
         final double pannedLng = controller.current.longitude;
 
         // Rebuild with the same camera values (not reference, but equal by value)
@@ -312,7 +312,7 @@ void main() {
         expect(controller.current.latitude, 50.0);
         expect(controller.current.longitude, -75.0);
 
-        controller.pan(const Offset(150, 0));
+        controller.pan(const Offset(-150, 0));
         final double pannedLat = controller.current.latitude;
         final double pannedLng = controller.current.longitude;
 
@@ -340,7 +340,7 @@ void main() {
         expect(afterNavController.current.longitude, -75.0);
 
         final CameraController ctrl = _findCameraController(tester);
-        ctrl.pan(const Offset(100, 50));
+        ctrl.pan(const Offset(-100, -50));
         final double pannedLat = ctrl.current.latitude;
         final double pannedLng = ctrl.current.longitude;
 

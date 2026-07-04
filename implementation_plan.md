@@ -277,6 +277,130 @@ This phase details the changes to dynamically scale the camera panning sensitivi
   cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
   ```
 
+## Phase 6: Raw Pointer Listener Gestures and Pixel-Accurate Panning Formula
+
+This phase documents the changes to implement 100% reliable pan/tilt/rotation gestures using raw pointer listener events on macOS and applying a pixel-accurate 1-to-1 panning formula.
+
+### Core App Code
+
+#### [MODIFY] [camera_controller.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/cesium_3d/camera_controller.dart)
+- Update `pan` to accept `shortestSide` and apply the pixel-accurate 1-to-1 scaling factor `factor = _camera.altitude * 0.358 / shortestSide`.
+  - Target:
+    ```dart
+      void pan(Offset delta) {
+        final double scaleFactor = (_camera.altitude / 5000.0).clamp(0.005, 50.0);
+        final newLat = (_camera.latitude - delta.dy * dragSensitivity * scaleFactor).clamp(-90.0, 90.0);
+        final newLng = _wrapLng(_camera.longitude - delta.dx * dragSensitivity * scaleFactor);
+    ```
+  - Replacement:
+    ```dart
+      void pan(Offset delta, double shortestSide) {
+        final double factor = _camera.altitude * 0.358 / shortestSide;
+        final newLat = (_camera.latitude - delta.dy * factor).clamp(-90.0, 90.0);
+        final newLng = _wrapLng(_camera.longitude - delta.dx * factor);
+    ```
+
+#### [MODIFY] [scene_3d_viewport.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/scene_3d_viewport.dart)
+- Update `onScaleUpdate` in the `GestureDetector` to only handle scaling (zoom) and delegate dragging to the raw `Listener` below.
+  - Target:
+    ```dart
+            onScaleUpdate: (details) {
+              final delta = details.focalPointDelta;
+              if (delta.distance <= 2.0) return;
+              if (details.scale == 1.0) {
+                if (_rightButtonDown) {
+                  _cameraController.tilt(delta);
+                } else if (_shiftHeld) {
+                  _cameraController.tilt(delta);
+                } else if (_ctrlHeld) {
+                  _cameraController.rotateHeading(delta);
+                } else {
+                  _cameraController.pan(delta);
+                }
+              } else {
+                _cameraController.zoom(
+                  (details.scale - 1.0).sign * 10.0,
+                );
+              }
+            },
+    ```
+  - Replacement:
+    ```dart
+            onScaleUpdate: (details) {
+              if (details.scale != 1.0) {
+                _cameraController.zoom(
+                  (details.scale - 1.0).sign * 10.0,
+                );
+              }
+            },
+    ```
+
+- Update `Listener` to handle `onPointerMove`, extracting raw mouse movement and calling `pan` (with `shortestSide`), `tilt`, or `rotateHeading` depending on buttons and keys.
+  - Target:
+    ```dart
+                child: Listener(
+                  onPointerDown: (event) {
+                    _globeFocusNode.requestFocus();
+                    if (event.buttons & kSecondaryMouseButton != 0) {
+                      _rightButtonDown = true;
+                    }
+                  },
+                  onPointerUp: (event) {
+                    _rightButtonDown = false;
+                  },
+                  onPointerCancel: (event) {
+                    _rightButtonDown = false;
+                  },
+                  onPointerSignal: (event) {
+                    if (event is PointerScrollEvent) {
+                      _cameraController.zoom(event.scrollDelta.dy);
+                    }
+                  },
+    ```
+  - Replacement:
+    ```dart
+                child: Listener(
+                  onPointerDown: (event) {
+                    _globeFocusNode.requestFocus();
+                    if (event.buttons & kSecondaryMouseButton != 0) {
+                      _rightButtonDown = true;
+                    }
+                  },
+                  onPointerUp: (event) {
+                    _rightButtonDown = false;
+                  },
+                  onPointerCancel: (event) {
+                    _rightButtonDown = false;
+                  },
+                  onPointerMove: (event) {
+                    final delta = event.localDelta;
+                    if (delta.distance <= 0.5) return;
+                    final Size? size = context.size;
+                    final double shortestSide = size?.shortestSide ?? 800.0;
+                    if (event.buttons & kSecondaryMouseButton != 0 || _shiftHeld) {
+                      _cameraController.tilt(delta);
+                    } else if (_ctrlHeld) {
+                      _cameraController.rotateHeading(delta);
+                    } else if (event.buttons & kPrimaryMouseButton != 0) {
+                      _cameraController.pan(delta, shortestSide);
+                    }
+                  },
+                  onPointerSignal: (event) {
+                    if (event is PointerScrollEvent) {
+                      _cameraController.zoom(event.scrollDelta.dy);
+                    }
+                  },
+    ```
+
+## Phase 6 Verification Plan
+
+### Automated Tests
+- Run the full suite of integration tests to ensure no regressions in camera control and that gestures are fully functional:
+  ```bash
+  cd app_flutter && flutter test integration_test/globe_camera_drag_test.dart -d macos
+  cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
+  ```
+
 
 
 

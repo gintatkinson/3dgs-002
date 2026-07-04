@@ -26,49 +26,49 @@ void main() {
       final c = CameraController(_makeCam());
       c.pan(const Offset(100, 50));
       final cam = c.current;
-      expect(cam.longitude, greaterThan(135.0));
-      expect(cam.latitude, greaterThan(35.0));
+      expect(cam.longitude, lessThan(135.0));
+      expect(cam.latitude, lessThan(35.0));
     });
 
-    test('pan left (negative dx) decreases longitude', () {
+    test('pan left (negative dx) increases longitude', () {
       final c = CameraController(_makeCam(lng: 135.0));
       final before = c.current.longitude;
       c.pan(const Offset(-200, 0));
       final after = c.current;
-      expect(after.longitude, lessThan(before));
+      expect(after.longitude, greaterThan(before));
       expect(after.latitude, equals(35.0));
       expect(after.altitude, equals(500.0));
       expect(after.pitch, equals(0.0));
       expect(after.heading, equals(0.0));
     });
 
-    test('pan up (positive dy) increases latitude', () {
+    test('pan up (negative dy) increases latitude', () {
       final c = CameraController(_makeCam(lat: 35.0));
       final before = c.current.latitude;
-      c.pan(const Offset(0, 100));
+      c.pan(const Offset(0, -100));
       final after = c.current;
       expect(after.latitude, greaterThan(before));
       expect(after.longitude, equals(135.0));
       expect(after.altitude, equals(500.0));
     });
 
-    test('pan with dragSensitivity precision', () {
+    test('pan with pixel-accurate precision', () {
       final c = CameraController(_makeCam(lat: 0.0, lng: 0.0));
       c.pan(const Offset(100, 100));
-      expect(c.current.longitude, closeTo(15.0, 0.01));
-      expect(c.current.latitude, closeTo(15.0, 0.01));
+      expect(c.current.longitude, closeTo(-22.375, 0.01));
+      expect(c.current.latitude, closeTo(-22.375, 0.01));
     });
 
     test('pan clamps latitude to [-90, 90]', () {
       final c = CameraController(_makeCam(lat: 85.0));
-      c.pan(const Offset(0, 100));
+      c.pan(const Offset(0, -100));
       expect(c.current.latitude, equals(90.0));
     });
 
     test('pan wraps longitude past 180', () {
       final c = CameraController(_makeCam(lng: 175.0));
-      c.pan(const Offset(100, 0));
-      expect(c.current.longitude, lessThan(-165.0));
+      c.pan(const Offset(-100, 0));
+      expect(c.current.longitude, lessThan(-160.0));
     });
 
     test('tilt changes pitch/heading, not lat/lng', () {
@@ -127,7 +127,7 @@ void main() {
 
     test('longitude wraps around -180/+180 boundary', () {
       final c = CameraController(_makeCam(lng: -175));
-      c.pan(const Offset(-100, 0));
+      c.pan(const Offset(100, 0));
       expect(c.current.longitude, lessThan(180));
       expect(c.current.longitude, greaterThan(155));
     });

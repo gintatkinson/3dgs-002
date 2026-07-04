@@ -102,7 +102,7 @@ void main() {
     final viewport = find.byKey(const Key('scene_3d_viewport_container'));
     await tester.ensureVisible(viewport);
     await tester.pump();
-    await tester.drag(viewport, const Offset(-200, 0));
+    await tester.drag(viewport, const Offset(-20.0, 0.0));
     await settle(tester);
 
     final double newLongitude = controller.current.longitude;
