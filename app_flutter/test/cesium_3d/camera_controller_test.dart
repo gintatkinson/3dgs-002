@@ -49,6 +49,28 @@ void main() {
       expect(after.pitch, equals(0.0));
     });
 
+    test('shift+drag (tilt) modifies pitch and heading, not lat/lng', () {
+      final c = CameraController(_makeCam(pitch: -45, heading: 90));
+      final before = c.current;
+      c.tilt(const Offset(20, 80));
+      final after = c.current;
+      expect(after.pitch, isNot(before.pitch));
+      expect(after.heading, isNot(before.heading));
+      expect(after.latitude, equals(before.latitude));
+      expect(after.longitude, equals(before.longitude));
+    });
+
+    test('ctrl+drag (rotateHeading) modifies heading, not lat/lng/pitch', () {
+      final c = CameraController(_makeCam(pitch: -30));
+      final before = c.current;
+      c.rotateHeading(const Offset(50, 100));
+      final after = c.current;
+      expect(after.heading, isNot(before.heading));
+      expect(after.latitude, equals(before.latitude));
+      expect(after.longitude, equals(before.longitude));
+      expect(after.pitch, equals(before.pitch));
+    });
+
     test('zoom changes altitude', () {
       final c = CameraController(_makeCam());
       c.zoom(-200);

@@ -40,13 +40,11 @@ class Scene3DViewport extends StatefulWidget {
   State<Scene3DViewport> createState() => _Scene3DViewportState();
 }
 
-class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
+class _Scene3DViewportState extends State<Scene3DViewport> {
   late CameraController _cameraController;
 
   final FocusNode _globeFocusNode = FocusNode();
 
-  bool _autoRotate = true;
   bool _shiftHeld = false;
   bool _ctrlHeld = false;
   int _activeButtons = 0;
@@ -88,12 +86,11 @@ class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProv
       initialProvider: _providerForStyle(_activeStyle),
     );
 
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 15),
-    )..repeat();
+    _globeFocusNode.addListener(() {
+      if (mounted) setState(() {});
+    });
 
-    _controller.addListener(() => setState(() {}));
+    HardwareKeyboard.instance.addHandler(_onGlobalKeyEvent);
   }
 
   @override
@@ -108,9 +105,30 @@ class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProv
 
   @override
   void dispose() {
-    _controller.dispose();
+    HardwareKeyboard.instance.removeHandler(_onGlobalKeyEvent);
     _globeFocusNode.dispose();
     super.dispose();
+  }
+
+  bool _onGlobalKeyEvent(KeyEvent event) {
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.shiftLeft || key == LogicalKeyboardKey.shiftRight) {
+      if (event is KeyDownEvent) {
+        setState(() => _shiftHeld = true);
+      } else if (event is KeyUpEvent) {
+        setState(() => _shiftHeld = false);
+      }
+    } else if (key == LogicalKeyboardKey.controlLeft ||
+        key == LogicalKeyboardKey.controlRight ||
+        key == LogicalKeyboardKey.metaLeft ||
+        key == LogicalKeyboardKey.metaRight) {
+      if (event is KeyDownEvent) {
+        setState(() => _ctrlHeld = true);
+      } else if (event is KeyUpEvent) {
+        setState(() => _ctrlHeld = false);
+      }
+    }
+    return false;
   }
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
@@ -169,6 +187,7 @@ class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProv
     final bool isActive = _activeStyle == style;
     return Expanded(
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: () {
           setState(() {
             _activeStyle = style;
@@ -291,21 +310,20 @@ class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProv
                     _globeFocusNode.requestFocus();
                   },
                   onPointerUp: (_) => _activeButtons = 0,
-                  child: GestureDetector(
-                    onPanStart: (_) {
-                      _globeFocusNode.requestFocus();
-                    },
-                    onPanUpdate: (details) {
-                      setState(() {
-                        if (_activeButtons == kSecondaryMouseButton || _shiftHeld) {
-                          _cameraController.tilt(details.delta);
-                        } else if (_ctrlHeld) {
-                          _cameraController.rotateHeading(details.delta);
-                        } else {
-                          _cameraController.pan(details.delta);
-                        }
-                      });
-                    },
+                    child: GestureDetector(
+                      onSecondaryTapDown: (_) {},
+                      onPanUpdate: (details) {
+                        if (details.delta.distance <= 2.0) return;
+                        setState(() {
+                          if ((_activeButtons & kSecondaryMouseButton) != 0 || _shiftHeld) {
+                            _cameraController.tilt(details.delta);
+                          } else if (_ctrlHeld) {
+                            _cameraController.rotateHeading(details.delta);
+                          } else {
+                            _cameraController.pan(details.delta);
+                          }
+                        });
+                      },
                     onDoubleTap: () {
                       final targetAlt = (_cameraController.current.altitude * 0.5).clamp(
                         CameraController.minAltitude,
@@ -330,26 +348,24 @@ class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProv
                           });
                         }
                       },
-                      child: CustomPaint(
-                        painter: Scene3DViewportPainter(
-                          camera: _cameraController.current,
-                          animationValue: _controller.value,
-                          activeStyle: _activeStyle,
-                          astronomicalBody: _astronomicalBody,
-                          elevationActive: _elevationActive,
-                          showDevices: _showDevices,
-                          showLinks: _showLinks,
-                          showLabels: _showLabels,
-                          showDropLines: _showDropLines,
-                          topologyData: widget.topologyData,
-                          userRotationX: 0.0,
-                          userTilt: 0.0,
-                          zoomScale: zoomScale,
-                          autoRotate: _autoRotate,
-                          tileRenderer: _tileRenderer,
-                          imageryProvider: _providerForStyle(_activeStyle),
+                        child: CustomPaint(
+                          painter: Scene3DViewportPainter(
+                            camera: _cameraController.current,
+                            activeStyle: _activeStyle,
+                            astronomicalBody: _astronomicalBody,
+                            elevationActive: _elevationActive,
+                            showDevices: _showDevices,
+                            showLinks: _showLinks,
+                            showLabels: _showLabels,
+                            showDropLines: _showDropLines,
+                            topologyData: widget.topologyData,
+                            userRotationX: 0.0,
+                            userTilt: 0.0,
+                            zoomScale: zoomScale,
+                            tileRenderer: _tileRenderer,
+                            imageryProvider: _providerForStyle(_activeStyle),
+                          ),
                         ),
-                      ),
                     ),
                   ),
                 ),
@@ -474,6 +490,9 @@ class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProv
                       ),
                     ),
                     child: SingleChildScrollView(
+                      physics: _globeFocusNode.hasFocus
+                          ? const NeverScrollableScrollPhysics()
+                          : null,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -634,21 +653,6 @@ class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProv
                             ),
                           ),
                           const SizedBox(height: 8),
-                          _buildVisibilityToggle(
-                            'AUTO ROTATION',
-                            _autoRotate,
-                            (val) {
-                              setState(() {
-                                _autoRotate = val;
-                                if (_autoRotate) {
-                                  _controller.repeat();
-                                } else {
-                                  _controller.stop();
-                                }
-                              });
-                            },
-                          ),
-                          const SizedBox(height: 8),
                           _buildVisibilityToggle('Devices / Nodes', _showDevices, (val) {
                             setState(() {
                               _showDevices = val;
@@ -722,7 +726,6 @@ class _Scene3DViewportState extends State<Scene3DViewport> with SingleTickerProv
 
 class Scene3DViewportPainter extends CustomPainter {
   final VirtualCamera camera;
-  final double animationValue;
   final String activeStyle;
   final String astronomicalBody;
   final bool elevationActive;
@@ -734,13 +737,11 @@ class Scene3DViewportPainter extends CustomPainter {
   final double userRotationX;
   final double userTilt;
   final double zoomScale;
-  final bool autoRotate;
   final GlobeTileRenderer? tileRenderer;
   final ImageryProvider imageryProvider;
 
   Scene3DViewportPainter({
     required this.camera,
-    required this.animationValue,
     required this.activeStyle,
     required this.astronomicalBody,
     required this.elevationActive,
@@ -752,7 +753,6 @@ class Scene3DViewportPainter extends CustomPainter {
     required this.userRotationX,
     required this.userTilt,
     required this.zoomScale,
-    required this.autoRotate,
     this.tileRenderer,
     this.imageryProvider = ImageryProvider.arcGisSatellite,
   });
@@ -914,7 +914,7 @@ class Scene3DViewportPainter extends CustomPainter {
     // Rotation angle and tilt based on camera and user inputs
     final double baseRotation = -_rad(camera.longitude);
     final double baseTilt = -_rad(camera.latitude);
-    final double rotationAngle = baseRotation + userRotationX + (autoRotate ? animationValue * 2 * math.pi : 0.0);
+    final double rotationAngle = baseRotation + userRotationX;
     final double tilt = baseTilt + userTilt;
 
     // 5. Draw Grid lines (Meridians & Parallels) - front hemisphere only
@@ -1012,8 +1012,8 @@ class Scene3DViewportPainter extends CustomPainter {
 
       const int numFlares = 8;
       for (int f = 0; f < numFlares; f++) {
-        final double baseAngle = f * (2 * math.pi / numFlares) + animationValue * 0.2;
-        final double pulse = 1.0 + 0.12 * math.sin(animationValue * 2 * math.pi * 3 + f);
+        final double baseAngle = f * (2 * math.pi / numFlares);
+        final double pulse = 1.0;
         
         final double angleStart = baseAngle;
         final double angleEnd = baseAngle + 0.25;
@@ -1332,7 +1332,7 @@ class Scene3DViewportPainter extends CustomPainter {
           canvas.drawLine(p1.offset, p2.offset, linkGlowPaint);
           canvas.drawLine(p1.offset, p2.offset, linkPaint);
 
-          final double packetT = (animationValue * 2 + i * 0.25) % 1.0;
+          final double packetT = (i * 0.25) % 1.0;
           final Offset packetOffset = Offset.lerp(p1.offset, p2.offset, packetT)!;
           canvas.drawCircle(packetOffset, 2.5, Paint()..color = const Color(0xFFFFD54F));
         }
@@ -1345,8 +1345,8 @@ class Scene3DViewportPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
     canvas.drawCircle(center, 3.0, dotPaint);
 
-    final double pulseOpacity = 1.0 - animationValue;
-    final double pulseRadius = animationValue * 30.0;
+    final double pulseOpacity = 1.0;
+    final double pulseRadius = 0.0;
     final Paint pulsePaint = Paint()
       ..color = const Color(0x0000E5FF).withOpacity(pulseOpacity * 0.7)
       ..style = PaintingStyle.stroke
@@ -1360,7 +1360,7 @@ class Scene3DViewportPainter extends CustomPainter {
     canvas.drawCircle(center, 10.0, reticlePaint);
 
     canvas.save();
-    final double reticleRotation = -animationValue * 2 * math.pi;
+    final double reticleRotation = 0.0;
     canvas.translate(center.dx, center.dy);
     canvas.rotate(reticleRotation);
     
@@ -1374,8 +1374,7 @@ class Scene3DViewportPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant Scene3DViewportPainter oldDelegate) {
-    return oldDelegate.animationValue != animationValue ||
-        oldDelegate.camera != camera ||
+    return oldDelegate.camera != camera ||
         oldDelegate.activeStyle != activeStyle ||
         oldDelegate.astronomicalBody != astronomicalBody ||
         oldDelegate.elevationActive != elevationActive ||
@@ -1386,7 +1385,6 @@ class Scene3DViewportPainter extends CustomPainter {
         oldDelegate.userRotationX != userRotationX ||
         oldDelegate.userTilt != userTilt ||
         oldDelegate.zoomScale != zoomScale ||
-        oldDelegate.autoRotate != autoRotate ||
         oldDelegate.tileRenderer != tileRenderer ||
         oldDelegate.imageryProvider != imageryProvider;
   }
