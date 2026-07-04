@@ -43,6 +43,9 @@ class Scene3DViewport extends StatefulWidget {
 class _Scene3DViewportState extends State<Scene3DViewport> {
   late CameraController _cameraController;
 
+  @visibleForTesting
+  CameraController get cameraController => _cameraController;
+
   final FocusNode _globeFocusNode = FocusNode();
 
   bool _shiftHeld = false;
