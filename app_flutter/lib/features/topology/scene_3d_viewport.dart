@@ -920,8 +920,13 @@ class Scene3DViewportPainter extends CustomPainter {
         final yFinal = sy * cosT - zRot * sinT;
         final zFinal = sy * sinT + zRot * cosT;
 
-        final double rx = xFinal * cosH - yFinal * sinH;
-        final double ry = xFinal * sinH + yFinal * cosH;
+        final double distanceRatio = 1.0 + camera.altitude / 6378137.0;
+        final double distancePixels = sphereRadius * distanceRatio;
+        final double denom = distancePixels - zFinal;
+        final double pScale = denom <= 0.0 ? 1.0 : distancePixels / denom;
+
+        final double rx = xFinal * pScale * cosH - yFinal * pScale * sinH;
+        final double ry = xFinal * pScale * sinH + yFinal * pScale * cosH;
 
         return ProjectedPoint(Offset(center.dx + rx, center.dy - ry), zFinal);
       }
@@ -943,8 +948,13 @@ class Scene3DViewportPainter extends CustomPainter {
     final double yFinal = yRot * cosT - zRot * sinT;
     final double zFinal = yRot * sinT + zRot * cosT;
 
-    final double rx = xFinal * cosH - yFinal * sinH;
-    final double ry = xFinal * sinH + yFinal * cosH;
+    final double distanceRatio = 1.0 + camera.altitude / 6378137.0;
+    final double distancePixels = sphereRadius * distanceRatio;
+    final double denom = distancePixels - zFinal;
+    final double pScale = denom <= 0.0 ? 1.0 : distancePixels / denom;
+
+    final double rx = xFinal * pScale * cosH - yFinal * pScale * sinH;
+    final double ry = xFinal * pScale * sinH + yFinal * pScale * cosH;
 
     return ProjectedPoint(Offset(center.dx + rx, center.dy - ry), zFinal);
   }
