@@ -356,7 +356,8 @@ class Scene3DViewportState extends State<Scene3DViewport> {
       return null;
     }
 
-    final double zFinal = math.sqrt(sphereRadius * sphereRadius - dx * dx - dy * dy);
+    final double radDiff = sphereRadius * sphereRadius - dx * dx - dy * dy;
+    final double zFinal = math.sqrt(radDiff < 0.0 ? 0.0 : radDiff);
 
     final double baseRotation = -(_cameraController.current.longitude * math.pi / 180.0);
     final double baseTilt = -(_cameraController.current.latitude * math.pi / 180.0);
@@ -401,7 +402,7 @@ class Scene3DViewportState extends State<Scene3DViewport> {
       autofocus: true,
       onKeyEvent: _handleKeyEvent,
       child: GestureDetector(
-        behavior: HitTestBehavior.translucent,
+        behavior: HitTestBehavior.opaque,
         onTapDown: (_) {
           _globeFocusNode.requestFocus();
         },

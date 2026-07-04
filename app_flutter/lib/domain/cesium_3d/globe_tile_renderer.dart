@@ -94,9 +94,10 @@ class GlobeTileRenderer {
   /// Converts latitude/longitude (degrees) to a tile coordinate at the
   /// given [zoom] level.
   TileCoord _latLngToTile(double lat, double lng, int zoom) {
+    final clampedLat = lat.clamp(-85.0511, 85.0511);
     final n = math.pow(2, zoom).toInt();
     final x = ((lng + 180) / 360 * n).floor();
-    final latRad = _rad(lat);
+    final latRad = _rad(clampedLat);
     final y =
         ((1 - math.log(math.tan(latRad) + 1 / math.cos(latRad)) / math.pi) /
                 2 *

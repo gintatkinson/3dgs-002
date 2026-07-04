@@ -20,7 +20,7 @@ import 'package:app_flutter/domain/database_initializer.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('Globe camera drag: longitude decreases after leftward pan gesture', (WidgetTester tester) async {
+  testWidgets('Globe camera drag: longitude increases after leftward pan gesture', (WidgetTester tester) async {
     tester.binding.setSurfaceSize(const Size(1280, 800));
     addTearDown(() {
       tester.binding.setSurfaceSize(null);
@@ -108,8 +108,8 @@ void main() {
     final double newLongitude = controller.current.longitude;
     final double newAltitude = controller.current.altitude;
 
-    expect(newLongitude, lessThan(initialLongitude),
-        reason: 'Longitude should decrease after leftward drag. '
+    expect(newLongitude, greaterThan(initialLongitude),
+        reason: 'Longitude should increase after leftward drag. '
             'Initial: $initialLongitude, New: $newLongitude');
 
     expect(newAltitude, equals(initialAltitude),

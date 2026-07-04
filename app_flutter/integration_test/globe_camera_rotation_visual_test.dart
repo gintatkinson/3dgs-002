@@ -93,6 +93,7 @@ void main() {
 
     // 3. Capture initial projected position of a reference coordinate
     final Offset initialOffset = state.getProjectedPosition(35.607400, 140.106300);
+    final double initialHeading = state.cameraController.current.heading;
 
     // 4. Perform Ctrl + Drag to rotate heading (yaw)
     await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
@@ -104,16 +105,22 @@ void main() {
 
     // 5. Capture new projected position of same coordinate
     final Offset newOffset = state.getProjectedPosition(35.607400, 140.106300);
+    final double newHeading = state.cameraController.current.heading;
 
-    // 6. Assert visual movement has occurred
+    // 6. Assert camera heading parameter and visual movement have occurred
+    expect(
+      newHeading,
+      isNot(equals(initialHeading)),
+      reason: 'Camera heading did not change during rotation gesture'
+    );
     expect(
       newOffset, 
       isNot(equals(initialOffset)),
       reason: 'Expected 2D projected screen coordinates to rotate when camera heading changes'
     );
 
-    // Keep the application GUI active and pump frames to the macOS display for 30 seconds
-    for (int i = 0; i < 300; i++) {
+    // Keep the application GUI active and pump frames to the macOS display for 1 second
+    for (int i = 0; i < 10; i++) {
       await Future<void>.delayed(const Duration(milliseconds: 100));
       await tester.pump();
     }

@@ -58,3 +58,225 @@ This phase documents the temporary changes to simulate the camera rotation visua
   cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
   ```
 
+## Phase 3: Resolve Gesture Hit-Test and Camera Rotation Test Assertions
+
+This phase documents the permanent changes to fix the gesture hit-test behavior in the 3D viewport and update the visual rotation test assertions.
+
+### Core App Code
+
+#### [MODIFY] [scene_3d_viewport.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/scene_3d_viewport.dart)
+- Change gesture detector hit-test behavior to opaque around line 404 to ensure dragging and scaling register correctly.
+  - Target:
+    ```dart
+        behavior: HitTestBehavior.translucent,
+    ```
+  - Replacement:
+    ```dart
+        behavior: HitTestBehavior.opaque,
+    ```
+
+### Integration Tests
+
+#### [MODIFY] [globe_camera_rotation_visual_test.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/integration_test/globe_camera_rotation_visual_test.dart)
+- Update test assertions to explicitly verify the camera heading (yaw) changes after simulating Ctrl+drag.
+  - Target:
+    ```dart
+    // 3. Capture initial projected position of a reference coordinate
+    final Offset initialOffset = state.getProjectedPosition(35.607400, 140.106300);
+
+    // 4. Perform Ctrl + Drag to rotate heading (yaw)
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    final viewport = find.byKey(const Key('scene_3d_viewport_container'));
+    await tester.drag(viewport, const Offset(-150.0, 0.0));
+    await tester.pump();
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await settle(tester);
+
+    // 5. Capture new projected position of same coordinate
+    final Offset newOffset = state.getProjectedPosition(35.607400, 140.106300);
+
+    // 6. Assert visual movement has occurred
+    expect(
+      newOffset, 
+      isNot(equals(initialOffset)),
+      reason: 'Expected 2D projected screen coordinates to rotate when camera heading changes'
+    );
+    ```
+  - Replacement:
+    ```dart
+    // 3. Capture initial projected position of a reference coordinate
+    final Offset initialOffset = state.getProjectedPosition(35.607400, 140.106300);
+    final double initialHeading = state.cameraController.current.heading;
+
+    // 4. Perform Ctrl + Drag to rotate heading (yaw)
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    final viewport = find.byKey(const Key('scene_3d_viewport_container'));
+    await tester.drag(viewport, const Offset(-150.0, 0.0));
+    await tester.pump();
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await settle(tester);
+
+    // 5. Capture new projected position of same coordinate
+    final Offset newOffset = state.getProjectedPosition(35.607400, 140.106300);
+    final double newHeading = state.cameraController.current.heading;
+
+    // 6. Assert camera heading parameter and visual movement have occurred
+    expect(
+      newHeading,
+      isNot(equals(initialHeading)),
+      reason: 'Camera heading did not change during rotation gesture'
+    );
+    expect(
+      newOffset, 
+      isNot(equals(initialOffset)),
+      reason: 'Expected 2D projected screen coordinates to rotate when camera heading changes'
+    );
+    ```
+
+## Phase 3 Verification Plan
+
+### Automated Tests
+- Run the visual globe camera rotation integration test to verify the changes:
+  ```bash
+  cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
+  ```
+
+## Phase 4: Pole-Crash Bug Fix and Correct Panning Direction
+
+This phase documents the changes to clamp latitude to valid Web Mercator range in `globe_tile_renderer.dart` to prevent NaN/Infinity crashes, and correct the panning direction in `camera_controller.dart`.
+
+### Core App Code
+
+#### [MODIFY] [globe_tile_renderer.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/cesium_3d/globe_tile_renderer.dart)
+- Clamp latitude within `[-85.0511, 85.0511]` in `_latLngToTile` before computing Web Mercator coordinates to avoid log of negative or division by zero.
+  - Target:
+    ```dart
+      TileCoord _latLngToTile(double lat, double lng, int zoom) {
+        final n = math.pow(2, zoom).toInt();
+        final x = ((lng + 180) / 360 * n).floor();
+        final latRad = _rad(lat);
+    ```
+  - Replacement:
+    ```dart
+      TileCoord _latLngToTile(double lat, double lng, int zoom) {
+        final clampedLat = lat.clamp(-85.0511, 85.0511);
+        final n = math.pow(2, zoom).toInt();
+        final x = ((lng + 180) / 360 * n).floor();
+        final latRad = _rad(clampedLat);
+    ```
+
+#### [MODIFY] [camera_controller.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/cesium_3d/camera_controller.dart)
+- Invert the signs of `delta.dx` and `delta.dy` inside `pan` to make camera movement natural (drag matches finger/mouse movement).
+  - Target:
+    ```dart
+      void pan(Offset delta) {
+        final newLat = (_camera.latitude + delta.dy * dragSensitivity).clamp(-90.0, 90.0);
+        final newLng = _wrapLng(_camera.longitude + delta.dx * dragSensitivity);
+    ```
+  - Replacement:
+    ```dart
+      void pan(Offset delta) {
+        final newLat = (_camera.latitude - delta.dy * dragSensitivity).clamp(-90.0, 90.0);
+        final newLng = _wrapLng(_camera.longitude - delta.dx * dragSensitivity);
+    ```
+
+### Integration Tests
+
+#### [MODIFY] [globe_camera_drag_test.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/integration_test/globe_camera_drag_test.dart)
+- Update test name and assertions to expect longitude to increase instead of decrease, matching the corrected natural panning direction.
+  - Target:
+    ```dart
+      testWidgets('Globe camera drag: longitude decreases after leftward pan gesture', (WidgetTester tester) async {
+    ```
+  - Replacement:
+    ```dart
+      testWidgets('Globe camera drag: longitude increases after leftward pan gesture', (WidgetTester tester) async {
+    ```
+  - Target:
+    ```dart
+        expect(newLongitude, lessThan(initialLongitude),
+            reason: 'Longitude should decrease after leftward drag. '
+                'Initial: $initialLongitude, New: $newLongitude');
+    ```
+  - Replacement:
+    ```dart
+        expect(newLongitude, greaterThan(initialLongitude),
+            reason: 'Longitude should increase after leftward drag. '
+                'Initial: $initialLongitude, New: $newLongitude');
+    ```
+
+## Phase 4 Verification Plan
+
+### Automated Tests
+- Run the globe camera drag integration test:
+  ```bash
+  cd app_flutter && flutter test integration_test/globe_camera_drag_test.dart -d macos
+  ```
+
+## Phase 5: Camera Pan Altitude Scaling and Viewport NaN Safeguards
+
+This phase details the changes to dynamically scale the camera panning sensitivity with altitude/zoom and to clamp calculations to prevent NaN camera parameters on viewport double-clicks.
+
+### Core App Code
+
+#### [MODIFY] [camera_controller.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/cesium_3d/camera_controller.dart)
+- Scale the panning sensitivity dynamically based on current altitude in the `pan` method.
+  - Target:
+    ```dart
+      void pan(Offset delta) {
+        final newLat = (_camera.latitude - delta.dy * dragSensitivity).clamp(-90.0, 90.0);
+        final newLng = _wrapLng(_camera.longitude - delta.dx * dragSensitivity);
+    ```
+  - Replacement:
+    ```dart
+      void pan(Offset delta) {
+        final double scaleFactor = (_camera.altitude / 5000.0).clamp(0.005, 50.0);
+        final newLat = (_camera.latitude - delta.dy * dragSensitivity * scaleFactor).clamp(-90.0, 90.0);
+        final newLng = _wrapLng(_camera.longitude - delta.dx * dragSensitivity * scaleFactor);
+    ```
+
+#### [MODIFY] [scene_3d_viewport.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/scene_3d_viewport.dart)
+- Clamp the argument of `math.sqrt` in `_clickToCamera` to prevent `NaN` values due to double-clicks near the edge of the projection sphere.
+  - Target:
+    ```dart
+        final double zFinal = math.sqrt(sphereRadius * sphereRadius - dx * dx - dy * dy);
+    ```
+  - Replacement:
+    ```dart
+        final double radDiff = sphereRadius * sphereRadius - dx * dx - dy * dy;
+        final double zFinal = math.sqrt(radDiff < 0.0 ? 0.0 : radDiff);
+    ```
+
+### Integration Tests
+
+#### [MODIFY] [globe_camera_rotation_visual_test.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/integration_test/globe_camera_rotation_visual_test.dart)
+- Reduce the sleep/frame-pumping loop at the end of the test from 30 seconds to 1 second (10 iterations of 100ms) to prevent timeout failures in automated runs.
+  - Target:
+    ```dart
+        // Keep the application GUI active and pump frames to the macOS display for 30 seconds
+        for (int i = 0; i < 300; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+          await tester.pump();
+        }
+    ```
+  - Replacement:
+    ```dart
+        // Keep the application GUI active and pump frames to the macOS display for 1 second
+        for (int i = 0; i < 10; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+          await tester.pump();
+        }
+    ```
+
+## Phase 5 Verification Plan
+
+### Automated Tests
+- Run the full suite of integration tests to ensure no regressions in camera control:
+  ```bash
+  cd app_flutter && flutter test integration_test/globe_camera_drag_test.dart -d macos
+  cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
+  ```
+
+
+
+
