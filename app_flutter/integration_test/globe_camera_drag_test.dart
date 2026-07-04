@@ -21,14 +21,9 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('Globe camera drag: longitude decreases after leftward pan gesture', (WidgetTester tester) async {
-    const double width = 1280;
-    const double height = 800;
-    const double pixelRatio = 2.0;
-    tester.view.physicalSize = const Size(width * pixelRatio, height * pixelRatio);
-    tester.view.devicePixelRatio = pixelRatio;
+    tester.binding.setSurfaceSize(const Size(1280, 800));
     addTearDown(() {
-      tester.view.resetPhysicalSize();
-      tester.view.resetDevicePixelRatio();
+      tester.binding.setSurfaceSize(null);
     });
 
     await StringResources.load();

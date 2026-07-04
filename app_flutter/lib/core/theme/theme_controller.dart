@@ -21,7 +21,7 @@ class ThemeController extends ChangeNotifier {
   final ThemeService _themeService;
   ThemeMode _themeMode = ThemeMode.system;
   int _currentThemeIndex = 0;
-  Axis _layoutSplitAxis = Axis.horizontal;
+  Axis _layoutSplitAxis = Axis.vertical;
 
   /// Current [ThemeMode] (light / dark / system).
   ThemeMode get themeMode => _themeMode;

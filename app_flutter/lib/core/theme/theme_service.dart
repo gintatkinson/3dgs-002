@@ -136,11 +136,11 @@ class SharedPreferencesThemeService implements ThemeService {
         case 'horizontal':
           return Axis.horizontal;
         default:
-          return Axis.horizontal;
+          return Axis.vertical;
       }
     } catch (e, stackTrace) {
       debugPrint('Error in loadLayoutSplitAxis: $e\n$stackTrace');
-      return Axis.horizontal;
+      return Axis.vertical;
     }
   }
 
