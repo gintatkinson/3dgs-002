@@ -662,4 +662,24 @@ This phase details the changes required to correct the 3D rotation projection fo
   cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
   ```
 
+## Phase 11: Implement 3D camera translation and rotation coordinates
+
+This phase details the changes required to implement true 3D camera translation and rotation coordinates inside `Scene3DViewportPainter.project` to allow the focal center to move off the Earth's center.
+
+### Core App Code
+
+#### [MODIFY] [scene_3d_viewport.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/scene_3d_viewport.dart)
+- Update `project` method to translate points relative to the camera's 3D position and then rotate by camera pitch and heading.
+
+### Phase 11 Verification Plan
+
+### Automated Tests
+- Run the unit and integration tests to verify correctness:
+  ```bash
+  cd app_flutter && flutter test test/cesium_3d/
+  cd app_flutter && flutter test integration_test/globe_camera_drag_test.dart -d macos
+  cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
+  ```
+
+
 

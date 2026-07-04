@@ -895,71 +895,75 @@ class Scene3DViewportPainter extends CustomPainter {
 
   ProjectedPoint project(double lat, double lng, double sphereRadius, Offset center, double rotationY, double tilt) {
     final CesiumEngine? engine = CesiumEngine.instance;
-    final double finalTilt = tilt + (camera.pitch + 45.0) * math.pi / 180.0;
-    final double radHeading = camera.heading * math.pi / 180.0;
-    final double cosH = math.cos(radHeading);
-    final double sinH = math.sin(radHeading);
+    final double radLng = camera.longitude * math.pi / 180.0;
+    final double radLat = camera.latitude * math.pi / 180.0;
+
+    double sx = 0.0;
+    double sy = 0.0;
+    double sz = 0.0;
 
     if (engine != null && engine.isReady) {
       final ecef = engine.cartographicToEcef(lat * 180.0 / math.pi, lng * 180.0 / math.pi, 0.0);
       if (ecef != null) {
         final (x, y, z) = ecef;
         final scale = sphereRadius / 6378137.0;
-        final sx = x * scale;
-        final sy = z * scale;
-        final sz = y * scale;
-
-        final cosY = math.cos(rotationY);
-        final sinY = math.sin(rotationY);
-        final xRot = sx * cosY - sz * sinY;
-        final zRot = sx * sinY + sz * cosY;
-
-        final cosT = math.cos(finalTilt);
-        final sinT = math.sin(finalTilt);
-        final yFinal = xRot * sinT + sy * cosT;
-        final zFinal = zRot;
-        final xFinal = xRot * cosT - sy * sinT;
-
-        final double distanceRatio = 1.0 + camera.altitude / 6378137.0;
-        final double distancePixels = sphereRadius * distanceRatio;
-        final double denom = distancePixels - xFinal;
-        final double pScale = denom <= 0.0 ? 1.0 : distancePixels / denom;
-
-        final double rx = zFinal * pScale * cosH - yFinal * pScale * sinH;
-        final double ry = zFinal * pScale * sinH + yFinal * pScale * cosH;
-
-        return ProjectedPoint(Offset(center.dx + rx, center.dy - ry), xFinal);
+        sx = x * scale;
+        sy = z * scale;
+        sz = y * scale;
       }
+    } else {
+      final double x = sphereRadius * math.cos(lat) * math.sin(lng);
+      final double y = sphereRadius * math.sin(lat);
+      final double z = sphereRadius * math.cos(lat) * math.cos(lng);
+      sx = z;
+      sy = y;
+      sz = x;
     }
 
-    final double x = sphereRadius * math.cos(lat) * math.sin(lng);
-    final double y = sphereRadius * math.sin(lat);
-    final double z = sphereRadius * math.cos(lat) * math.cos(lng);
+    // 1. Rotate ECEF coordinates by camera longitude (around ECEF Z-axis)
+    final double cosY = math.cos(-radLng);
+    final double sinY = math.sin(-radLng);
+    final double x1 = sx * cosY - sz * sinY;
+    final double z1 = sx * sinY + sz * cosY;
+    final double y1 = sy;
 
-    final double sx = z;
-    final double sy = y;
-    final double sz = x;
+    // 2. Rotate around camera East axis by camera latitude
+    final double cosX = math.cos(-radLat);
+    final double sinX = math.sin(-radLat);
+    final double xRot = x1 * cosX - y1 * sinX;
+    final double yRot = x1 * sinX + y1 * cosX;
+    final double zRot = z1;
 
-    final cosY = math.cos(rotationY);
-    final sinY = math.sin(rotationY);
-    final xRot = sx * cosY - sz * sinY;
-    final zRot = sx * sinY + sz * cosY;
+    // 3. Translate along camera line of sight (camera is at distance D)
+    final double distancePixels = sphereRadius * (1.0 + camera.altitude / 6378137.0);
+    final double xCam = xRot - distancePixels;
+    final double yCam = yRot;
+    final double zCam = zRot;
 
-    final cosT = math.cos(finalTilt);
-    final sinT = math.sin(finalTilt);
-    final yFinal = xRot * sinT + sy * cosT;
-    final zFinal = zRot;
-    final xFinal = xRot * cosT - sy * sinT;
+    // 4. Apply camera pitch (tilt around local East horizontal axis)
+    final double P = camera.pitch * math.pi / 180.0;
+    final double cosP = math.cos(P);
+    final double sinP = math.sin(P);
+    final double xPitch = xCam * cosP - yCam * sinP;
+    final double yPitch = xCam * sinP + yCam * cosP;
+    final double zPitch = zCam;
 
-    final double distanceRatio = 1.0 + camera.altitude / 6378137.0;
-    final double distancePixels = sphereRadius * distanceRatio;
-    final double denom = distancePixels - xFinal;
-    final double pScale = denom <= 0.0 ? 1.0 : distancePixels / denom;
+    // 5. Apply camera heading (rotation around optical axis)
+    final double H = camera.heading * math.pi / 180.0;
+    final double cosH = math.cos(H);
+    final double sinH = math.sin(H);
+    final double xFinal = xPitch;
+    final double yFinal = yPitch * cosH - zPitch * sinH;
+    final double zFinal = yPitch * sinH + zPitch * cosH;
 
-    final double rx = zFinal * pScale * cosH - yFinal * pScale * sinH;
-    final double ry = zFinal * pScale * sinH + yFinal * pScale * cosH;
+    // 6. Perspective projection
+    final double depth = -xFinal;
+    final double pScale = depth <= 0.0 ? 1.0 : distancePixels / depth;
 
-    return ProjectedPoint(Offset(center.dx + rx, center.dy - ry), xFinal);
+    final double rx = zFinal * pScale;
+    final double ry = yFinal * pScale;
+
+    return ProjectedPoint(Offset(center.dx + rx, center.dy - ry), depth);
   }
 
   // Convert degrees to radians
