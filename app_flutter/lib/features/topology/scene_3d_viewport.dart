@@ -47,6 +47,7 @@ class _Scene3DViewportState extends State<Scene3DViewport> {
 
   bool _shiftHeld = false;
   bool _ctrlHeld = false;
+  bool _rightButtonDown = false;
 
   // Interactive configurations
   String _activeStyle = 'Satellite Map';
@@ -282,7 +283,9 @@ class _Scene3DViewportState extends State<Scene3DViewport> {
         if (delta.distance <= 2.0) return;
         if (details.scale == 1.0) {
           setState(() {
-            if (_shiftHeld) {
+            if (_rightButtonDown) {
+              _cameraController.tilt(delta);
+            } else if (_shiftHeld) {
               _cameraController.tilt(delta);
             } else if (_ctrlHeld) {
               _cameraController.rotateHeading(delta);
@@ -320,6 +323,17 @@ class _Scene3DViewportState extends State<Scene3DViewport> {
             // Background & 3D Globe custom paint
             Positioned.fill(
               child: Listener(
+                onPointerDown: (event) {
+                  if (event.buttons & kSecondaryMouseButton != 0) {
+                    _rightButtonDown = true;
+                  }
+                },
+                onPointerUp: (event) {
+                  _rightButtonDown = false;
+                },
+                onPointerCancel: (event) {
+                  _rightButtonDown = false;
+                },
                 onPointerSignal: (event) {
                   if (event is PointerScrollEvent) {
                     setState(() {
