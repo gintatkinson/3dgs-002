@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:integration_test/integration_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
@@ -12,9 +13,127 @@ import 'package:app_flutter/core/theme/text_scaler.dart';
 import 'package:app_flutter/core/string_resources.dart';
 import 'package:app_flutter/domain/data_source.dart';
 import 'package:app_flutter/domain/data_sources/sqlite_data_source.dart';
-import 'package:app_flutter/domain/database_initializer.dart';
 import 'package:app_flutter/domain/cesium_3d/camera_controller.dart';
 import 'package:app_flutter/features/topology/scene_3d_viewport.dart';
+
+Future<Database> createTestDatabase() async {
+  sqfliteFfiInit();
+  databaseFactory = databaseFactoryFfi;
+  final db = await databaseFactory.openDatabase(inMemoryDatabasePath);
+  await db.execute('PRAGMA foreign_keys = ON;');
+
+  await db.execute('CREATE TABLE properties (node_id TEXT PRIMARY KEY, data_json TEXT NOT NULL)');
+  await db.execute('CREATE TABLE instances (id TEXT PRIMARY KEY, parent_node_id TEXT NOT NULL, type_name TEXT NOT NULL, data_json TEXT NOT NULL)');
+  await db.execute('CREATE TABLE type_definitions (type_name TEXT PRIMARY KEY, display_name TEXT NOT NULL, icon_name TEXT NOT NULL DEFAULT "insert_drive_file")');
+  await db.execute('''
+    CREATE TABLE type_attributes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type_name TEXT NOT NULL REFERENCES type_definitions(type_name),
+      attr_key TEXT NOT NULL,
+      label TEXT NOT NULL,
+      attr_type TEXT NOT NULL,
+      section_label TEXT,
+      section_order INTEGER NOT NULL DEFAULT 0,
+      is_required INTEGER NOT NULL DEFAULT 0,
+      min_value REAL,
+      max_value REAL,
+      pattern TEXT,
+      enum_options TEXT,
+      enum_display_names TEXT,
+      default_value TEXT,
+      input_formatters TEXT,
+      UNIQUE(type_name, attr_key)
+    )
+  ''');
+  await db.execute('''
+    CREATE TABLE type_relations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      parent_type_name TEXT NOT NULL REFERENCES type_definitions(type_name),
+      relation_name TEXT NOT NULL,
+      child_type_name TEXT NOT NULL REFERENCES type_definitions(type_name),
+      child_label TEXT NOT NULL,
+      UNIQUE(parent_type_name, child_type_name)
+    )
+  ''');
+
+  final batch = db.batch();
+
+  final masters = ['Master_1', 'Master_2', 'Master_3'];
+  for (final m in masters) {
+    batch.insert('type_definitions', {
+      'type_name': m,
+      'display_name': m.replaceAll('_', ' '),
+      'icon_name': 'insert_drive_file',
+    });
+  }
+
+  final details = ['Detail_A', 'Detail_B', 'Detail_C'];
+  for (final d in details) {
+    batch.insert('type_definitions', {
+      'type_name': d,
+      'display_name': d.replaceAll('_', ' '),
+      'icon_name': 'widgets',
+    });
+  }
+
+  for (final m in masters) {
+    for (final d in details) {
+      batch.insert('type_relations', {
+        'parent_type_name': m,
+        'relation_name': 'contains',
+        'child_type_name': d,
+        'child_label': d.replaceAll('_', ' '),
+      });
+    }
+  }
+
+  final allTypes = [...masters, ...details];
+  for (final t in allTypes) {
+    for (int i = 1; i <= 3; i++) {
+      batch.insert('type_attributes', {
+        'type_name': t,
+        'attr_key': 'field_$i',
+        'label': 'Field $i',
+        'attr_type': 'string',
+        'section_label': 'General',
+        'section_order': 0,
+        'is_required': 0,
+      });
+    }
+  }
+
+  for (final m in masters) {
+    batch.insert('properties', {
+      'node_id': m,
+      'data_json': jsonEncode({
+        'field_1': 'val_${m}_field_1',
+        'field_2': 'val_${m}_field_2',
+        'field_3': 'val_${m}_field_3',
+      }),
+    });
+  }
+
+  for (final m in masters) {
+    for (final d in details) {
+      for (int k = 1; k <= 2; k++) {
+        final instId = 'inst_${m}_${d}_$k';
+        batch.insert('instances', {
+          'id': instId,
+          'parent_node_id': m,
+          'type_name': d,
+          'data_json': jsonEncode({
+            'field_1': 'val_inst_${m}_${d}_${k}_field_1',
+            'field_2': 'val_inst_${m}_${d}_${k}_field_2',
+            'field_3': 'val_inst_${m}_${d}_${k}_field_3',
+          }),
+        });
+      }
+    }
+  }
+
+  await batch.commit(noResult: true);
+  return db;
+}
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -32,7 +151,7 @@ void main() {
 
     await StringResources.load();
 
-    final db = await DatabaseInitializer.create(dbPath: inMemoryDatabasePath, seed: true);
+    final db = await createTestDatabase();
     addTearDown(() async {
       await db.close();
     });
@@ -103,10 +222,10 @@ void main() {
     expect(initialLongitude, greaterThan(0), reason: 'Initial longitude should be positive');
 
     // Drag left on the globe
-    final viewport = find.byKey(const Key('scene_3d_viewport_container'));
-    await tester.ensureVisible(viewport);
+    final customPaint = find.byType(CustomPaint).first;
+    await tester.ensureVisible(customPaint);
     await tester.pump();
-    await tester.drag(viewport, const Offset(-200, 0));
+    await tester.drag(customPaint, const Offset(-200, 0));
     await settle(tester);
 
     final double newLongitude = controller.current.longitude;
