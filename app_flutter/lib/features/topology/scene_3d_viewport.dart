@@ -396,7 +396,7 @@ class Scene3DViewportState extends State<Scene3DViewport> {
 
   @override
   Widget build(BuildContext context) {
-    final zoomScale = 500.0 / _cameraController.current.altitude;
+    final zoomScale = 6378137.0 / _cameraController.current.altitude;
     return Focus(
       focusNode: _globeFocusNode,
       autofocus: true,

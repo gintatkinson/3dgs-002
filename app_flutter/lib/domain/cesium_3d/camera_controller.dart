@@ -99,7 +99,7 @@ class CameraController extends ChangeNotifier {
   }
 
   void pan(Offset delta, [double shortestSide = 800.0]) {
-    final double factor = _camera.altitude * 0.358 / shortestSide;
+    final double factor = _camera.altitude * 2.8074e-5 / shortestSide;
     final newLat = (_camera.latitude - delta.dy * factor).clamp(-90.0, 90.0);
     final newLng = _wrapLng(_camera.longitude - delta.dx * factor);
     _camera = VirtualCamera.clamped(

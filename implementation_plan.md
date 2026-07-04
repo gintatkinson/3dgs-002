@@ -401,6 +401,111 @@ This phase documents the changes to implement 100% reliable pan/tilt/rotation ge
   cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
   ```
 
+## Phase 7: Correct Earth Scale and Update Panning Formula
 
+This phase documents the correction of the Earth scale and panning formula to keep tracking 1-to-1.
 
+### Core App Code
+
+#### [MODIFY] [scene_3d_viewport.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/scene_3d_viewport.dart)
+- Update `zoomScale` (around line 399) to map the camera's altitude to physical Earth dimensions using the Earth's radius (`6378137.0` meters) as the baseline scale:
+  - Target:
+    ```dart
+        final zoomScale = 500.0 / _cameraController.current.altitude;
+    ```
+  - Replacement:
+    ```dart
+        final zoomScale = 6378137.0 / _cameraController.current.altitude;
+    ```
+
+#### [MODIFY] [camera_controller.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/cesium_3d/camera_controller.dart)
+- Update `CameraController.pan` signature and body to use the updated panning scaling factor based on the corrected Earth scale, keeping the default value for the second parameter to maintain backwards compatibility with existing tests:
+  - Target:
+    ```dart
+      void pan(Offset delta, [double shortestSide = 800.0]) {
+        final double factor = _camera.altitude * 0.358 / shortestSide;
+        final newLat = (_camera.latitude - delta.dy * factor).clamp(-90.0, 90.0);
+        final newLng = _wrapLng(_camera.longitude - delta.dx * factor);
+    ```
+  - Replacement:
+    ```dart
+      void pan(Offset delta, [double shortestSide = 800.0]) {
+        final double factor = _camera.altitude * 2.8074e-5 / shortestSide;
+        final newLat = (_camera.latitude - delta.dy * factor).clamp(-90.0, 90.0);
+        final newLng = _wrapLng(_camera.longitude - delta.dx * factor);
+    ```
+
+### Unit Tests
+
+#### [MODIFY] [camera_controller_test.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/cesium_3d/camera_controller_test.dart)
+- Update pan scaling assertions and parameters to match the corrected 1-to-1 physical Earth scale factor:
+  - Target:
+    ```dart
+        test('pan with pixel-accurate precision', () {
+          final c = CameraController(_makeCam(lat: 0.0, lng: 0.0));
+          c.pan(const Offset(100, 100));
+          expect(c.current.longitude, closeTo(-22.375, 0.01));
+          expect(c.current.latitude, closeTo(-22.375, 0.01));
+        });
+
+        test('pan clamps latitude to [-90, 90]', () {
+          final c = CameraController(_makeCam(lat: 85.0));
+          c.pan(const Offset(0, -100));
+          expect(c.current.latitude, equals(90.0));
+        });
+
+        test('pan wraps longitude past 180', () {
+          final c = CameraController(_makeCam(lng: 175.0));
+          c.pan(const Offset(-100, 0));
+          expect(c.current.longitude, lessThan(-160.0));
+        });
+    ```
+  - Replacement:
+    ```dart
+        test('pan with pixel-accurate precision', () {
+          final c = CameraController(_makeCam(lat: 0.0, lng: 0.0));
+          c.pan(const Offset(100, 100));
+          expect(c.current.longitude, closeTo(-0.00175, 0.0001));
+          expect(c.current.latitude, closeTo(-0.00175, 0.0001));
+        });
+
+        test('pan clamps latitude to [-90, 90]', () {
+          final c = CameraController(_makeCam(lat: 85.0));
+          c.pan(const Offset(0, -1000000.0));
+          expect(c.current.latitude, equals(90.0));
+        });
+
+        test('pan wraps longitude past 180', () {
+          final c = CameraController(_makeCam(lng: 175.0));
+          c.pan(const Offset(-1000000.0, 0));
+          expect(c.current.longitude, lessThan(-160.0));
+        });
+    ```
+  - Target:
+    ```dart
+        test('longitude wraps around -180/+180 boundary', () {
+          final c = CameraController(_makeCam(lng: -175));
+          c.pan(const Offset(100, 0));
+          expect(c.current.longitude, lessThan(180));
+          expect(c.current.longitude, greaterThan(155));
+        });
+    ```
+  - Replacement:
+    ```dart
+        test('longitude wraps around -180/+180 boundary', () {
+          final c = CameraController(_makeCam(lng: -175));
+          c.pan(const Offset(1000000.0, 0));
+          expect(c.current.longitude, lessThan(180));
+          expect(c.current.longitude, greaterThan(155));
+        });
+    ```
+
+## Phase 7 Verification Plan
+
+### Automated Tests
+- Run the unit and integration tests:
+  ```bash
+  cd app_flutter && flutter test test/cesium_3d/camera_controller_test.dart
+  cd app_flutter && flutter test integration_test/globe_camera_drag_test.dart -d macos
+  ```
 
