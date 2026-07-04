@@ -28,3 +28,33 @@ This plan details the changes required to resolve database test mode detection a
   ```bash
   cd app_flutter && flutter test integration_test/node_iteration_test.dart -d macos
   ```
+
+## Phase 2: Visual Globe Camera Rotation Bug Simulation
+
+This phase documents the temporary changes to simulate the camera rotation visual bug and verify the visual test failure.
+
+### Core App Code
+
+#### [MODIFY] [scene_3d_viewport.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/scene_3d_viewport.dart)
+- Temporarily disable heading in the project calculation to force a RED score in the visual test.
+  - Target:
+    ```dart
+    final double radHeading = camera.heading * math.pi / 180.0;
+    final double cosH = math.cos(radHeading);
+    final double sinH = math.sin(radHeading);
+    ```
+  - Replacement:
+    ```dart
+    final double radHeading = 0.0; // TEMPORARILY DISABLED HEADING FOR RED STATE DEMO
+    final double cosH = math.cos(radHeading);
+    final double sinH = math.sin(radHeading);
+    ```
+
+## Phase 2 Verification Plan
+
+### Automated Tests
+- Run the visual globe camera rotation integration test:
+  ```bash
+  cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
+  ```
+
