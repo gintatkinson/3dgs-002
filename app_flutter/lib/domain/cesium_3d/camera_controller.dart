@@ -1,8 +1,13 @@
+import 'dart:math' as math;
 import 'dart:ui';
 import 'virtual_camera.dart';
 
 class CameraController {
   VirtualCamera _camera;
+
+  VirtualCamera? _startCamera;
+  VirtualCamera? _targetCamera;
+  DateTime _animationStart = DateTime(0);
 
   static const double dragSensitivity = 0.15;
   static const double scrollSensitivity = 0.5;
@@ -16,8 +21,75 @@ class CameraController {
 
   VirtualCamera get current => _camera;
 
+  bool get isFlying => _targetCamera != null;
+
   void updateCamera(VirtualCamera camera) {
     _camera = camera;
+    _targetCamera = null;
+    _startCamera = null;
+  }
+
+  void flyTo(VirtualCamera target) {
+    _startCamera = _camera;
+    _targetCamera = target;
+    _animationStart = DateTime.now();
+  }
+
+  bool tick() {
+    if (_startCamera == null || _targetCamera == null) return true;
+    final elapsed = DateTime.now().difference(_animationStart);
+    final duration = const Duration(milliseconds: 500);
+    final progress =
+        (elapsed.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
+    final t = _easeInOutCubic(progress);
+    _camera = _lerpCamera(_startCamera!, _targetCamera!, t);
+    if (progress >= 1.0) {
+      _camera = _targetCamera!;
+      _startCamera = null;
+      _targetCamera = null;
+      return true;
+    }
+    return false;
+  }
+
+  static double _easeInOutCubic(double t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - math.pow(-2 * t + 2, 3) / 2;
+  }
+
+  static VirtualCamera _lerpCamera(VirtualCamera a, VirtualCamera b, double t) {
+    double lerpLng(double from, double to) {
+      double diff = to - from;
+      if (diff > 180) diff -= 360;
+      if (diff < -180) diff += 360;
+      return _wrapLngStatic(from + diff * t);
+    }
+    double lerpHeading(double from, double to) {
+      double diff = to - from;
+      if (diff > 180) diff -= 360;
+      if (diff < -180) diff += 360;
+      return _wrapHeadingStatic(from + diff * t);
+    }
+
+    return VirtualCamera.clamped(
+      latitude: a.latitude + (b.latitude - a.latitude) * t,
+      longitude: lerpLng(a.longitude, b.longitude),
+      altitude: a.altitude + (b.altitude - a.altitude) * t,
+      heading: lerpHeading(a.heading, b.heading),
+      pitch: a.pitch + (b.pitch - a.pitch) * t,
+      roll: a.roll + (b.roll - a.roll) * t,
+    );
+  }
+
+  static double _wrapLngStatic(double lng) {
+    while (lng > 180) lng -= 360;
+    while (lng < -180) lng += 360;
+    return lng;
+  }
+
+  static double _wrapHeadingStatic(double heading) {
+    while (heading > 360) heading -= 360;
+    while (heading < 0) heading += 360;
+    return heading;
   }
 
   void pan(Offset delta) {

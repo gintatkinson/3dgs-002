@@ -30,6 +30,47 @@ void main() {
       expect(cam.latitude, greaterThan(35.0));
     });
 
+    test('pan left (negative dx) decreases longitude', () {
+      final c = CameraController(_makeCam(lng: 135.0));
+      final before = c.current.longitude;
+      c.pan(const Offset(-200, 0));
+      final after = c.current;
+      expect(after.longitude, lessThan(before));
+      expect(after.latitude, equals(35.0));
+      expect(after.altitude, equals(500.0));
+      expect(after.pitch, equals(0.0));
+      expect(after.heading, equals(0.0));
+    });
+
+    test('pan up (positive dy) increases latitude', () {
+      final c = CameraController(_makeCam(lat: 35.0));
+      final before = c.current.latitude;
+      c.pan(const Offset(0, 100));
+      final after = c.current;
+      expect(after.latitude, greaterThan(before));
+      expect(after.longitude, equals(135.0));
+      expect(after.altitude, equals(500.0));
+    });
+
+    test('pan with dragSensitivity precision', () {
+      final c = CameraController(_makeCam(lat: 0.0, lng: 0.0));
+      c.pan(const Offset(100, 100));
+      expect(c.current.longitude, closeTo(15.0, 0.01));
+      expect(c.current.latitude, closeTo(15.0, 0.01));
+    });
+
+    test('pan clamps latitude to [-90, 90]', () {
+      final c = CameraController(_makeCam(lat: 85.0));
+      c.pan(const Offset(0, 100));
+      expect(c.current.latitude, equals(90.0));
+    });
+
+    test('pan wraps longitude past 180', () {
+      final c = CameraController(_makeCam(lng: 175.0));
+      c.pan(const Offset(100, 0));
+      expect(c.current.longitude, lessThan(-165.0));
+    });
+
     test('tilt changes pitch/heading, not lat/lng', () {
       final c = CameraController(_makeCam(pitch: -45));
       final before = c.current;
@@ -114,6 +155,57 @@ void main() {
       final c = CameraController(_makeCam());
       c.zoom(1000000000);
       expect(c.current.altitude, equals(CameraController.maxAltitude));
+    });
+
+    group('Scroll zoom behavior', () {
+      test('negative delta decreases altitude (scroll up = zoom in)', () {
+        final c = CameraController(_makeCam(alt: 500000));
+        c.zoom(-100);
+        expect(c.current.altitude, lessThan(500000));
+      });
+
+      test('positive delta increases altitude (scroll down = zoom out)', () {
+        final c = CameraController(_makeCam(alt: 500000));
+        c.zoom(100);
+        expect(c.current.altitude, greaterThan(500000));
+      });
+
+      test('zoom respects scrollSensitivity', () {
+        final c = CameraController(_makeCam(alt: 500000));
+        c.zoom(-1);
+        expect(c.current.altitude, closeTo(500000 - CameraController.scrollSensitivity, 0.01));
+        c.zoom(1);
+        expect(c.current.altitude, closeTo(500000, 0.01));
+      });
+
+      test('zoom does not affect lat/lng/pitch/heading', () {
+        final c = CameraController(_makeCam(lat: 35, lng: 135, pitch: -45, heading: 90));
+        final before = c.current;
+        c.zoom(-200);
+        final after = c.current;
+        expect(after.latitude, equals(before.latitude));
+        expect(after.longitude, equals(before.longitude));
+        expect(after.pitch, equals(before.pitch));
+        expect(after.heading, equals(before.heading));
+      });
+
+      test('small scroll delta produces visible altitude change', () {
+        final c = CameraController(_makeCam(alt: 500000));
+        c.zoom(-10);
+        expect(c.current.altitude, closeTo(500000 - 5.0, 0.01));
+      });
+
+      test('scroll up from minAltitude stays at minAltitude', () {
+        final c = CameraController(_makeCam(alt: CameraController.minAltitude));
+        c.zoom(-1);
+        expect(c.current.altitude, equals(CameraController.minAltitude));
+      });
+
+      test('scroll down from maxAltitude stays at maxAltitude', () {
+        final c = CameraController(_makeCam(alt: CameraController.maxAltitude));
+        c.zoom(1);
+        expect(c.current.altitude, equals(CameraController.maxAltitude));
+      });
     });
   });
 

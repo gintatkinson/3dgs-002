@@ -1,5 +1,6 @@
 // ignore_for_file: public_member_api_docs
 
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -59,6 +60,7 @@ class _Scene3DViewportState extends State<Scene3DViewport> {
   bool _showDropLines = true;
 
   GlobeTileRenderer? _tileRenderer;
+  Timer? _flyTimer;
 
   ImageryProvider _providerForStyle(String style) {
     switch (style) {
@@ -104,6 +106,7 @@ class _Scene3DViewportState extends State<Scene3DViewport> {
 
   @override
   void dispose() {
+    _flyTimer?.cancel();
     _globeFocusNode.dispose();
     super.dispose();
   }
@@ -301,20 +304,29 @@ class _Scene3DViewportState extends State<Scene3DViewport> {
           });
         }
       },
-      onDoubleTap: () {
-        final targetAlt = (_cameraController.current.altitude * 0.5).clamp(
+      onDoubleTapDown: (details) {
+        final current = _cameraController.current;
+        final targetAlt = (current.altitude * 0.5).clamp(
           CameraController.minAltitude,
           CameraController.maxAltitude,
         );
-        setState(() {
-          _cameraController.updateCamera(VirtualCamera.clamped(
-            latitude: _cameraController.current.latitude,
-            longitude: _cameraController.current.longitude,
-            altitude: targetAlt,
-            heading: _cameraController.current.heading,
-            pitch: _cameraController.current.pitch,
-            roll: _cameraController.current.roll,
-          ));
+        _cameraController.flyTo(VirtualCamera.clamped(
+          latitude: current.latitude,
+          longitude: current.longitude,
+          altitude: targetAlt,
+          heading: current.heading,
+          pitch: current.pitch,
+          roll: current.roll,
+        ));
+
+        _flyTimer?.cancel();
+        _flyTimer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
+          final done = _cameraController.tick();
+          if (done) {
+            timer.cancel();
+            _flyTimer = null;
+          }
+          if (mounted) setState(() {});
         });
       },
       child: Stack(
