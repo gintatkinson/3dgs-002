@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/gestures.dart';
 import 'package:app_flutter/domain/cesium_3d/cesium_engine.dart';
 import 'package:app_flutter/domain/cesium_3d/globe_tile_renderer.dart';
 import 'package:app_flutter/domain/cesium_3d/projected_point.dart';
@@ -318,26 +319,35 @@ class _Scene3DViewportState extends State<Scene3DViewport> {
       children: [
             // Background & 3D Globe custom paint
             Positioned.fill(
-              child: Focus(
-                focusNode: _globeFocusNode,
-                autofocus: true,
-                onKeyEvent: _handleKeyEvent,
-                child: CustomPaint(
-                  painter: Scene3DViewportPainter(
-                    camera: _cameraController.current,
-                    activeStyle: _activeStyle,
-                    astronomicalBody: _astronomicalBody,
-                    elevationActive: _elevationActive,
-                    showDevices: _showDevices,
-                    showLinks: _showLinks,
-                    showLabels: _showLabels,
-                    showDropLines: _showDropLines,
-                    topologyData: widget.topologyData,
-                    userRotationX: 0.0,
-                    userTilt: 0.0,
-                    zoomScale: zoomScale,
-                    tileRenderer: _tileRenderer,
-                    imageryProvider: _providerForStyle(_activeStyle),
+              child: Listener(
+                onPointerSignal: (event) {
+                  if (event is PointerScrollEvent) {
+                    setState(() {
+                      _cameraController.zoom(event.scrollDelta.dy);
+                    });
+                  }
+                },
+                child: Focus(
+                  focusNode: _globeFocusNode,
+                  autofocus: true,
+                  onKeyEvent: _handleKeyEvent,
+                  child: CustomPaint(
+                    painter: Scene3DViewportPainter(
+                      camera: _cameraController.current,
+                      activeStyle: _activeStyle,
+                      astronomicalBody: _astronomicalBody,
+                      elevationActive: _elevationActive,
+                      showDevices: _showDevices,
+                      showLinks: _showLinks,
+                      showLabels: _showLabels,
+                      showDropLines: _showDropLines,
+                      topologyData: widget.topologyData,
+                      userRotationX: 0.0,
+                      userTilt: 0.0,
+                      zoomScale: zoomScale,
+                      tileRenderer: _tileRenderer,
+                      imageryProvider: _providerForStyle(_activeStyle),
+                    ),
                   ),
                 ),
               ),
