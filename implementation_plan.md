@@ -856,3 +856,26 @@ This phase documents the changes required to fix coordinate projection culling v
   ```
 
 
+## Phase 15: Clean Orthographic Projection Reversion
+
+This phase details the changes required to revert 3D projection formulas and background sphere rendering to use clean Orthographic (Parallel) Projection, resolving shape distortions and aligning the background sphere perfectly with the map tiles.
+
+### Core App Code
+
+#### [MODIFY] [scene_3d_viewport.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/scene_3d_viewport.dart)
+- Update `Scene3DViewportPainter.project` to implement orthographic projection (no perspective division) and simple front-hemisphere culling.
+- In `Scene3DViewportPainter.paint`, revert the background sphere, corona, atmosphere glows, and Proxima Centauri flares to use the static `center` and `sphereRadius` coordinates directly.
+- Update `getProjectedPosition` to use the correct `6378137.0 / camera.altitude` zoomScale formula.
+
+## Phase 15 Verification Plan
+
+### Automated Tests
+- Run the unit and integration tests to verify correctness:
+  ```bash
+  cd app_flutter && flutter test test/cesium_3d/
+  cd app_flutter && flutter test integration_test/globe_camera_drag_test.dart -d macos
+  cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
+  ```
+
+
+

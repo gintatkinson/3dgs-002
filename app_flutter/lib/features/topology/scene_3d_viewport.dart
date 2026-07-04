@@ -57,7 +57,7 @@ class Scene3DViewportState extends State<Scene3DViewport> {
     if (size == null) return Offset.zero;
 
     final camera = _cameraController.current;
-    final double zoomScale = 500.0 / camera.altitude;
+    final double zoomScale = 6378137.0 / camera.altitude;
     final double sphereRadius = size.shortestSide * 0.32 * zoomScale;
     final Offset center = Offset(size.width * 0.45, size.height * 0.5);
 
@@ -934,24 +934,15 @@ class Scene3DViewportPainter extends CustomPainter {
     final double yRot = x1 * sinX + y1 * cosX;
     final double zRot = z1;
 
-    // Horizon culling check: is the point blocked by the Earth's sphere?
-    final double distancePixels = sphereRadius * (1.0 + camera.altitude / 6378137.0);
-    final double horizonLimit = sphereRadius * (sphereRadius / distancePixels);
-
-    // 3. Translate along camera line of sight (camera is at distance D)
-    final double xCam = xRot - distancePixels;
-    final double yCam = yRot;
-    final double zCam = zRot;
-
-    // 4. Apply camera pitch (tilt around local East horizontal axis)
+    // 3. Apply camera pitch (tilt around local East horizontal axis)
     final double P = (camera.pitch + 45.0) * math.pi / 180.0;
     final double cosP = math.cos(P);
     final double sinP = math.sin(P);
-    final double xPitch = xCam * cosP - yCam * sinP;
-    final double yPitch = xCam * sinP + yCam * cosP;
-    final double zPitch = zCam;
+    final double xPitch = xRot * cosP - yRot * sinP;
+    final double yPitch = xRot * sinP + yRot * cosP;
+    final double zPitch = zRot;
 
-    // 5. Apply camera heading (rotation around optical axis)
+    // 4. Apply camera heading (rotation around optical axis)
     final double H = camera.heading * math.pi / 180.0;
     final double cosH = math.cos(H);
     final double sinH = math.sin(H);
@@ -959,13 +950,12 @@ class Scene3DViewportPainter extends CustomPainter {
     final double yFinal = yPitch * cosH - zPitch * sinH;
     final double zFinal = yPitch * sinH + zPitch * cosH;
 
-    // 6. Perspective projection
-    final double depth = -xFinal;
-    final double depthVal = xRot < horizonLimit ? -1.0 : depth;
-    final double pScale = depth <= 0.0 ? 1.0 : distancePixels / depth;
+    // Culling check: front hemisphere contains points where xRot >= 0.0
+    final double depthVal = xRot < 0.0 ? -1.0 : xFinal;
 
-    final double rx = zFinal * pScale;
-    final double ry = yFinal * pScale;
+    // Orthographic projection (directly map 3D to 2D):
+    final double rx = zFinal;
+    final double ry = yFinal;
 
     return ProjectedPoint(Offset(center.dx + rx, center.dy - ry), depthVal);
   }
@@ -979,23 +969,9 @@ class Scene3DViewportPainter extends CustomPainter {
     // Shift center to the left to give space to the config overlay sidebar
     final Offset center = Offset(size.width * 0.45, size.height * 0.5);
 
-    // Calculate perspective-projected center and radius of the Earth sphere dynamically
-    final double P = (camera.pitch + 45.0) * math.pi / 180.0;
-    final double H = camera.heading * math.pi / 180.0;
-    final double cosP = math.cos(P);
-    final double sinP = math.sin(P);
-    final double cosH = math.cos(H);
-    final double sinH = math.sin(H);
-
-    final double distanceRatio = 1.0 + camera.altitude / 6378137.0;
-    final double distancePixels = sphereRadius * distanceRatio;
-
-    final double rx = -distancePixels * math.tan(P) * sinH;
-    final double ry = -distancePixels * math.tan(P) * cosH;
-    final Offset projectedCenter = Offset(center.dx + rx, center.dy - ry);
-
-    final double radDiff = distancePixels * distancePixels - sphereRadius * sphereRadius;
-    final double projectedRadius = sphereRadius * distancePixels / math.sqrt(radDiff <= 0.0 ? 1.0 : radDiff);
+    // In orthographic projection, the sphere silhouette is static at screen center and sphereRadius
+    final Offset projectedCenter = center;
+    final double projectedRadius = sphereRadius;
 
     // 1. Draw Starry Space Background (~100 stars)
     final math.Random rand = math.Random(42);
