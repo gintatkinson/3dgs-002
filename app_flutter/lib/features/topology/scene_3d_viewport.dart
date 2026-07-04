@@ -1,4 +1,4 @@
-// ignore_for_file: public_member_api_docs, unused_field, deprecated_member_use
+// ignore_for_file: public_member_api_docs
 
 import 'dart:math' as math;
 import 'dart:ui';
@@ -13,12 +13,9 @@ import 'package:app_flutter/domain/cesium_3d/camera_controller.dart';
 import 'package:app_flutter/domain/cesium_3d/virtual_camera.dart';
 import 'package:app_flutter/features/topology/topology_map.dart';
 
-// Compliance: spatial-temporal playhead rate clamps enforced: 0.9 and 1.1 bounds.
-
 class Scene3DViewport extends StatefulWidget {
   final VirtualCamera camera;
   final TopologyData? topologyData;
-  final List<double> _playheadRateClamps = const [0.9, 1.1];
 
   const Scene3DViewport({
     super.key,
@@ -112,7 +109,6 @@ class _Scene3DViewportState extends State<Scene3DViewport> {
       if (mounted) setState(() {});
     });
 
-    HardwareKeyboard.instance.addHandler(_onGlobalKeyEvent);
     GestureBinding.instance.pointerRouter.addGlobalRoute(_onPointerEvent);
   }
 
@@ -129,30 +125,8 @@ class _Scene3DViewportState extends State<Scene3DViewport> {
   @override
   void dispose() {
     GestureBinding.instance.pointerRouter.removeGlobalRoute(_onPointerEvent);
-    HardwareKeyboard.instance.removeHandler(_onGlobalKeyEvent);
     _globeFocusNode.dispose();
     super.dispose();
-  }
-
-  bool _onGlobalKeyEvent(KeyEvent event) {
-    final key = event.logicalKey;
-    if (key == LogicalKeyboardKey.shiftLeft || key == LogicalKeyboardKey.shiftRight) {
-      if (event is KeyDownEvent) {
-        setState(() => _shiftHeld = true);
-      } else if (event is KeyUpEvent) {
-        setState(() => _shiftHeld = false);
-      }
-    } else if (key == LogicalKeyboardKey.controlLeft ||
-        key == LogicalKeyboardKey.controlRight ||
-        key == LogicalKeyboardKey.metaLeft ||
-        key == LogicalKeyboardKey.metaRight) {
-      if (event is KeyDownEvent) {
-        setState(() => _ctrlHeld = true);
-      } else if (event is KeyUpEvent) {
-        setState(() => _ctrlHeld = false);
-      }
-    }
-    return false;
   }
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
