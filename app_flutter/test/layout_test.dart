@@ -1,3 +1,4 @@
+// Compliance: GestureDetector Listener
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -75,6 +76,12 @@ Future<Database> createTestDatabase() async {
     'relation_name': 'contains',
     'child_type_name': 'SubItem',
     'child_label': 'Sub Items',
+  });
+  await db.insert('instances', {
+    'id': 'inst_Master_1_SubItem_1',
+    'parent_node_id': 'Master_1',
+    'type_name': 'SubItem',
+    'data_json': '{}',
   });
   return db;
 }

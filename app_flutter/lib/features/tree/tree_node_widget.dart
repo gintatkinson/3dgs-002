@@ -63,50 +63,62 @@ class TreeNodeWidget extends StatelessWidget {
         Material(
           key: nodeKeyValue,
           type: MaterialType.transparency,
-          child: ListTile(
-            key: Key('node_${node.id}'),
-            dense: true,
-            selected: isSelected,
-            selectedTileColor: brandPrimary.withValues(alpha: 0.12),
-            leading: Icon(
-              icon,
-              size: 16,
-              color: isSelected
-                  ? brandPrimary
-                  : Theme.of(context).iconTheme.color?.withValues(alpha: 0.7),
+          child: Ink(
+            color: isSelected ? brandPrimary.withValues(alpha: 0.12) : null,
+            child: InkWell(
+              key: Key('node_${node.id}'),
+              onTap: () {
+                final viewModel = context.read<TreeViewModel>();
+                viewModel.selectView(node.id);
+                viewModel.focusNode.requestFocus();
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                child: Row(
+                  children: [
+                    Icon(
+                      icon,
+                      size: 16,
+                      color: isSelected
+                          ? brandPrimary
+                          : Theme.of(context).iconTheme.color?.withValues(alpha: 0.7),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        node.label,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (isParent) ...[
+                      const SizedBox(width: 4),
+                      isLoading
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1.5,
+                              ),
+                            )
+                          : InkWell(
+                              key: Key('toggle_${node.id}'),
+                              onTap: () {
+                                context.read<TreeViewModel>().toggleExpand(node.id);
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(2.0),
+                                child: Text(
+                                  isExpanded ? '−' : '+',
+                                  style: Theme.of(context).textTheme.labelLarge,
+                                ),
+                              ),
+                            ),
+                    ],
+                  ],
+                ),
+              ),
             ),
-            title: Text(
-              node.label,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            trailing: isParent
-                ? isLoading
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : InkWell(
-                        key: Key('toggle_${node.id}'),
-                        onTap: () {
-                          context.read<TreeViewModel>().toggleExpand(node.id);
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(4.0),
-                          child: Text(
-                            isExpanded ? '−' : '+',
-                            style: Theme.of(context).textTheme.labelLarge,
-                          ),
-                        ),
-                      )
-                : null,
-            onTap: () {
-              final viewModel = context.read<TreeViewModel>();
-              viewModel.selectView(node.id);
-              viewModel.focusNode.requestFocus();
-            },
           ),
         ),
         if (isParent && isExpanded && !isLoading)

@@ -1,0 +1,34 @@
+{
+	"InstallScripts" : 
+	[
+		"/Users/perkunas/jail/3dgs-002/build/cmake_install.cmake",
+		"/Users/perkunas/jail/3dgs-002/build/cesium-native/cmake_install.cmake",
+		"/Users/perkunas/jail/3dgs-002/build/cesium-native/extern/cmake_install.cmake",
+		"/Users/perkunas/jail/3dgs-002/build/cesium-native/CesiumUtility/cmake_install.cmake",
+		"/Users/perkunas/jail/3dgs-002/build/cesium-native/CesiumGltf/cmake_install.cmake",
+		"/Users/perkunas/jail/3dgs-002/build/cesium-native/CesiumGeometry/cmake_install.cmake",
+		"/Users/perkunas/jail/3dgs-002/build/cesium-native/CesiumGeospatial/cmake_install.cmake",
+		"/Users/perkunas/jail/3dgs-002/build/cesium-native/CesiumJsonReader/cmake_install.cmake",
+		"/Users/perkunas/jail/3dgs-002/build/cesium-native/CesiumJsonWriter/cmake_install.cmake",
+		"/Users/perkunas/jail/3dgs-002/build/cesium-native/CesiumGltfContent/cmake_install.cmake",
+		"/Users/perkunas/jail/3dgs-002/build/cesium-native/CesiumGltfReader/cmake_install.cmake",
+		"/Users/perkunas/jail/3dgs-002/build/cesium-native/CesiumGltfWriter/cmake_install.cmake",
+		"/Users/perkunas/jail/3dgs-002/build/cesium-native/CesiumAsync/cmake_install.cmake",
+		"/Users/perkunas/jail/3dgs-002/build/cesium-native/Cesium3DTiles/cmake_install.cmake",
+		"/Users/perkunas/jail/3dgs-002/build/cesium-native/Cesium3DTilesReader/cmake_install.cmake",
+		"/Users/perkunas/jail/3dgs-002/build/cesium-native/Cesium3DTilesWriter/cmake_install.cmake",
+		"/Users/perkunas/jail/3dgs-002/build/cesium-native/Cesium3DTilesContent/cmake_install.cmake",
+		"/Users/perkunas/jail/3dgs-002/build/cesium-native/CesiumRasterOverlays/cmake_install.cmake",
+		"/Users/perkunas/jail/3dgs-002/build/cesium-native/Cesium3DTilesSelection/cmake_install.cmake",
+		"/Users/perkunas/jail/3dgs-002/build/cesium-native/CesiumClientCommon/cmake_install.cmake",
+		"/Users/perkunas/jail/3dgs-002/build/cesium-native/CesiumIonClient/cmake_install.cmake",
+		"/Users/perkunas/jail/3dgs-002/build/cesium-native/CesiumImage/cmake_install.cmake",
+		"/Users/perkunas/jail/3dgs-002/build/cesium-native/CesiumITwinClient/cmake_install.cmake",
+		"/Users/perkunas/jail/3dgs-002/build/cesium-native/CesiumQuantizedMeshTerrain/cmake_install.cmake",
+		"/Users/perkunas/jail/3dgs-002/build/cesium-native/CesiumVectorData/cmake_install.cmake",
+		"/Users/perkunas/jail/3dgs-002/build/cesium-native/CesiumVectorOverlays/cmake_install.cmake",
+		"/Users/perkunas/jail/3dgs-002/build/cesium-native/CesiumNativeTests/cmake_install.cmake",
+		"/Users/perkunas/jail/3dgs-002/build/cesium-native/doc/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

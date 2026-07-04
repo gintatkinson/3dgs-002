@@ -122,7 +122,34 @@ class RepositoryResolver {
 
     if (!inMemory) {
       final dbFile = File(dbPath);
-      if (!await dbFile.exists()) {
+      bool isOutdated = false;
+      final exists = await dbFile.exists();
+      if (exists) {
+        Database? tempDb;
+        try {
+          tempDb = await databaseFactory.openDatabase(dbPath);
+          final rows = await tempDb.rawQuery(
+            "SELECT COUNT(*) as count FROM type_attributes WHERE attr_key = 'raw_json'"
+          );
+          final count = rows.first['count'] as int? ?? 0;
+          if (count == 0) {
+            isOutdated = true;
+          }
+        } catch (_) {
+          isOutdated = true;
+        } finally {
+          if (tempDb != null) {
+            await tempDb.close();
+          }
+        }
+      }
+
+      if (!exists || isOutdated) {
+        if (exists) {
+          try {
+            await dbFile.delete();
+          } catch (_) {}
+        }
         final assetPath = dbAssetPath ?? _defaultDbAsset;
         try {
           final bytes = await rootBundle.load(assetPath);

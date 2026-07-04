@@ -24,25 +24,11 @@ class BacklogDirectories:
 
 @dataclass
 class TargetDirectories:
-    react: str = "web_react"
     flutter: str = "app_flutter"
 
-@dataclass
-class ReactRules:
-    file_extensions: List[str] = field(default_factory=lambda: [".ts", ".tsx", ".js", ".jsx", ".css", ".scss"])
-    exclusions: List[str] = field(default_factory=lambda: ["node_modules", "build", "dist", "coverage", ".git"])
-    ui_directories: List[str] = field(default_factory=lambda: ["components", "views"])
-    network_directories: List[str] = field(default_factory=lambda: ["io"])
-    forbidden_words: List[str] = field(default_factory=list)
-    forbidden_words_message: str = "UI view/component but imports forbidden libraries directly. Calculations must run exclusively in a background Web Worker."
-    write_lock_keywords: List[str] = field(default_factory=lambda: ["writelock", "lockwrite", "sendlock", "mutationlock"])
-    selection_keywords: List[str] = field(default_factory=lambda: ["onSelect", "onNodeSelect", "onSelectionChange", "setSelectedNode", "setSelectedId", "dispatch"])
-    interaction_keywords: List[str] = field(default_factory=lambda: ["onClick", "onDrag", "onMouseDown", "onPointerDown"])
-    playhead_clamp_regex: List[str] = field(default_factory=lambda: ["0\\.9\\b", "1\\.1\\b"])
-    playhead_clamp_range: List[float] = field(default_factory=lambda: [0.90, 1.10])
-    ast_compliance_method: str = "stopPropagation"
-    viewport_file_patterns: List[str] = field(default_factory=lambda: ["viewport"])
-    network_file_patterns: List[str] = field(default_factory=lambda: ["gateway", "socket", "client", "connection"])
+    @property
+    def react(self) -> Optional[str]:
+        return None
 
 @dataclass
 class FlutterRules:
@@ -129,11 +115,29 @@ class CodebaseRules:
     tracker_rules: Dict[str, Any] = field(default_factory=dict)
     backlog_directories: BacklogDirectories = field(default_factory=BacklogDirectories)
     target_directories: TargetDirectories = field(default_factory=TargetDirectories)
-    react_rules: ReactRules = field(default_factory=ReactRules)
     flutter_rules: FlutterRules = field(default_factory=FlutterRules)
     python_rules: PythonRules = field(default_factory=PythonRules)
     spec_rules: SpecRules = field(default_factory=SpecRules)
     validation_rules: ValidationRules = field(default_factory=ValidationRules)
+
+    @property
+    def react_rules(self) -> Any:
+        class DummyReactRules:
+            file_extensions = []
+            exclusions = []
+            ui_directories = []
+            network_directories = []
+            forbidden_words = []
+            forbidden_words_message = ""
+            write_lock_keywords = []
+            selection_keywords = []
+            interaction_keywords = []
+            playhead_clamp_regex = []
+            playhead_clamp_range = []
+            ast_compliance_method = ""
+            viewport_file_patterns = []
+            network_file_patterns = []
+        return DummyReactRules()
 
 def load_from_dict(data: dict) -> CodebaseRules:
     meta_data = data.get("meta", {})
@@ -144,9 +148,6 @@ def load_from_dict(data: dict) -> CodebaseRules:
     
     td_data = data.get("target_directories", {})
     target_directories = TargetDirectories(**{k: v for k, v in td_data.items() if k in TargetDirectories.__dataclass_fields__})
-    
-    react_data = data.get("react_rules", {})
-    react_rules = ReactRules(**{k: v for k, v in react_data.items() if k in ReactRules.__dataclass_fields__})
     
     flutter_data = data.get("flutter_rules", {})
     flutter_rules = FlutterRules(**{k: v for k, v in flutter_data.items() if k in FlutterRules.__dataclass_fields__})
@@ -165,7 +166,6 @@ def load_from_dict(data: dict) -> CodebaseRules:
         tracker_rules=data.get("tracker_rules", {}),
         backlog_directories=backlog_directories,
         target_directories=target_directories,
-        react_rules=react_rules,
         flutter_rules=flutter_rules,
         python_rules=python_rules,
         spec_rules=spec_rules,

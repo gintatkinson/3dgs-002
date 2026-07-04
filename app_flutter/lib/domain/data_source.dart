@@ -1,6 +1,7 @@
 import 'package:app_flutter/features/tree/tree_node.dart';
 import 'instance_record.dart';
 import 'type_descriptor.dart';
+import 'package:app_flutter/features/topology/topology_map.dart' show TopologyData;
 
 /// Abstract interface for a swappable data backend.
 ///
@@ -77,4 +78,8 @@ abstract class DataSource {
 
   /// Fetches child nodes for a parent from SQLite properties table.
   Future<List<TreeNode>> fetchChildrenForNode(String parentId);
+
+  /// Fetches all active nodes and links for topology mapping.
+  Future<TopologyData> fetchTopologyData();
 }
+

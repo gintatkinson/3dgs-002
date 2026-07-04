@@ -5,6 +5,7 @@ import 'package:app_flutter/domain/instance_record.dart';
 import 'package:app_flutter/domain/data_source.dart';
 import 'package:app_flutter/domain/type_descriptor.dart';
 import 'package:app_flutter/features/tree/tree_node.dart';
+import 'package:app_flutter/features/topology/topology_map.dart' show TopologyData;
 
 /// [DataSource] implementation backed by Cloud Firestore.
 ///
@@ -259,4 +260,10 @@ class FirebaseDataSource implements DataSource {
   Future<List<TreeNode>> fetchChildrenForNode(String parentId) async {
     return [];
   }
+
+  @override
+  Future<TopologyData> fetchTopologyData() async {
+    return const TopologyData(coordinateMapping: {}, nodes: [], links: []);
+  }
 }
+

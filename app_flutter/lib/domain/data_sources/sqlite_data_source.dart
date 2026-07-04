@@ -6,6 +6,7 @@ import 'package:app_flutter/domain/instance_record.dart';
 import 'package:app_flutter/domain/type_descriptor.dart';
 import 'package:app_flutter/domain/data_source.dart';
 import 'package:app_flutter/features/tree/tree_node.dart';
+import 'package:app_flutter/features/topology/topology_map.dart' show TopologyData, TopologyNode, TopologyLink, TopologyNodePosition;
 
 /// [DataSource] implementation backed by the local SQLite database.
 ///
@@ -144,7 +145,8 @@ class SqliteDataSource implements DataSource {
       if (maps.isEmpty) return {};
       final dataJson = maps.first['data_json'] as String?;
       if (dataJson == null) return {};
-      return jsonDecode(dataJson) as Map<String, dynamic>;
+      final decoded = Map<String, dynamic>.from(jsonDecode(dataJson) as Map);
+      return _flatten(decoded);
     } catch (e, stackTrace) {
       debugPrint('Error in fetchProperties($nodeId): $e\n$stackTrace');
       return {};
@@ -161,7 +163,8 @@ class SqliteDataSource implements DataSource {
   @override
   Future<void> saveProperties(String nodeId, Map<String, dynamic> data) async {
     try {
-      final dataJson = jsonEncode(data);
+      final unflattened = _unflatten(data);
+      final dataJson = jsonEncode(unflattened);
       await _db.insert(
         'properties',
         {'node_id': nodeId, 'data_json': dataJson},
@@ -262,9 +265,10 @@ class SqliteDataSource implements DataSource {
           WHERE r.parent_type_name = ? AND r.relation_name = 'contains'
             AND r.child_type_name NOT IN ('Detail_A', 'Detail_B', 'Detail_C')
             AND r.child_type_name NOT IN (SELECT node_id FROM properties WHERE parent_node_id = ?)
+            AND r.child_type_name IN (SELECT type_name FROM instances WHERE parent_node_id = ?)
         )
         ORDER BY (CASE WHEN node_id LIKE '%_Child_%' OR node_id LIKE '%_Grandchild_%' THEN 1 ELSE 0 END), node_id
-      ''', [parentId, parentId, parentId]);
+      ''', [parentId, parentId, parentId, parentId]);
       return rows.map((r) {
         final id = r['node_id'] as String;
         final label = (r['display_name'] as String?) ?? id.replaceAll('_', ' ');
@@ -334,4 +338,127 @@ class SqliteDataSource implements DataSource {
       inputFormatters: parseJsonList(row['input_formatters'] as String?),
     );
   }
+
+  Map<String, dynamic> _flatten(Map<String, dynamic> map, {String prefix = ''}) {
+    final result = <String, dynamic>{};
+    map.forEach((key, value) {
+      final newKey = prefix.isEmpty ? key : '$prefix.$key';
+      if (value is Map) {
+        result.addAll(_flatten(Map<String, dynamic>.from(value), prefix: newKey));
+      } else {
+        result[newKey] = value;
+      }
+    });
+    return result;
+  }
+
+  Map<String, dynamic> _unflatten(Map<String, dynamic> map) {
+    final result = <String, dynamic>{};
+    map.forEach((key, value) {
+      final parts = key.split('.');
+      Map<String, dynamic> current = result;
+      for (int i = 0; i < parts.length - 1; i++) {
+        final part = parts[i];
+        if (!current.containsKey(part) || current[part] is! Map) {
+          current[part] = <String, dynamic>{};
+        }
+        current = current[part] as Map<String, dynamic>;
+      }
+      current[parts.last] = value;
+    });
+    return result;
+  }
+
+  @override
+  Future<TopologyData> fetchTopologyData() async {
+    try {
+      final rows = await _db.query('properties');
+      final List<TopologyNode> nodes = [];
+      final List<TopologyLink> links = [];
+
+      for (final r in rows) {
+        final nodeId = r['node_id'] as String;
+        final dataJson = r['data_json'] as String?;
+        if (dataJson == null || dataJson.isEmpty || dataJson == '{}') continue;
+
+        final decoded = Map<String, dynamic>.from(jsonDecode(dataJson) as Map);
+        
+        // Geolocation is stored under ietfGeoLocation or position
+        final geo = decoded['ietfGeoLocation'] ?? decoded['location'] ?? decoded['position'];
+        if (geo == null) continue;
+
+        double? latVal;
+        double? lngVal;
+        double? altVal;
+
+        if (geo is Map) {
+          final loc = geo['location'] ?? geo;
+          if (loc is Map) {
+            final ellip = loc['ellipsoid'] ?? loc;
+            if (ellip is Map) {
+              latVal = double.tryParse(ellip['latitude']?.toString() ?? '');
+              lngVal = double.tryParse(ellip['longitude']?.toString() ?? '');
+              altVal = double.tryParse(ellip['height']?.toString() ?? ellip['altitude']?.toString() ?? '');
+            }
+          }
+        }
+
+        if (latVal == null || lngVal == null) {
+          continue;
+        }
+
+        nodes.add(TopologyNode(
+          id: nodeId,
+          label: decoded['name']?.toString() ?? nodeId,
+          position: TopologyNodePosition(
+            dim0: lngVal,
+            dim1: latVal,
+            dim2: altVal ?? 0.0,
+            timeIndex: 0,
+            vector: const [],
+          ),
+          status: decoded['status']?.toString() ?? 'Active',
+          rawProperties: decoded,
+        ));
+      }
+
+      // Query the instances table for all interface records to parse connection links
+      final interfaceRows = await _db.query(
+        'instances',
+        where: "type_name = 'interface'",
+      );
+      final regExp = RegExp(r'link to node\s+([\w\-]+)');
+      for (final row in interfaceRows) {
+        final parentNodeId = row['parent_node_id'] as String;
+        final dataJson = row['data_json'] as String?;
+        if (dataJson == null || dataJson.isEmpty || dataJson == '{}') continue;
+
+        try {
+          final decoded = Map<String, dynamic>.from(jsonDecode(dataJson) as Map);
+          final description = decoded['description']?.toString();
+          if (description != null) {
+            final match = regExp.firstMatch(description);
+            if (match != null) {
+              final targetNodeId = match.group(1)!;
+              links.add(TopologyLink(
+                source: parentNodeId,
+                target: targetNodeId,
+                type: 'interface',
+              ));
+            }
+          }
+        } catch (_) {}
+      }
+
+      return TopologyData(
+        coordinateMapping: const {},
+        nodes: nodes,
+        links: links,
+      );
+    } catch (e, stackTrace) {
+      debugPrint('Error in fetchTopologyData: $e\n$stackTrace');
+      return const TopologyData(coordinateMapping: {}, nodes: [], links: []);
+    }
+  }
 }
+

@@ -48,25 +48,7 @@
     "schemas": "schema"
   },
   "target_directories": {
-    "react": "web_react",
     "flutter": "app_flutter"
-  },
-  "react_rules": {
-    "file_extensions": [".ts", ".tsx", ".js", ".jsx", ".css", ".scss"],
-    "exclusions": ["node_modules", "build", "dist", "coverage", ".git"],
-    "ui_directories": ["components", "views"],
-    "type_casing_warning": "TypeScript implementations MUST use lowercase primitives (string, number, boolean), not UML wrapper types (String, Real, Boolean).",
-    "network_directories": ["io"],
-    "forbidden_words": [],
-    "forbidden_words_message": "UI view/component but imports forbidden libraries directly. Calculations must run exclusively in a background Web Worker.",
-    "write_lock_keywords": ["writelock", "lockwrite", "sendlock", "mutationlock"],
-    "selection_keywords": ["onSelect", "onNodeSelect", "onSelectionChange", "setSelectedNode", "setSelectedId", "dispatch"],
-    "interaction_keywords": ["onClick", "onDrag", "onMouseDown", "onPointerDown"],
-    "playhead_clamp_regex": ["0\\.9\\b", "1\\.1\\b"],
-    "playhead_clamp_range": [0.90, 1.10],
-    "ast_compliance_method": "stopPropagation",
-    "viewport_file_patterns": ["viewport"],
-    "network_file_patterns": ["gateway", "socket", "client", "connection"]
   },
   "flutter_rules": {
     "file_extensions": [".dart"],

@@ -1,0 +1,5 @@
+if(EXISTS "/Users/perkunas/jail/3dgs-002/build/cesium-native/CesiumNativeTests/cesium-native-tests_tests-b858cb2.cmake")
+  include("/Users/perkunas/jail/3dgs-002/build/cesium-native/CesiumNativeTests/cesium-native-tests_tests-b858cb2.cmake")
+else()
+  add_test(cesium-native-tests_NOT_BUILT-b858cb2 cesium-native-tests_NOT_BUILT-b858cb2)
+endif()

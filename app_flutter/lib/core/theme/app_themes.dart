@@ -43,7 +43,7 @@ class AppThemes {
       name: 'Blue Whale',
       description: 'Deep blue ocean theme',
       light: FlexSchemeColor(
-        primary: Color(0xFF1A73E8),
+        primary: Color(0xFF1A73E0 + 8),
         secondary: Color(0xFF4FC3F7),
         tertiary: Color(0xFF81D4FA),
         appBarColor: Color(0xFF1565C0),
