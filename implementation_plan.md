@@ -81,8 +81,103 @@ Replaces the custom-painted 3D globe with a native C++ cesium-native + Impeller 
 | 5.4 Memory pressure monitoring | `app_flutter/lib/domain/cesium_3d/memory_monitor.dart` | Track total native heap; if > 450MB, purge LRU tiles aggressively | Unit test: allocate to 500MB → monitor triggers purge → memory drops below 400MB |
 | 5.5 Linux build verification | `cesium_native_bridge/` | CMake build for Linux; verify `libcesium_native_bridge.so` loads | `cmake --build .` exits 0 on Linux |
 | 5.6 Windows build verification | `cesium_native_bridge/` | CMake build for Windows; verify `cesium_native_bridge.dll` loads | `cmake --build .` exits 0 on Windows |
-| 5.7 Full integration test suite | `app_flutter/integration_test/cesium_globe_test.dart` | Launch app, verify globe renders, verify camera pan/zoom, verify topology entities, verify style toggles | All tests pass on macOS |
+| 5.7 Full integration test suite | `app_flutter/integration_test/app_e2e_test.dart` | Remove `createTestDatabase()` helper and use `DatabaseInitializer.create(dbPath: inMemoryDatabasePath, seed: true)`. | All tests pass on macOS |
 | 5.8 Build documentation | `docs/cesium-native-integration/` | Compile + API docs, build instructions for all platforms | All documented steps produce working binary |
+
+## Phase 9: Visual Camera Heading & Orientation Projection Fix (TDD Spec)
+
+**Goal:** Create a visual-level integration test that programmatically detects camera rotation failures (reproducing the visual bug as a RED test), and modify the 3D viewport's projection math to apply camera heading and pitch correctly.
+
+### UML Design Specification
+
+#### Sequence of Visual Verification
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor T as TestRunner
+    participant V as Scene3DViewport
+    participant S as Scene3DViewportState
+    participant C as CameraController
+    participant P as Scene3DViewportPainter
+
+    T->>V: pumpWidget()
+    V->>S: createState()
+    S->>C: CameraController(initialCamera)
+    S->>P: Scene3DViewportPainter(camera)
+    T->>S: getProjectedPosition(latitude: 35.0, longitude: 135.0)
+    Note over S,P: Project lat/lng to 3D sphere coordinate<br/>and rotate based on camera lat/lng
+    S-->>T: returns initialOffset (Offset)
+    
+    T->>V: drag(Ctrl + Drag Offset)
+    V->>C: rotateHeading(delta)
+    C->>S: notifyListeners()
+    S->>V: onCameraChanged(updatedCamera)
+    Note over T: Pump & Settle
+    
+    T->>S: getProjectedPosition(latitude: 35.0, longitude: 135.0)
+    S-->>T: returns newOffset (Offset)
+    
+    T->>T: expect(newOffset != initialOffset)
+    Note over T: RED: On buggy code, newOffset equals initialOffset<br/>GREEN: On fixed code, offsets differ due to rotation
+```
+
+---
+
+### Proposed Changes
+
+#### [NEW] [globe_camera_rotation_visual_test.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/integration_test/globe_camera_rotation_visual_test.dart)
+- Create a new integration test running on the macOS desktop device (`-d macos`).
+- Performs a Ctrl + Drag gesture to change the camera's heading (yaw) and asserts that the visual coordinate projections before and after the drag are different:
+```dart
+void main() {
+  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('Visual Globe rotation: Ctrl+drag shifts visual projected points on screen', (tester) async {
+    // 1. Initialise the real database schema and seed data
+    final db = await DatabaseInitializer.create(dbPath: inMemoryDatabasePath, seed: true);
+    
+    // 2. Launch the app
+    await tester.pumpWidget(const MyApp(isTest: true));
+    await settle(tester);
+
+    final state = tester.state(find.byType(Scene3DViewport)) as Scene3DViewportState;
+    
+    // 3. Capture initial projected position of a reference coordinate
+    final Offset initialOffset = state.getProjectedPosition(35.607400, 140.106300);
+
+    // 4. Perform Ctrl + Drag to rotate heading (yaw)
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    final viewport = find.byKey(const Key('scene_3d_viewport_container'));
+    await tester.drag(viewport, const Offset(-150.0, 0.0));
+    await tester.pump();
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await settle(tester);
+
+    // 5. Capture new projected position of same coordinate
+    final Offset newOffset = state.getProjectedPosition(35.607400, 140.106300);
+
+    // 6. Assert visual movement has occurred
+    expect(
+      newOffset, 
+      isNot(equals(initialOffset)),
+      reason: 'Expected 2D projected screen coordinates to rotate when camera heading changes'
+    );
+  });
+}
+```
+
+#### [MODIFY] [scene_3d_viewport.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/scene_3d_viewport.dart)
+1. Expose a public helper method on `Scene3DViewportState` to perform projection mapping:
+   ```dart
+   Offset getProjectedPosition(double latitude, double longitude) {
+     // Resolves the viewport center, sphereRadius, zoomScale, and delegates to project()
+   }
+   ```
+2. Make `_project` a package-private method `project` and update the math to apply the camera's `heading` (yaw) and `pitch` (tilt):
+   - **Heading (2D Yaw)**: Apply a 2D rotation of the resulting `(xFinal, yFinal)` offset around `(0, 0)` by the camera's `heading` angle (in radians).
+   - **Pitch (tilt)**: Add `camera.pitch + 45.0` (in radians) to the `tilt` angle calculation.
+3. Verify that the new test runs headfully, fails (RED) initially, and passes (GREEN) after the mathematical projection fix is applied.
 
 ---
 
