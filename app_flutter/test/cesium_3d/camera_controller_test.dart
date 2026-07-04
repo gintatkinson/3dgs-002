@@ -94,4 +94,17 @@ void main() {
       expect(c.current.altitude, equals(CameraController.maxAltitude));
     });
   });
+
+  group('VirtualCamera equality', () {
+    test('identical cameras compare equal', () {
+      final a = VirtualCamera(latitude: 35, longitude: 135, altitude: 500, heading: 0, pitch: -45, roll: 0);
+      final b = VirtualCamera(latitude: 35, longitude: 135, altitude: 500, heading: 0, pitch: -45, roll: 0);
+      expect(a, equals(b));
+    });
+    test('different values compare not equal', () {
+      final a = VirtualCamera(latitude: 35, longitude: 135, altitude: 500, heading: 0, pitch: -45, roll: 0);
+      final b = VirtualCamera(latitude: 36, longitude: 135, altitude: 500, heading: 0, pitch: -45, roll: 0);
+      expect(a, isNot(equals(b)));
+    });
+  });
 }

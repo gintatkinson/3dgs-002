@@ -86,9 +86,14 @@ class TopographicalView extends StatefulWidget {
 
 class _TopographicalViewState extends State<TopographicalView> {
   bool _is3d = true;
+  VirtualCamera? _cachedCamera;
+  String? _lastCurrentView;
 
-  @override
-  Widget build(BuildContext context) {
+  VirtualCamera _resolveCamera() {
+    if (_cachedCamera != null && widget.currentView == _lastCurrentView) {
+      return _cachedCamera!;
+    }
+
     double latitude;
     double longitude;
 
@@ -126,6 +131,15 @@ class _TopographicalViewState extends State<TopographicalView> {
       pitch: -45.0,
       roll: 0.0,
     );
+
+    _cachedCamera = camera;
+    _lastCurrentView = widget.currentView;
+    return camera;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final camera = _resolveCamera();
 
     final Widget leadingWidget = _is3d
         ? Scene3DViewport(camera: camera, topologyData: widget.topologyData)

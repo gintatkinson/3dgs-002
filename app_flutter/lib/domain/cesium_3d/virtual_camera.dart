@@ -58,6 +58,21 @@ class VirtualCamera {
   }
 
   @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! VirtualCamera) return false;
+    return other.latitude == latitude &&
+        other.longitude == longitude &&
+        other.altitude == altitude &&
+        other.heading == heading &&
+        other.pitch == pitch &&
+        other.roll == roll;
+  }
+
+  @override
+  int get hashCode => Object.hash(latitude, longitude, altitude, heading, pitch, roll);
+
+  @override
   String toString() {
     return 'VirtualCamera(latitude: $latitude, longitude: $longitude, altitude: $altitude, heading: $heading, pitch: $pitch, roll: $roll)';
   }
