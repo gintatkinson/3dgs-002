@@ -64,6 +64,8 @@ class _LayoutState extends State<Layout> {
 
   static const double _minPaneSize = 150.0;
 
+  bool _layoutInitialized = false;
+
   /// Subscribes to property changes for the given [nodeId].
   ///
   /// Cancels any previous subscription before creating a new one. Updates
@@ -313,11 +315,14 @@ class _LayoutState extends State<Layout> {
   /// [widget.activeView] is null and tree data is available, sets the current
   /// view to the first tree node and resubscribes properties.
   void _updateCurrentViewFromLayout() {
-    if ((widget.activeView == null || _currentView == 'Master_1') && _treeViewModel != null && _treeViewModel!.treeData.isNotEmpty) {
+    if (_layoutInitialized) return;
+    if (_treeViewModel == null || _treeViewModel!.treeData.isEmpty) return;
+    if (widget.activeView == null) {
       _currentView = _treeViewModel!.treeData.first.id;
       _subscribeProperties(_currentView);
       _propertiesViewModel?.loadType(_currentView);
     }
+    _layoutInitialized = true;
   }
 
   /// Selects a view by [viewId], updating state, tree model, properties, and
