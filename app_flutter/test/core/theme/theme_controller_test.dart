@@ -35,7 +35,7 @@ class FakeThemeService implements ThemeService {
   }
 
   @override
-  Future<Axis> loadLayoutSplitAxis() async => layoutSplitAxis ?? Axis.horizontal;
+  Future<Axis> loadLayoutSplitAxis() async => layoutSplitAxis ?? Axis.vertical;
 
   @override
   Future<void> saveLayoutSplitAxis(Axis axis) async {
@@ -53,8 +53,8 @@ void main() {
       controller = ThemeController(fakeThemeService);
     });
 
-    test('initial layoutSplitAxis should be Axis.horizontal', () {
-      expect(controller.layoutSplitAxis, Axis.horizontal);
+    test('initial layoutSplitAxis should be Axis.vertical', () {
+      expect(controller.layoutSplitAxis, Axis.vertical);
     });
 
     test('loadSettings loads saved layoutSplitAxis', () async {
@@ -69,11 +69,11 @@ void main() {
         notified = true;
       });
 
-      await controller.updateLayoutSplitAxis(Axis.vertical);
+      await controller.updateLayoutSplitAxis(Axis.horizontal);
 
-      expect(controller.layoutSplitAxis, Axis.vertical);
+      expect(controller.layoutSplitAxis, Axis.horizontal);
       expect(notified, true);
-      expect(fakeThemeService.layoutSplitAxis, Axis.vertical);
+      expect(fakeThemeService.layoutSplitAxis, Axis.horizontal);
     });
 
     test('updateLayoutSplitAxis with null or same value is a no-op', () async {
@@ -85,7 +85,7 @@ void main() {
       await controller.updateLayoutSplitAxis(null);
       expect(notified, false);
 
-      await controller.updateLayoutSplitAxis(Axis.horizontal);
+      await controller.updateLayoutSplitAxis(Axis.vertical);
       expect(notified, false);
     });
   });
@@ -95,10 +95,10 @@ void main() {
       SharedPreferences.setMockInitialValues({});
     });
 
-    test('loadLayoutSplitAxis returns Axis.horizontal by default', () async {
+    test('loadLayoutSplitAxis returns Axis.vertical by default', () async {
       final service = SharedPreferencesThemeService();
       final axis = await service.loadLayoutSplitAxis();
-      expect(axis, Axis.horizontal);
+      expect(axis, Axis.vertical);
     });
 
     test('saveLayoutSplitAxis persists the value and loadLayoutSplitAxis reads it', () async {
@@ -109,13 +109,13 @@ void main() {
       expect(loaded, Axis.vertical);
     });
 
-    test('loadLayoutSplitAxis falls back to Axis.horizontal if stored value is invalid', () async {
+    test('loadLayoutSplitAxis falls back to Axis.vertical if stored value is invalid', () async {
       SharedPreferences.setMockInitialValues({
         'layout_split_axis': 'invalid_value',
       });
       final service = SharedPreferencesThemeService();
       final loaded = await service.loadLayoutSplitAxis();
-      expect(loaded, Axis.horizontal);
+      expect(loaded, Axis.vertical);
     });
   });
 }

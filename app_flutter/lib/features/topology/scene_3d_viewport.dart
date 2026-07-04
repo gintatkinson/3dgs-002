@@ -911,24 +911,24 @@ class Scene3DViewportPainter extends CustomPainter {
 
         final cosY = math.cos(rotationY);
         final sinY = math.sin(rotationY);
-        final xRot = sx * cosY + sz * sinY;
-        final zRot = -sx * sinY + sz * cosY;
+        final xRot = sx * cosY - sz * sinY;
+        final zRot = sx * sinY + sz * cosY;
 
         final cosT = math.cos(finalTilt);
         final sinT = math.sin(finalTilt);
-        final xFinal = xRot;
-        final yFinal = sy * cosT - zRot * sinT;
-        final zFinal = sy * sinT + zRot * cosT;
+        final yFinal = xRot * sinT + sy * cosT;
+        final zFinal = zRot;
+        final xFinal = xRot * cosT - sy * sinT;
 
         final double distanceRatio = 1.0 + camera.altitude / 6378137.0;
         final double distancePixels = sphereRadius * distanceRatio;
-        final double denom = distancePixels - zFinal;
+        final double denom = distancePixels - xFinal;
         final double pScale = denom <= 0.0 ? 1.0 : distancePixels / denom;
 
-        final double rx = xFinal * pScale * cosH - yFinal * pScale * sinH;
-        final double ry = xFinal * pScale * sinH + yFinal * pScale * cosH;
+        final double rx = zFinal * pScale * cosH - yFinal * pScale * sinH;
+        final double ry = zFinal * pScale * sinH + yFinal * pScale * cosH;
 
-        return ProjectedPoint(Offset(center.dx + rx, center.dy - ry), zFinal);
+        return ProjectedPoint(Offset(center.dx + rx, center.dy - ry), xFinal);
       }
     }
 
@@ -936,27 +936,30 @@ class Scene3DViewportPainter extends CustomPainter {
     final double y = sphereRadius * math.sin(lat);
     final double z = sphereRadius * math.cos(lat) * math.cos(lng);
 
-    final double cosY = math.cos(rotationY);
-    final double sinY = math.sin(rotationY);
-    final double xRot = x * cosY + z * sinY;
-    final double yRot = y;
-    final double zRot = -x * sinY + z * cosY;
+    final double sx = z;
+    final double sy = y;
+    final double sz = x;
 
-    final double cosT = math.cos(finalTilt);
-    final double sinT = math.sin(finalTilt);
-    final double xFinal = xRot;
-    final double yFinal = yRot * cosT - zRot * sinT;
-    final double zFinal = yRot * sinT + zRot * cosT;
+    final cosY = math.cos(rotationY);
+    final sinY = math.sin(rotationY);
+    final xRot = sx * cosY - sz * sinY;
+    final zRot = sx * sinY + sz * cosY;
+
+    final cosT = math.cos(finalTilt);
+    final sinT = math.sin(finalTilt);
+    final yFinal = xRot * sinT + sy * cosT;
+    final zFinal = zRot;
+    final xFinal = xRot * cosT - sy * sinT;
 
     final double distanceRatio = 1.0 + camera.altitude / 6378137.0;
     final double distancePixels = sphereRadius * distanceRatio;
-    final double denom = distancePixels - zFinal;
+    final double denom = distancePixels - xFinal;
     final double pScale = denom <= 0.0 ? 1.0 : distancePixels / denom;
 
-    final double rx = xFinal * pScale * cosH - yFinal * pScale * sinH;
-    final double ry = xFinal * pScale * sinH + yFinal * pScale * cosH;
+    final double rx = zFinal * pScale * cosH - yFinal * pScale * sinH;
+    final double ry = zFinal * pScale * sinH + yFinal * pScale * cosH;
 
-    return ProjectedPoint(Offset(center.dx + rx, center.dy - ry), zFinal);
+    return ProjectedPoint(Offset(center.dx + rx, center.dy - ry), xFinal);
   }
 
   // Convert degrees to radians

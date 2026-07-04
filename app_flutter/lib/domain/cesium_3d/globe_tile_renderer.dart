@@ -84,7 +84,7 @@ class GlobeTileRenderer {
     double alt = altitude;
     if (alt <= 0) alt = 100;
     final zoom =
-        (math.log(40075000.0 / (alt * 0.5)) / math.ln2).round();
+        (math.log(120000000.0 / alt) / math.ln2).round();
     return zoom.clamp(0, 12);
   }
 

@@ -632,3 +632,34 @@ This phase details the changes required to warp map tiles onto the spherical sur
   cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
   ```
 
+## Phase 10: Correct 3D rotation projection formulas and tile zoom resolution mapping
+
+This phase details the changes required to correct the 3D rotation projection formulas and the tile zoom resolution mapping to fix blurry tiles and wrong camera target focus.
+
+### Core App Code
+
+#### [MODIFY] [globe_tile_renderer.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/cesium_3d/globe_tile_renderer.dart)
+- Update the `_zoomForAltitude` method to map altitude to the correct visual zoom level (using a 120,000,000 baseline) to ensure high-resolution tiles are loaded when zoomed in.
+
+#### [MODIFY] [scene_3d_viewport.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/scene_3d_viewport.dart)
+- Update `project` method to use correct 3D rotation matrix signs and axis mapping for both Cesium and fallback blocks (mapping `zFinal` to the correct screen coordinates, and `xFinal` as depth).
+
+### Unit Tests
+
+#### [MODIFY] [scroll_zoom_test.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/topology/scroll_zoom_test.dart)
+- Update expected zoom altitude value to match the exponential zoom interactive formula.
+
+#### [MODIFY] [theme_controller_test.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/core/theme/theme_controller_test.dart)
+- Update default split axis expectations to Axis.vertical to match the default behavior in the service and controller.
+
+### Phase 10 Verification Plan
+
+### Automated Tests
+- Run the unit and integration tests to verify correctness:
+  ```bash
+  cd app_flutter && flutter test test/cesium_3d/
+  cd app_flutter && flutter test integration_test/globe_camera_drag_test.dart -d macos
+  cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
+  ```
+
+

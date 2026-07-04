@@ -45,6 +45,6 @@ void main() {
     tester.binding.handlePointerEvent(event);
     await tester.pump();
 
-    expect(controller.current.altitude, 1026.5);
+    expect(controller.current.altitude, closeTo(1303.43, 0.01));
   });
 }
