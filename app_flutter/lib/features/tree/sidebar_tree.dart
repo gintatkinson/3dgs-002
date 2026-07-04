@@ -81,7 +81,6 @@ class SidebarTree extends StatelessWidget {
           Expanded(
             child: Focus(
               focusNode: viewModel.focusNode,
-              autofocus: true,
               onKeyEvent: (FocusNode node, KeyEvent event) {
                 if (event is KeyDownEvent) {
                   final key = event.logicalKey;
