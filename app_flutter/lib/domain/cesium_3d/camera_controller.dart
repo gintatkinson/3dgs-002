@@ -21,8 +21,8 @@ class CameraController {
   }
 
   void pan(Offset delta) {
-    final newLat = (_camera.latitude - delta.dy * dragSensitivity).clamp(-90.0, 90.0);
-    final newLng = _wrapLng(_camera.longitude - delta.dx * dragSensitivity);
+    final newLat = (_camera.latitude + delta.dy * dragSensitivity).clamp(-90.0, 90.0);
+    final newLng = _wrapLng(_camera.longitude + delta.dx * dragSensitivity);
     _camera = VirtualCamera.clamped(
       latitude: newLat, longitude: newLng,
       altitude: _camera.altitude, heading: _camera.heading,

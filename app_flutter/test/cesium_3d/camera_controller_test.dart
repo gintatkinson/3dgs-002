@@ -26,8 +26,8 @@ void main() {
       final c = CameraController(_makeCam());
       c.pan(const Offset(100, 50));
       final cam = c.current;
-      expect(cam.longitude, lessThan(135.0));
-      expect(cam.latitude, lessThan(35.0));
+      expect(cam.longitude, greaterThan(135.0));
+      expect(cam.latitude, greaterThan(35.0));
     });
 
     test('tilt changes pitch/heading, not lat/lng', () {
@@ -85,8 +85,8 @@ void main() {
     });
 
     test('longitude wraps around -180/+180 boundary', () {
-      final c = CameraController(_makeCam(lng: 175));
-      c.pan(const Offset(100, 0));
+      final c = CameraController(_makeCam(lng: -175));
+      c.pan(const Offset(-100, 0));
       expect(c.current.longitude, lessThan(180));
       expect(c.current.longitude, greaterThan(155));
     });
