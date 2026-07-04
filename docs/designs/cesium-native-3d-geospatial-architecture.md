@@ -8,7 +8,7 @@
 
 ## 1. Executive Summary
 
-This document defines the architecture for a native, GPU-accelerated 3D geospatial visualization engine integrating the `cesium-native` C++ library into the Flutter desktop application via Dart FFI bindings and Impeller GPU rendering. The system renders photorealistic 3D globes with terrain, satellite imagery, network topology nodes, links, labels, and interactive camera controls — matching and exceeding the capabilities of the reference Cognition-UI-tsx application while eliminating the JavaScript/WebView dependency entirely.
+This document defines the architecture for a native, GPU-accelerated 3D geospatial visualization engine integrating the `cesium-native` C++ library into the Flutter desktop application via Dart FFI bindings and Impeller GPU rendering. The system renders photorealistic 3D globes with terrain, satellite imagery, geospatial profile entities, paths/vectors, labels, and interactive camera controls — matching and exceeding the capabilities of the reference Cognition-UI-tsx application while eliminating the JavaScript/WebView dependency entirely.
 
 ### Design Objectives
 
@@ -16,7 +16,7 @@ This document defines the architecture for a native, GPU-accelerated 3D geospati
 |---|---|
 | Rendering fidelity | Photorealistic globe with Cesium World Terrain + multi-source imagery |
 | Latency | Camera-to-frame < 16ms (60fps) |
-| Entity scale | 100,000+ nodes, 500,000+ links |
+| Entity scale | 100,000+ entities, 500,000+ paths |
 | Memory footprint | < 500MB for globe + tile cache |
 | FFI overhead | < 1ms per frame for camera/tile exchange |
 | Platform support | macOS (primary), Linux, Windows |
@@ -36,7 +36,7 @@ The system follows a five-layer architecture with strict separation of concerns:
 ├─────────────────────────────────────────────────────────────┤
 │  Layer 4: Domain / Scene Graph (Dart)                       │
 │  - GlobeSceneController, CameraController,                  │
-│    TopologyRenderer, MapStyleManager, EntityManager         │
+│    GeospatialRenderer, MapStyleManager, EntityManager         │
 ├─────────────────────────────────────────────────────────────┤
 │  Layer 3: FFI Bridge (Dart + C)                             │
 │  - CesiumNativeBridge (Dart FFI), TileDataMarshal (C),      │
@@ -44,7 +44,7 @@ The system follows a five-layer architecture with strict separation of concerns:
 ├─────────────────────────────────────────────────────────────┤
 │  Layer 2: GPU Rendering (Impeller / flutter_gpu)            │
 │  - GlobeMeshRenderer, TerrainTileRenderer,                  │
-│    NodeSpriteRenderer, LinkPolylineRenderer,                │
+│    EntitySpriteRenderer, PathPolylineRenderer,              │
 │    AtmosphereShader, LabelRenderer                          │
 ├─────────────────────────────────────────────────────────────┤
 │  Layer 1: C++ Native (cesium-native)                        │
@@ -71,7 +71,7 @@ cesium-native Culling Engine
   └── Imagery tile selection
         │
         ▼  [FFI boundary — tile metadata return]
-TileDataMarshal ──► TileLoadQueue
+        TileDataMarshal ──► TileLoadQueue
         │
         ├──► Isolate 1: Async tile fetch (HTTP/models)
         ├──► Isolate 2: GPU texture upload
@@ -81,8 +81,8 @@ TileDataMarshal ──► TileLoadQueue
 Impeller Render Pass
   ├── Globe sphere + terrain elevation
   ├── Imagery layer texturing
-  ├── Network entity sprites
-  ├── Polyline links (geodesic/straight)
+  ├── Geospatial entity sprites
+  ├── Polyline paths/vectors (geodesic/straight)
   ├── Label billboards
   └── Atmosphere/starfield
         │
@@ -192,7 +192,7 @@ int32_t bridge_set_imagery_blend(int32_t handle, float alpha);
 int32_t bridge_cartographic_to_ecef(double lat, double lng, double alt, double* outX, double* outY, double* outZ);
 int32_t bridge_ecef_to_screen(double x, double y, double z, CameraState* camera, int32_t viewportW, int32_t viewportH, double* outScreenX, double* outScreenY);
 
-// Entity management (network nodes/links)
+// Geospatial Entity & Path management
 int32_t bridge_add_entity(int32_t handle, double lat, double lng, double alt, const char* entityId, const char* label, int32_t colorRgba);
 int32_t bridge_remove_entity(int32_t handle, const char* entityId);
 int32_t bridge_add_link(int32_t handle, const char* sourceId, const char* targetId, int32_t colorRgba, float width);
@@ -386,16 +386,16 @@ Pass 3: Globe Sphere (tessellated icosphere, vertex-displaced by terrain)
   ├── Subpass 3a: Terrain elevation (vertex shader heightmap lookup)
   ├── Subpass 3b: Imagery texturing (fragment shader tile atlas sampling)
   └── Subpass 3c: Grid overlay (meridians/parallels, thin line geometry)
-Pass 4: Network Entities (GPU instanced sprite rendering)
-  ├── Subpass 4a: Ground nodes (DODGERBLUE sprites, depth-tested)
-  ├── Subpass 4b: Satellite nodes (CYAN sprites, orbit-ring geometry)
-  ├── Subpass 4c: QKD nodes (LIMEGREEN sprites)
-  └── Subpass 4d: Node labels (billboard text, SDF font atlas)
-Pass 5: Network Links (polyline geometry, camera-facing)
-  ├── Subpass 5a: Terrestrial links (CLAMP_TO_GROUND, orange geodesic arcs)
-  ├── Subpass 5b: Inter-satellite links (NONE arc, cyan straight lines)
-  ├── Subpass 5c: Quantum links (LIME, animated dash pattern)
-  └── Subpass 5d: Drop lines (white dashed, elevated → ground)
+Pass 4: Geospatial Entities (GPU instanced sprite rendering)
+  ├── Subpass 4a: Surface-anchored entities (style/color/depth-tested from profile)
+  ├── Subpass 4b: Elevated/airborne entities (altitude/orbit offset geometry from profile)
+  ├── Subpass 4c: Sub-surface entities (clamped/underwater visual styling from profile)
+  └── Subpass 4d: Entity labels (billboard text, SDF font atlas)
+Pass 5: Geospatial Paths & Vectors (polyline geometry, camera-facing)
+  ├── Subpass 5a: Surface paths (CLAMP_TO_GROUND, geodesic arcs dynamic styling)
+  ├── Subpass 5b: Spatial straight vectors (NONE arc, straight line dynamic styling)
+  ├── Subpass 5c: Dynamic styled paths (animated dash/color pattern from profile metadata)
+  └── Subpass 5d: Vertical projection drops (dynamic dashed lines, elevated → surface)
 Pass 6: Post-Processing
   ├── Subpass 6a: FXAA anti-aliasing
   └── Subpass 6b: HUD overlay (Flutter composited, not GPU)
@@ -465,13 +465,13 @@ Tile fetch: Off-thread via Dart Isolate + HTTP; upload via transfer queue.
 
 ### 5.4 Entity Sprite Renderer (Instanced Rendering)
 
-Network nodes are rendered as GPU-instanced camera-facing sprites:
+Geospatial entities are rendered as GPU-instanced camera-facing sprites:
 
 ```dart
 // lib/domain/cesium_3d/renderers/entity_renderer.dart
 
 class EntityRenderer {
-  // Single draw call renders ALL nodes via instancing
+  // Single draw call renders ALL entities via instancing
   void renderEntityBatch(
     RenderPass pass,
     List<EntityInstance> instances, // 10k+ per frame
@@ -574,12 +574,36 @@ class GlobeSceneController {
 ```dart
 // lib/domain/cesium_3d/entity.dart
 
-enum EntityType { groundStation, satellite, underwaterNode, qkdNode, gNB }
+class EntityTypeProfile {
+  final String typeName;
+  final String category; // 'surface-anchored' | 'elevated' | 'sub-surface'
+  final Color defaultColor;
+  final double defaultSize;
+  final Map<String, dynamic> properties;
+
+  const EntityTypeProfile({
+    required this.typeName,
+    required this.category,
+    required this.defaultColor,
+    required this.defaultSize,
+    this.properties = const {},
+  });
+
+  factory EntityTypeProfile.fromMetadata(Map<String, dynamic> meta) {
+    return EntityTypeProfile(
+      typeName: meta['typeName'] ?? 'default',
+      category: meta['category'] ?? 'surface-anchored',
+      defaultColor: Color(int.parse(meta['color'] ?? '0xFFFFFFFF')),
+      defaultSize: (meta['size'] ?? 1.0).toDouble(),
+      properties: meta['properties'] ?? {},
+    );
+  }
+}
 
 class GlobeEntity {
   final String id;
   final String label;
-  final EntityType type;
+  final EntityTypeProfile typeProfile;
   double lat;
   double lng;
   double alt;
@@ -728,18 +752,18 @@ ScrollEvent  → CameraController.handleZoom(scrollDelta)
 
 ---
 
-## 8. Network Topology Rendering
+## 8. Geospatial Entity & Path Rendering
 
 ### 8.1 Entity Pipeline
 
 ```
-TopologyData (DB / JSON)
+GeospatialData (DB / JSON)
         │
         ▼
-EntityManager.syncFromTopology(TopologyData data)
+EntityManager.syncFromGeospatialData(GeospatialData data)
   ├── Diff against current entities (add/remove/update)
-  ├── Classify: ground (alt ≤ 10k), space (alt > 10k), underwater (alt ≤ 0)
-  ├── Assign colors: SATELLITE→CYAN, QKD→LIMEGREEN, gNB→CYAN, Active→DODGERBLUE
+  ├── Classify by category: surface-anchored (alt ≤ 10k), elevated (alt > 10k), sub-surface (alt ≤ 0)
+  ├── Assign styling properties (color, scale) dynamically from EntityTypeProfile and dataset metadata
   └── Build EntityInstance array for GPU
         │
         ▼
@@ -747,37 +771,37 @@ EntityRenderer.renderEntityBatch(...)
   └── Single instanced draw call
 ```
 
-### 8.2 Link Pipeline
+### 8.2 Path & Vector Pipeline
 
 ```
-TopologyData.links
+GeospatialData.paths
         │
         ▼
-LinkManager.syncFromLinks(List<TopologyLink> links)
-  ├── Resolve source/target entities
-  ├── Determine arc type:
-  │     source.alt > 10000 || target.alt > 10000 → ArcType.none (straight)
-  │     else → ArcType.geodesic (Earth-following)
-  ├── Check clamp-to-ground: source.alt ≤ 0 || target.alt ≤ 0
-  └── Build LinkInstance array
+PathManager.syncFromPaths(List<GeospatialPath> paths)
+  ├── Resolve endpoint entities
+  ├── Determine arc type dynamically based on entity profiles:
+  │     source.alt > elevatedThreshold || target.alt > elevatedThreshold → ArcType.none (straight spatial vectors)
+  │     else → ArcType.geodesic (surface-conforming paths)
+  ├── Check depth clamping / sub-surface depth attributes
+  └── Build PathInstance array with dynamic color, width, and styles resolved from metadata properties
         │
         ▼
-LinkRenderer.renderLinks(...)
-  ├── Geodesic arcs → tessellate 32 segments
-  ├── Straight lines → single segment
-  └── Draw as line strips
+PathRenderer.renderPaths(...)
+  ├── Geodesic paths → tessellate 32 segments
+  ├── Spatial vectors → single segment
+  └── Draw as line strips (applying dash/dynamic animation patterns from metadata)
 ```
 
-### 8.3 Drop Line Rendering
+### 8.3 Vertical Projection Drop Rendering
 
-For entities with altitude > 0, render vertical dashed lines to ground:
+For entities classified as elevated (altitude > threshold resolved from profile/metadata), render vertical projection drops to the surface:
 
 ```
-For each entity where alt > 0:
+For each elevated entity where alt > 0:
   ├── Get entity world position (lat, lng, alt)
-  ├── Compute ground position (lat, lng, 0)
-  ├── Render as dashed polyline (white, alpha 0.3)
-  └── Cesium clamps the ground position to terrain height
+  ├── Compute surface-anchored position (lat, lng, 0)
+  ├── Render as dashed projection line (color and opacity resolved dynamically from profile properties)
+  └── Cesium clamps the surface position to terrain height
 ```
 
 ---
@@ -874,35 +898,35 @@ void adaptLodQuality(double frameTimeMs) {
 | Widget test: globe renders with default camera | `test/cesium_3d/globe_render_test.dart` |
 | Integration test: terrain + 4 imagery styles render | `test/cesium_3d/imagery_test.dart` |
 
-### Phase 3: Entities & Topology (Week 5-6)
-**Goal:** Network nodes and links rendered on the globe; camera interaction works.
+### Phase 3: Entities & Paths (Week 5-6)
+**Goal:** Geospatial entities and paths rendered on the globe; camera interaction works.
 
 | Task | Deliverable |
 |---|---|
 | Implement EntityManager with diff-based updates | `lib/domain/cesium_3d/entity_manager.dart` |
 | Implement GPU entity sprite renderer (instanced) | `lib/domain/cesium_3d/renderers/entity_renderer.dart` |
-| Implement LinkManager with arc type resolution | `lib/domain/cesium_3d/link_manager.dart` |
-| Implement GPU link polyline renderer | `lib/domain/cesium_3d/renderers/link_renderer.dart` |
+| Implement PathManager with arc type resolution | `lib/domain/cesium_3d/link_manager.dart` |
+| Implement GPU path polyline renderer | `lib/domain/cesium_3d/renderers/link_renderer.dart` |
 | Implement label billboard renderer (SDF fonts) | `lib/domain/cesium_3d/renderers/label_renderer.dart` |
-| Implement drop line renderer | `lib/domain/cesium_3d/renderers/drop_line_renderer.dart` |
+| Implement vertical projection drop renderer | `lib/domain/cesium_3d/renderers/drop_line_renderer.dart` |
 | Integrate camera controller with gesture handlers | `lib/domain/cesium_3d/camera_controller.dart` |
-| Widget test: entities + links render correctly | `test/cesium_3d/entity_link_test.dart` |
-| Integration test: full topology rendered on globe | `test/cesium_3d/topology_integration_test.dart` |
+| Widget test: entities + paths render correctly | `test/cesium_3d/entity_link_test.dart` |
+| Integration test: geospatial profiles rendered on globe | `test/cesium_3d/topology_integration_test.dart` |
 
 ### Phase 4: UI Integration & Feature Parity (Week 7-8)
-**Goal:** Replace custom-painted globe; match reference app's 3D topology capabilities.
+**Goal:** Replace custom-painted globe; match reference app's 3D geospatial visualization capabilities.
 
 | Task | Deliverable |
 |---|---|
 | Replace Scene3DViewport CustomPaint with CesiumGlobeViewport | `lib/features/topology/scene_3d_viewport.dart` |
 | Wire map style switching (4 imagery types) | `lib/features/topology/scene_3d_viewport.dart` |
-| Wire visibility toggles (devices, links, labels, drop lines) | `lib/features/topology/scene_3d_viewport.dart` |
+| Wire visibility toggles (entities, paths, labels, projection drops) | `lib/features/topology/scene_3d_viewport.dart` |
 | Wire terrain toggle | `lib/features/topology/scene_3d_viewport.dart` |
 | Wire camera stats HUD (live from CameraController) | `lib/features/topology/scene_3d_viewport.dart` |
 | Wire double-click entity navigation | `lib/features/topology/scene_3d_viewport.dart` |
 | Implement screen-space entity picking (raycast) | `lib/domain/cesium_3d/cesium_engine.dart` |
 | Full integration test: all toggle permutations | `test/cesium_3d/full_integration_test.dart` |
-| Performance benchmark: 10k nodes, 50k links @ 60fps | `test/cesium_3d/performance_benchmark_test.dart` |
+| Performance benchmark: 10k entities, 50k paths @ 60fps | `test/cesium_3d/performance_benchmark_test.dart` |
 
 ### Phase 5: Hardening & Optimization (Week 9-10)
 **Goal:** Production quality: error recovery, performance tuning, cross-platform verification.
@@ -990,6 +1014,6 @@ app_flutter/
 | **Calloc over malloc** | `calloc` zero-initializes; critical for struct marshaling where uninitialized padding bytes cause undefined behavior in FFI. |
 | **NativeFinalizer over manual free** | Guarantees native memory release even if Dart code throws or forgets. Prevents memory leaks in error paths. |
 | **Tile atlas over individual textures** | Reduces GPU texture binds from N to 1 per render pass. Enables single draw call for all tile imagery. |
-| **Instanced rendering for entities** | Single draw call for 10k+ nodes. CPU uploads instance buffer once per frame. |
+| **Instanced rendering for entities** | Single draw call for 10k+ entities. CPU uploads instance buffer once per frame. |
 | **No physics on main thread** | Graph layout and tile decompression run on background isolates. Main thread only records GPU commands. |
 | **SDF font atlas for labels** | Single texture for all label text. Resolution-independent. GPU-accelerated rendering via fragment shader distance field evaluation. |
