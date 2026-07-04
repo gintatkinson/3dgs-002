@@ -116,5 +116,11 @@ void main() {
       isNot(equals(initialOffset)),
       reason: 'Expected 2D projected screen coordinates to rotate when camera heading changes'
     );
+
+    // Keep the application GUI active and pump frames to the macOS display for 30 seconds
+    for (int i = 0; i < 300; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await tester.pump();
+    }
   });
 }
