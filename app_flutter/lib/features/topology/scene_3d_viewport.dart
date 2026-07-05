@@ -1091,10 +1091,18 @@ class Scene3DViewportPainter extends CustomPainter {
     // Optical axis is along negative z_cam
     final double depth = -z_cam;
 
-    // Horizon culling check using physical distance
+    // Horizon culling check using vector-based segment-sphere intersection
     final double distSq = rx * rx + ry * ry + rz * rz;
-    final double horizonLimitSq = cRad * cRad - R * R;
-    final double depthVal = distSq > horizonLimitSq ? -1.0 : depth;
+    final double dotCV = cx * rx + cy * ry + cz * rz;
+    final double t = -dotCV / distSq;
+    bool isCulled = false;
+    if (t > 0.0 && t < 1.0) {
+      final double closeSq = (cx * cx + cy * cy + cz * cz) - (dotCV * dotCV) / distSq;
+      if (closeSq < R * R) {
+        isCulled = true;
+      }
+    }
+    final double depthVal = isCulled ? -1.0 : depth;
 
     // Focal length (45-degree FOV)
     final double F = size.shortestSide * 1.2;
