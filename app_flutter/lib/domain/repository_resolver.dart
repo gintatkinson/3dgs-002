@@ -128,11 +128,11 @@ class RepositoryResolver {
         Database? tempDb;
         try {
           tempDb = await databaseFactory.openDatabase(dbPath);
+          final tables = ['properties', 'instances', 'type_definitions', 'type_attributes', 'type_relations'];
           final rows = await tempDb.rawQuery(
-            "SELECT COUNT(*) as count FROM type_attributes WHERE attr_key = 'raw_json'"
+            "SELECT name FROM sqlite_master WHERE type='table' AND name IN (${tables.map((t) => "'$t'").join(', ')})"
           );
-          final count = rows.first['count'] as int? ?? 0;
-          if (count == 0) {
+          if (rows.length < tables.length) {
             isOutdated = true;
           }
         } catch (_) {
