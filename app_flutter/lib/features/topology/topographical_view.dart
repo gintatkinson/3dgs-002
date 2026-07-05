@@ -91,17 +91,31 @@ class _TopographicalViewState extends State<TopographicalView> {
   VirtualCamera? _cachedCamera;
   String? _lastCurrentView;
 
-  VirtualCamera _resolveCamera() {
-    if (_cachedCamera != null && widget.currentView == _lastCurrentView) {
-      return _cachedCamera!;
-    }
+  @override
+  void initState() {
+    super.initState();
+    _lastCurrentView = widget.currentView;
+    _cachedCamera = _calculateCameraForView(widget.currentView);
+  }
 
+  @override
+  void didUpdateWidget(covariant TopographicalView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.currentView != widget.currentView) {
+      setState(() {
+        _lastCurrentView = widget.currentView;
+        _cachedCamera = _calculateCameraForView(widget.currentView);
+      });
+    }
+  }
+
+  VirtualCamera _calculateCameraForView(String viewId) {
     double latitude;
     double longitude;
 
     TopologyNode? activeNode;
     for (final node in widget.topologyData.nodes) {
-      if (node.id == widget.currentView) {
+      if (node.id == viewId) {
         activeNode = node;
         break;
       }
@@ -125,7 +139,7 @@ class _TopographicalViewState extends State<TopographicalView> {
     latitude = latitude.clamp(-90.0, 90.0);
     longitude = longitude.clamp(-180.0, 180.0);
 
-    final camera = VirtualCamera(
+    return VirtualCamera(
       latitude: latitude,
       longitude: longitude,
       altitude: 500.0,
@@ -133,11 +147,12 @@ class _TopographicalViewState extends State<TopographicalView> {
       pitch: -89.9,
       roll: 0.0,
     );
-
-    _cachedCamera = camera;
-    _lastCurrentView = widget.currentView;
-    return camera;
   }
+
+  VirtualCamera _resolveCamera() {
+    return _cachedCamera ?? _calculateCameraForView(widget.currentView);
+  }
+
 
   @override
   Widget build(BuildContext context) {
