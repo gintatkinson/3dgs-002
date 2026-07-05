@@ -518,22 +518,24 @@ class Scene3DViewportState extends State<Scene3DViewport> {
                     _cameraController.zoomInteractive(event.scrollDelta.dy);
                   }
                 },
-                child: CustomPaint(
-                  painter: Scene3DViewportPainter(
-                    camera: _cameraController.current,
-                    activeStyle: _activeStyle,
-                    astronomicalBody: _astronomicalBody,
-                    elevationActive: _elevationActive,
-                    showDevices: _showDevices,
-                    showLinks: _showLinks,
-                    showLabels: _showLabels,
-                    showDropLines: _showDropLines,
-                    topologyData: widget.topologyData,
-                    userRotationX: 0.0,
-                    userTilt: 0.0,
-                    zoomScale: zoomScale,
-                    tileRenderer: _tileRenderer,
-                    imageryProvider: _providerForStyle(_activeStyle),
+                child: ClipRect(
+                  child: CustomPaint(
+                    painter: Scene3DViewportPainter(
+                      camera: _cameraController.current,
+                      activeStyle: _activeStyle,
+                      astronomicalBody: _astronomicalBody,
+                      elevationActive: _elevationActive,
+                      showDevices: _showDevices,
+                      showLinks: _showLinks,
+                      showLabels: _showLabels,
+                      showDropLines: _showDropLines,
+                      topologyData: widget.topologyData,
+                      userRotationX: 0.0,
+                      userTilt: 0.0,
+                      zoomScale: zoomScale,
+                      tileRenderer: _tileRenderer,
+                      imageryProvider: _providerForStyle(_activeStyle),
+                    ),
                   ),
                 ),
               ),

@@ -1681,3 +1681,113 @@ This phase applies the PropertiesPanel background opacity inheritance to `Topogr
   ```
 
 
+## Phase 25: Tile Projection Units and 3D Viewport ClipRect
+
+This phase implements the fix for the tile projection units mapping bug and wraps the 3D globe custom painter in a ClipRect to prevent overflow covering the splitters.
+
+### Core App Code
+
+#### [MODIFY] [globe_tile_renderer.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/cesium_3d/globe_tile_renderer.dart)
+- Pass degrees `latDeg` and `lonDeg` to `projectFn` instead of radians `lat` and `lon` in the subdivision loop:
+  - Target:
+    ```dart
+          for (int r = 0; r <= subdivisions; r++) {
+            final double v = r / subdivisions;
+            final double latDeg = _tile2lat(y + v, z);
+            final double lat = _rad(latDeg);
+            final double texY = v * 256.0;
+
+            for (int c = 0; c <= subdivisions; c++) {
+              final double u = c / subdivisions;
+              final double lonDeg = lonW + (lonE - lonW) * u;
+              final double lon = _rad(lonDeg);
+              final double texX = u * 256.0;
+
+              final projected = projectFn(lat, lon);
+    ```
+  - Replacement:
+    ```dart
+          for (int r = 0; r <= subdivisions; r++) {
+            final double v = r / subdivisions;
+            final double latDeg = _tile2lat(y + v, z);
+            final double lat = _rad(latDeg);
+            final double texY = v * 256.0;
+
+            for (int c = 0; c <= subdivisions; c++) {
+              final double u = c / subdivisions;
+              final double lonDeg = lonW + (lonE - lonW) * u;
+              final double lon = _rad(lonDeg);
+              final double texX = u * 256.0;
+
+              final projected = projectFn(latDeg, lonDeg);
+    ```
+
+#### [MODIFY] [scene_3d_viewport.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/scene_3d_viewport.dart)
+- Wrap the CustomPaint widget in a ClipRect widget to prevent overflow onto splitters:
+  - Target:
+    ```dart
+                onPointerSignal: (event) {
+                  if (event is PointerScrollEvent) {
+                    _cameraController.zoomInteractive(event.scrollDelta.dy);
+                  }
+                },
+                child: CustomPaint(
+                  painter: Scene3DViewportPainter(
+                    camera: _cameraController.current,
+                    activeStyle: _activeStyle,
+                    astronomicalBody: _astronomicalBody,
+                    elevationActive: _elevationActive,
+                    showDevices: _showDevices,
+                    showLinks: _showLinks,
+                    showLabels: _showLabels,
+                    showDropLines: _showDropLines,
+                    topologyData: widget.topologyData,
+                    userRotationX: 0.0,
+                    userTilt: 0.0,
+                    zoomScale: zoomScale,
+                    tileRenderer: _tileRenderer,
+                    imageryProvider: _providerForStyle(_activeStyle),
+                  ),
+                ),
+              ),
+    ```
+  - Replacement:
+    ```dart
+                onPointerSignal: (event) {
+                  if (event is PointerScrollEvent) {
+                    _cameraController.zoomInteractive(event.scrollDelta.dy);
+                  }
+                },
+                child: ClipRect(
+                  child: CustomPaint(
+                    painter: Scene3DViewportPainter(
+                      camera: _cameraController.current,
+                      activeStyle: _activeStyle,
+                      astronomicalBody: _astronomicalBody,
+                      elevationActive: _elevationActive,
+                      showDevices: _showDevices,
+                      showLinks: _showLinks,
+                      showLabels: _showLabels,
+                      showDropLines: _showDropLines,
+                      topologyData: widget.topologyData,
+                      userRotationX: 0.0,
+                      userTilt: 0.0,
+                      zoomScale: zoomScale,
+                      tileRenderer: _tileRenderer,
+                      imageryProvider: _providerForStyle(_activeStyle),
+                    ),
+                  ),
+                ),
+              ),
+    ```
+
+### Phase 25 Verification Plan
+
+#### Automated Tests
+- Run all project tests and verify they pass:
+  ```bash
+  cd app_flutter && flutter test
+  ```
+
+
+

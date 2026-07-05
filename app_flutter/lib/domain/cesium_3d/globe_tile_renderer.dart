@@ -287,7 +287,7 @@ class GlobeTileRenderer {
           final double lon = _rad(lonDeg);
           final double texX = u * 256.0;
 
-          final projected = projectFn(lat, lon);
+          final projected = projectFn(latDeg, lonDeg);
           positions.add(projected.offset);
           textureCoordinates.add(ui.Offset(texX, texY));
           zs.add(projected.z);
