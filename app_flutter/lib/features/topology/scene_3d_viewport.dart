@@ -699,237 +699,246 @@ class Scene3DViewportState extends State<Scene3DViewport> {
                           width: 1.0,
                         ),
                       ),
-                      child: SingleChildScrollView(
-                        physics: _globeFocusNode.hasFocus
-                            ? const NeverScrollableScrollPhysics()
-                            : null,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.settings,
-                                  color: Color(0xFF00E5FF),
-                                  size: 16,
-                                ),
-                                const SizedBox(width: 8),
-                                const Expanded(
-                                  child: Text(
-                                    'MAP CONFIGURATION',
-                                    style: TextStyle(
-                                      color: Color(0xFF00E5FF),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 1.0,
-                                    ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.settings,
+                                color: Color(0xFF00E5FF),
+                                size: 16,
+                              ),
+                              const SizedBox(width: 8),
+                              const Expanded(
+                                child: Text(
+                                  'MAP CONFIGURATION',
+                                  style: TextStyle(
+                                    color: Color(0xFF00E5FF),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1.0,
                                   ),
                                 ),
-                                InkWell(
-                                  key: const Key('collapse_map_config_button'),
-                                  onTap: () => setState(() => _showMapConfig = false),
-                                  child: const Icon(
+                              ),
+                              InkWell(
+                                key: const Key('collapse_map_config_button'),
+                                onTap: () => setState(() => _showMapConfig = false),
+                                child: const Padding(
+                                  padding: EdgeInsets.all(4.0),
+                                  child: Icon(
                                     Icons.close,
                                     size: 14,
                                     color: Color(0xAAFFFFFF),
                                   ),
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            const Divider(color: Color(0x2200E5FF), height: 1),
-                            const SizedBox(height: 12),
-                            
-                            // Astronomical Body Selection
-                            const Text(
-                              'ASTRONOMICAL BODY',
-                              style: TextStyle(
-                                color: Color(0xFFB0BEC5),
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'monospace',
-                                fontSize: 10,
-                                letterSpacing: 0.8,
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                _buildBodyButton('Earth'),
-                                _buildBodyButton('Mars'),
-                              ],
-                            ),
-                            Row(
-                              children: [
-                                _buildBodyButton('Proxima Centauri'),
-                              ],
-                            ),
-                            
-                            const SizedBox(height: 16),
-                            const Divider(color: Color(0x2200E5FF), height: 1),
-                            const SizedBox(height: 16),
-
-                            // Base Layer Style Selection
-                            const Text(
-                              'BASE LAYER STYLE',
-                              style: TextStyle(
-                                color: Color(0xFFB0BEC5),
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'monospace',
-                                fontSize: 10,
-                                letterSpacing: 0.8,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                _buildStyleButton('Dark Map'),
-                                _buildStyleButton('Street Map'),
-                              ],
-                            ),
-                            Row(
-                              children: [
-                                _buildStyleButton('Satellite Map'),
-                                _buildStyleButton('Light Map'),
-                              ],
-                            ),
-                            
-                            const SizedBox(height: 16),
-                            const Divider(color: Color(0x2200E5FF), height: 1),
-                            const SizedBox(height: 16),
-                            
-                            // 3D Surface Elevation
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          const Divider(color: Color(0x2200E5FF), height: 1),
+                          const SizedBox(height: 12),
+                          Expanded(
+                            child: SingleChildScrollView(
+                              physics: _globeFocusNode.hasFocus
+                                  ? const NeverScrollableScrollPhysics()
+                                  : null,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Astronomical Body Selection
+                                  const Text(
+                                    'ASTRONOMICAL BODY',
+                                    style: TextStyle(
+                                      color: Color(0xFFB0BEC5),
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: 'monospace',
+                                      fontSize: 10,
+                                      letterSpacing: 0.8,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
                                     children: [
-                                      const Text(
-                                        '3D SURFACE ELEVATION',
+                                      _buildBodyButton('Earth'),
+                                      _buildBodyButton('Mars'),
+                                    ],
+                                  ),
+                                  Row(
+                                    children: [
+                                      _buildBodyButton('Proxima Centauri'),
+                                    ],
+                                  ),
+                                  
+                                  const SizedBox(height: 16),
+                                  const Divider(color: Color(0x2200E5FF), height: 1),
+                                  const SizedBox(height: 16),
+
+                                  // Base Layer Style Selection
+                                  const Text(
+                                    'BASE LAYER STYLE',
+                                    style: TextStyle(
+                                      color: Color(0xFFB0BEC5),
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: 'monospace',
+                                      fontSize: 10,
+                                      letterSpacing: 0.8,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      _buildStyleButton('Dark Map'),
+                                      _buildStyleButton('Street Map'),
+                                    ],
+                                  ),
+                                  Row(
+                                    children: [
+                                      _buildStyleButton('Satellite Map'),
+                                      _buildStyleButton('Light Map'),
+                                    ],
+                                  ),
+                                  
+                                  const SizedBox(height: 16),
+                                  const Divider(color: Color(0x2200E5FF), height: 1),
+                                  const SizedBox(height: 16),
+                                  
+                                  // 3D Surface Elevation
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              '3D SURFACE ELEVATION',
+                                              style: TextStyle(
+                                                color: Color(0xFFCFD8DC),
+                                                fontWeight: FontWeight.bold,
+                                                fontFamily: 'monospace',
+                                                fontSize: 10,
+                                                letterSpacing: 0.8,
+                                              ),
+                                            ),
+                                            if (_elevationActive) ...[
+                                              const SizedBox(height: 4),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0x1F4CAF50),
+                                                  border: Border.all(color: const Color(0xFF4CAF50), width: 1.0),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                child: const Text(
+                                                  'ACTIVE 3D',
+                                                  style: TextStyle(
+                                                    color: Color(0xFF4CAF50),
+                                                    fontSize: 8,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontFamily: 'monospace',
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                      Switch(
+                                        value: _elevationActive,
+                                        onChanged: (val) {
+                                          setState(() {
+                                            _elevationActive = val;
+                                          });
+                                        },
+                                        activeColor: const Color(0xFF00E5FF),
+                                        activeTrackColor: const Color(0x6600E5FF),
+                                        inactiveThumbColor: const Color(0xFF78909C),
+                                        inactiveTrackColor: const Color(0x33FFFFFF),
+                                      ),
+                                    ],
+                                  ),
+                                  
+                                  const SizedBox(height: 16),
+                                  const Divider(color: Color(0x2200E5FF), height: 1),
+                                  const SizedBox(height: 16),
+                                  
+                                  // Visibility Toggles
+                                  const Text(
+                                    'VISIBILITY TOGGLES',
+                                    style: TextStyle(
+                                      color: Color(0xFFB0BEC5),
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: 'monospace',
+                                      fontSize: 10,
+                                      letterSpacing: 0.8,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _buildVisibilityToggle('Devices / Nodes', _showDevices, (val) {
+                                    setState(() {
+                                      _showDevices = val;
+                                    });
+                                  }),
+                                  _buildVisibilityToggle('Topology Links', _showLinks, (val) {
+                                    setState(() {
+                                      _showLinks = val;
+                                    });
+                                  }),
+                                  _buildVisibilityToggle('Address Labels', _showLabels, (val) {
+                                    setState(() {
+                                      _showLabels = val;
+                                    });
+                                  }),
+                                  _buildVisibilityToggle('Vertical Drop Lines', _showDropLines, (val) {
+                                    setState(() {
+                                      _showDropLines = val;
+                                    });
+                                  }),
+                                  
+                                  const SizedBox(height: 24),
+                                  
+                                  // Reset Button
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: OutlinedButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          _astronomicalBody = 'Earth';
+                                          _activeStyle = 'Satellite Map';
+                                          _elevationActive = true;
+                                          _showDevices = true;
+                                          _showLinks = true;
+                                          _showLabels = true;
+                                          _showDropLines = true;
+                                          _tileRenderer?.setProvider(ImageryProvider.arcGisSatellite);
+                                        });
+                                      },
+                                      style: OutlinedButton.styleFrom(
+                                        side: const BorderSide(color: Color(0xFF00E5FF), width: 1.0),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        backgroundColor: const Color(0x0D00E5FF),
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                      ),
+                                      child: const Text(
+                                        'RESET CAMERA PERSPECTIVE',
                                         style: TextStyle(
-                                          color: Color(0xFFCFD8DC),
+                                          color: Color(0xFF00E5FF),
+                                          fontSize: 10,
                                           fontWeight: FontWeight.bold,
                                           fontFamily: 'monospace',
-                                          fontSize: 10,
                                           letterSpacing: 0.8,
                                         ),
                                       ),
-                                      if (_elevationActive) ...[
-                                        const SizedBox(height: 4),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0x1F4CAF50),
-                                            border: Border.all(color: const Color(0xFF4CAF50), width: 1.0),
-                                            borderRadius: BorderRadius.circular(4),
-                                          ),
-                                          child: const Text(
-                                            'ACTIVE 3D',
-                                            style: TextStyle(
-                                              color: Color(0xFF4CAF50),
-                                              fontSize: 8,
-                                              fontWeight: FontWeight.bold,
-                                              fontFamily: 'monospace',
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ],
+                                    ),
                                   ),
-                                ),
-                                Switch(
-                                  value: _elevationActive,
-                                  onChanged: (val) {
-                                    setState(() {
-                                      _elevationActive = val;
-                                    });
-                                  },
-                                  activeColor: const Color(0xFF00E5FF),
-                                  activeTrackColor: const Color(0x6600E5FF),
-                                  inactiveThumbColor: const Color(0xFF78909C),
-                                  inactiveTrackColor: const Color(0x33FFFFFF),
-                                ),
-                              ],
-                            ),
-                            
-                            const SizedBox(height: 16),
-                            const Divider(color: Color(0x2200E5FF), height: 1),
-                            const SizedBox(height: 16),
-                            
-                            // Visibility Toggles
-                            const Text(
-                              'VISIBILITY TOGGLES',
-                              style: TextStyle(
-                                color: Color(0xFFB0BEC5),
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'monospace',
-                                fontSize: 10,
-                                letterSpacing: 0.8,
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            _buildVisibilityToggle('Devices / Nodes', _showDevices, (val) {
-                              setState(() {
-                                _showDevices = val;
-                              });
-                            }),
-                            _buildVisibilityToggle('Topology Links', _showLinks, (val) {
-                              setState(() {
-                                _showLinks = val;
-                              });
-                            }),
-                            _buildVisibilityToggle('Address Labels', _showLabels, (val) {
-                              setState(() {
-                                _showLabels = val;
-                              });
-                            }),
-                            _buildVisibilityToggle('Vertical Drop Lines', _showDropLines, (val) {
-                              setState(() {
-                                _showDropLines = val;
-                              });
-                            }),
-                            
-                            const SizedBox(height: 24),
-                            
-                            // Reset Button
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton(
-                                onPressed: () {
-                                  setState(() {
-                                    _astronomicalBody = 'Earth';
-                                    _activeStyle = 'Satellite Map';
-                                    _elevationActive = true;
-                                    _showDevices = true;
-                                    _showLinks = true;
-                                    _showLabels = true;
-                                    _showDropLines = true;
-                                    _tileRenderer?.setProvider(ImageryProvider.arcGisSatellite);
-                                  });
-                                },
-                                style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(color: Color(0xFF00E5FF), width: 1.0),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  backgroundColor: const Color(0x0D00E5FF),
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                ),
-                                child: const Text(
-                                  'RESET CAMERA PERSPECTIVE',
-                                  style: TextStyle(
-                                    color: Color(0xFF00E5FF),
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'monospace',
-                                    letterSpacing: 0.8,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),

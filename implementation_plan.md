@@ -1899,3 +1899,24 @@ This phase sets the default camera pitch to -89.9 degrees to ensure a clean top-
   cd app_flutter && flutter test
   ```
 
+
+## Phase 31: Separate Map Configuration Header Row and Padding Close Button
+
+This phase details layout changes in the Map Configuration Panel within Scene3DViewport to prevent the scrollbar from overlaying the close button, and increases the click/hit target size of the close button.
+
+### Core App Code
+
+#### [MODIFY] [scene_3d_viewport.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/scene_3d_viewport.dart)
+- In the `_showMapConfig` Positioned block, in the parent `Container` child, render a `Column` instead of a `SingleChildScrollView`.
+- The first children of this `Column` should be the static settings header `Row`, a `SizedBox`, a `Divider`, and another `SizedBox`.
+- Add a `Padding` wrapper of `EdgeInsets.all(4.0)` around the `Icons.close` icon in the `collapse_map_config_button` InkWell to increase the click/hit target size.
+- Wrap the rest of the content (starting with "Astronomical Body" text, up to the end of the config column children) inside an `Expanded` widget containing the `SingleChildScrollView` with the existing `physics: _globeFocusNode.hasFocus ? const NeverScrollableScrollPhysics() : null`.
+
+### Phase 31 Verification Plan
+
+#### Automated Tests
+- Run all project unit and widget tests:
+  ```bash
+  cd app_flutter && flutter test
+  ```
+
