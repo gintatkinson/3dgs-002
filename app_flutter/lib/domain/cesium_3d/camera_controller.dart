@@ -97,9 +97,10 @@ class CameraController extends ChangeNotifier {
   }
 
   static double _wrapHeadingStatic(double heading) {
-    while (heading > 360) heading -= 360;
-    while (heading < 0) heading += 360;
-    return heading;
+    double h = heading;
+    while (h >= 360) h -= 360;
+    while (h < 0) h += 360;
+    return h;
   }
 
   void pan(Offset delta, [double shortestSide = 800.0]) {
@@ -174,6 +175,16 @@ class CameraController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void keyboardRotateHeading(double degrees) {
+    _camera = VirtualCamera.clamped(
+      latitude: _camera.latitude, longitude: _camera.longitude,
+      altitude: _camera.altitude,
+      heading: _wrapHeading(_camera.heading + degrees),
+      pitch: _camera.pitch, roll: _camera.roll,
+    );
+    notifyListeners();
+  }
+
   void keyboardTilt(double degrees) {
     _camera = VirtualCamera.clamped(
       latitude: _camera.latitude, longitude: _camera.longitude,
@@ -190,11 +201,7 @@ class CameraController extends ChangeNotifier {
     return lng;
   }
 
-  double _wrapHeading(double heading) {
-    while (heading > 360) heading -= 360;
-    while (heading < 0) heading += 360;
-    return heading;
-  }
+  double _wrapHeading(double heading) => _wrapHeadingStatic(heading);
 
   double _wrapPitch(double pitch) => _wrapPitchStatic(pitch);
 

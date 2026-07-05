@@ -210,13 +210,21 @@ class Scene3DViewportState extends State<Scene3DViewport> {
 
     if (key == LogicalKeyboardKey.arrowLeft) {
       setState(() {
-        _cameraController.keyboardRotate(-CameraController.keyboardStep);
+        if (_shiftHeld) {
+          _cameraController.keyboardRotateHeading(-CameraController.keyboardStep);
+        } else {
+          _cameraController.keyboardRotate(-CameraController.keyboardStep);
+        }
       });
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.arrowRight) {
       setState(() {
-        _cameraController.keyboardRotate(CameraController.keyboardStep);
+        if (_shiftHeld) {
+          _cameraController.keyboardRotateHeading(CameraController.keyboardStep);
+        } else {
+          _cameraController.keyboardRotate(CameraController.keyboardStep);
+        }
       });
       return KeyEventResult.handled;
     }

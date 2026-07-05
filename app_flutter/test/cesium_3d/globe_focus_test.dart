@@ -64,5 +64,21 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pump();
     expect(controller.current.longitude, equals(135.0));
+
+    // Hold Shift and press Arrow Left key (should rotate heading, longitude stays 135.0)
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.pump();
+    expect(controller.current.longitude, equals(135.0));
+    expect(controller.current.heading, greaterThan(0.0));
+
+    // Hold Shift and press Arrow Right key (should rotate heading back to 0)
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.pump();
+    expect(controller.current.longitude, equals(135.0));
+    expect(controller.current.heading, equals(0.0));
   });
 }

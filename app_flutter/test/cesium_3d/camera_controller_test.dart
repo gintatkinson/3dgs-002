@@ -139,6 +139,14 @@ void main() {
       expect(c.current.latitude, equals(35.0));
     });
 
+    test('keyboardRotateHeading changes heading only', () {
+      final c = CameraController(_makeCam());
+      c.keyboardRotateHeading(10);
+      expect(c.current.heading, equals(10.0));
+      expect(c.current.longitude, equals(135.0));
+      expect(c.current.latitude, equals(35.0));
+    });
+
     test('keyboardTilt changes pitch only', () {
       final c = CameraController(_makeCam());
       c.keyboardTilt(5);

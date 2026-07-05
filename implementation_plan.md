@@ -1079,4 +1079,31 @@ This phase details the changes required to update the panning sensitivity baseli
   cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
   ```
 
+## Phase 20: Keyboard Rotate Heading (Yaw) with Shift + Arrow Keys
 
+This phase implements camera heading (yaw) rotation on Shift + Left/Right arrow keys instead of globe longitude rotation.
+
+### Core App Code
+
+#### [MODIFY] [camera_controller.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/cesium_3d/camera_controller.dart)
+- Implement `keyboardRotateHeading` which wraps and updates the heading (yaw) parameter.
+- Update `_wrapHeadingStatic` to use `heading >= 360` so that 360-degree boundary wraps correctly to 0.
+
+#### [MODIFY] [scene_3d_viewport.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/scene_3d_viewport.dart)
+- In `_handleKeyEvent`, check if `_shiftHeld` is true when Left/Right arrows are pressed and delegate to `keyboardRotateHeading`.
+
+### Unit and Integration Tests
+
+#### [MODIFY] [camera_controller_test.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/cesium_3d/camera_controller_test.dart)
+- Add unit test for `keyboardRotateHeading`.
+
+#### [MODIFY] [globe_focus_test.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/cesium_3d/globe_focus_test.dart)
+- Add test case verifying that pressing Shift + Left/Right arrow keys rotates camera heading instead of longitude.
+
+### Phase 20 Verification Plan
+
+### Automated Tests
+- Run unit and widget tests:
+  ```bash
+  cd app_flutter && flutter test test/cesium_3d/
+  ```
