@@ -1790,4 +1790,26 @@ This phase implements the fix for the tile projection units mapping bug and wrap
   ```
 
 
+## Phase 26: Map Transparency and Splitter Compositing Layer
+
+This phase restores transparent overflow for the 3D globe custom painter and ensures the workspace splitters composite on top of the map.
+
+### Core App Code
+
+#### [MODIFY] [scene_3d_viewport.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/scene_3d_viewport.dart)
+- Remove the `ClipRect` widget wrapping the `CustomPaint` (around lines 521-540) so that the globe is allowed to project/overflow in the background under the other transparent widgets.
+
+#### [MODIFY] [split_workspace.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/layout/split_workspace.dart)
+- Wrap the `splitter` inside the `splitterWidget` Positioned widget (around lines 169-177) in a `RepaintBoundary` so it gets its own compositing layer and is guaranteed to render on top of the map.
+
+### Phase 26 Verification Plan
+
+#### Automated Tests
+- Run all project tests and verify they pass:
+  ```bash
+  cd app_flutter && flutter test
+  ```
+
+
+
 

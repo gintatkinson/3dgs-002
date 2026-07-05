@@ -173,7 +173,7 @@ class _SplitWorkspaceState extends State<SplitWorkspace> {
           bottom: isHorizontal ? 0 : null,
           width: isHorizontal ? widget.dividerSize : null,
           height: isHorizontal ? null : widget.dividerSize,
-          child: splitter,
+          child: RepaintBoundary(child: splitter),
         );
 
         final leadingWidget = Positioned(
