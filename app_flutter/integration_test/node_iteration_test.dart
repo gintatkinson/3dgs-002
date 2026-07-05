@@ -97,9 +97,9 @@ Future<void> _editTextFields(
 
 Future<void> _changeSettingsViaUI(
     WidgetTester tester, ThemeMode themeMode, double textScale) async {
-  await tester.ensureVisible(find.byIcon(Icons.settings).first);
+  await tester.ensureVisible(find.byKey(const Key('sidebar_settings_button')));
   await tester.pumpAndSettle();
-  await tester.tap(find.byIcon(Icons.settings).first);
+  await tester.tap(find.byKey(const Key('sidebar_settings_button')));
   await tester.pumpAndSettle();
 
   final IconData themeIcon;
@@ -114,10 +114,7 @@ Future<void> _changeSettingsViaUI(
   await tester.tap(find.byIcon(themeIcon).last);
   await tester.pumpAndSettle();
 
-  final slider = find.descendant(
-    of: find.byType(SettingsPanel),
-    matching: find.byType(Slider),
-  );
+  final slider = find.byKey(const Key('settings_text_scale_slider'));
   final rect = tester.getRect(slider);
   const double min = 0.7;
   const double max = 1.5;
@@ -130,7 +127,7 @@ Future<void> _changeSettingsViaUI(
   );
   await tester.pumpAndSettle();
 
-  await tester.tapAt(Offset.zero);
+  await tester.tap(find.byType(ModalBarrier).last);
   await tester.pumpAndSettle();
 }
 
@@ -158,6 +155,7 @@ void main() {
       for (int nodeIdx = 0; nodeIdx < allNodeIds.length; nodeIdx++) {
         final String nodeId = allNodeIds[nodeIdx];
 
+        await tester.ensureVisible(find.byKey(Key('node_$nodeId')));
         await tester.tap(find.byKey(Key('node_$nodeId')));
         await tester.pump();
         await tester.pump();

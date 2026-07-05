@@ -132,6 +132,7 @@ class SettingsPanel extends StatelessWidget {
               Icon(Icons.text_fields, size: 16, color: cs.onSurface.withValues(alpha: 0.5)),
               Expanded(
                 child: Slider(
+                  key: const Key('settings_text_scale_slider'),
                   value: textScaler.scale,
                   min: 0.7,
                   max: 1.5,

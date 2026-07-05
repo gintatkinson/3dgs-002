@@ -1920,3 +1920,34 @@ This phase details layout changes in the Map Configuration Panel within Scene3DV
   cd app_flutter && flutter test
   ```
 
+
+## Phase 32: Fix Integration Test Failures in Issue #55
+
+This phase details changes to add testing keys to settings widgets, use key-based finders in the integration test settings configuration helper, cleanly dismiss the bottom sheet, and add safety visibility helper checks to prevent offscreen hit-test failures.
+
+### Core App Code
+
+#### [MODIFY] [sidebar_tree.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/tree/sidebar_tree.dart)
+- Add key `key: const Key('sidebar_settings_button')` to the settings IconButton.
+
+#### [MODIFY] [settings_panel.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/core/theme/widgets/settings_panel.dart)
+- Add key `key: const Key('settings_text_scale_slider')` to the Text Size slider.
+
+### Integration Tests
+
+#### [MODIFY] [node_iteration_test.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/integration_test/node_iteration_test.dart)
+- In the first traversal loop, insert a `tester.ensureVisible(...)` call before `tester.tap(...)` to prevent offscreen hit-test errors.
+- In `_changeSettingsViaUI`:
+  - Replace `find.byIcon(Icons.settings).first` with `find.byKey(const Key('sidebar_settings_button'))`.
+  - Replace the generic slider finder with `find.byKey(const Key('settings_text_scale_slider'))`.
+  - Replace `tester.tapAt(Offset.zero)` with `tester.tap(find.byType(ModalBarrier).last)` to dismiss the bottom sheet cleanly.
+
+### Phase 32 Verification Plan
+
+#### Automated Tests
+- Run the integration test to verify the changes:
+  ```bash
+  flutter test -d macos integration_test/node_iteration_test.dart --name "Stress test"
+  ```
+
+
