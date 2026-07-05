@@ -902,6 +902,58 @@ This phase documents the implementation of the true 3D perspective camera model,
   cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
   ```
 
+## Phase 17: Heading-Aligned Panning
 
+This phase details the changes required to rotate the drag delta by the camera's heading so that panning aligns with screen axes.
 
+### Core App Code
 
+#### [MODIFY] [camera_controller.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/cesium_3d/camera_controller.dart)
+- Modify the `pan` method to rotate the drag delta by the camera's heading:
+  - Target:
+    ```dart
+      void pan(Offset delta, [double shortestSide = 800.0]) {
+        final double factor = _camera.altitude * 2.8074e-5 / shortestSide;
+        final newLat = (_camera.latitude - delta.dy * factor).clamp(-90.0, 90.0);
+        final newLng = _wrapLng(_camera.longitude - delta.dx * factor);
+        _camera = VirtualCamera.clamped(
+          latitude: newLat, longitude: newLng,
+          altitude: _camera.altitude, heading: _camera.heading,
+          pitch: _camera.pitch, roll: _camera.roll,
+        );
+        notifyListeners();
+      }
+    ```
+  - Replacement:
+    ```dart
+      void pan(Offset delta, [double shortestSide = 800.0]) {
+        final double factor = _camera.altitude * 2.8074e-5 / shortestSide;
+        
+        // Rotate the drag delta by the camera heading to align panning with the screen axes
+        final double radH = _camera.heading * math.pi / 180.0;
+        final double cosH = math.cos(radH);
+        final double sinH = math.sin(radH);
+        
+        final double dxAligned = delta.dx * cosH + delta.dy * sinH;
+        final double dyAligned = -delta.dx * sinH + delta.dy * cosH;
+        
+        final newLat = (_camera.latitude - dyAligned * factor).clamp(-90.0, 90.0);
+        final newLng = _wrapLng(_camera.longitude - dxAligned * factor);
+        _camera = VirtualCamera.clamped(
+          latitude: newLat, longitude: newLng,
+          altitude: _camera.altitude, heading: _camera.heading,
+          pitch: _camera.pitch, roll: _camera.roll,
+        );
+        notifyListeners();
+      }
+    ```
+
+### Phase 17 Verification Plan
+
+### Automated Tests
+- Run all unit and integration tests to verify correctness:
+  ```bash
+  cd app_flutter && flutter test test/cesium_3d/
+  cd app_flutter && flutter test integration_test/globe_camera_drag_test.dart -d macos
+  cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
+  ```

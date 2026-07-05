@@ -100,8 +100,17 @@ class CameraController extends ChangeNotifier {
 
   void pan(Offset delta, [double shortestSide = 800.0]) {
     final double factor = _camera.altitude * 2.8074e-5 / shortestSide;
-    final newLat = (_camera.latitude - delta.dy * factor).clamp(-90.0, 90.0);
-    final newLng = _wrapLng(_camera.longitude - delta.dx * factor);
+    
+    // Rotate the drag delta by the camera heading to align panning with the screen axes
+    final double radH = _camera.heading * math.pi / 180.0;
+    final double cosH = math.cos(radH);
+    final double sinH = math.sin(radH);
+    
+    final double dxAligned = delta.dx * cosH + delta.dy * sinH;
+    final double dyAligned = -delta.dx * sinH + delta.dy * cosH;
+    
+    final newLat = (_camera.latitude - dyAligned * factor).clamp(-90.0, 90.0);
+    final newLng = _wrapLng(_camera.longitude - dxAligned * factor);
     _camera = VirtualCamera.clamped(
       latitude: newLat, longitude: newLng,
       altitude: _camera.altitude, heading: _camera.heading,
