@@ -494,7 +494,7 @@ class Scene3DViewportState extends State<Scene3DViewport> {
                 },
                 onPointerMove: (event) {
                   final delta = event.localDelta;
-                  if (delta.distance <= 0.5) return;
+                  if (delta.distance <= 0.01) return;
                   final Size? size = context.size;
                   final double shortestSide = size?.shortestSide ?? 800.0;
                   if (event.buttons & kSecondaryMouseButton != 0 || _shiftHeld) {

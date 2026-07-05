@@ -978,3 +978,105 @@ This phase details the changes required to expand the camera pitch limits to the
   cd app_flutter && flutter test integration_test/globe_camera_drag_test.dart -d macos
   cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
   ```
+
+## Phase 19: Panning Sensitivity Baseline and Drag Jitter Filter Threshold Update
+
+This phase details the changes required to update the panning sensitivity baseline offset to resolve the left/right panning lock and reduce the drag distance discard threshold to improve low-altitude flight responsiveness.
+
+### Core App Code
+
+#### [MODIFY] [camera_controller.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/cesium_3d/camera_controller.dart)
+- In `pan`, add a `500,000.0` meters baseline offset to the altitude in the panning sensitivity factor calculation.
+  - Target:
+    ```dart
+      void pan(Offset delta, [double shortestSide = 800.0]) {
+        final double factor = _camera.altitude * 2.8074e-5 / shortestSide;
+    ```
+  - Replacement:
+    ```dart
+      void pan(Offset delta, [double shortestSide = 800.0]) {
+        final double factor = (_camera.altitude + 500000.0) * 2.8074e-5 / shortestSide;
+    ```
+
+#### [MODIFY] [scene_3d_viewport.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/scene_3d_viewport.dart)
+- In `onPointerMove`, reduce the drag distance discard threshold from `0.5` to `0.01` to prevent trackpad sub-pixel micro-drags from being ignored.
+  - Target:
+    ```dart
+                    final delta = event.localDelta;
+                    if (delta.distance <= 0.5) return;
+    ```
+  - Replacement:
+    ```dart
+                    final delta = event.localDelta;
+                    if (delta.distance <= 0.01) return;
+    ```
+
+### Unit Tests
+
+#### [MODIFY] [camera_controller_test.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/cesium_3d/camera_controller_test.dart)
+- Update expected longitude and latitude change to reflect the added 500,000 meters altitude offset in panning sensitivity calculations.
+- Update large wrap-testing input offsets from `1,000,000.0` to `1,000.0` so that they wrap appropriately under the new panning sensitivity scaling factor.
+  - Target:
+    ```dart
+        test('pan with pixel-accurate precision', () {
+          final c = CameraController(_makeCam(lat: 0.0, lng: 0.0));
+          c.pan(const Offset(100, 100));
+          expect(c.current.longitude, closeTo(-0.00175, 0.0001));
+          expect(c.current.latitude, closeTo(-0.00175, 0.0001));
+        });
+    ```
+  - Replacement:
+    ```dart
+        test('pan with pixel-accurate precision', () {
+          final c = CameraController(_makeCam(lat: 0.0, lng: 0.0));
+          c.pan(const Offset(100, 100));
+          expect(c.current.longitude, closeTo(-1.75638, 0.0001));
+          expect(c.current.latitude, closeTo(-1.75638, 0.0001));
+        });
+    ```
+  - Target:
+    ```dart
+        test('pan wraps longitude past 180', () {
+          final c = CameraController(_makeCam(lng: 175.0));
+          c.pan(const Offset(-1000000.0, 0));
+          expect(c.current.longitude, lessThan(-160.0));
+        });
+    ```
+  - Replacement:
+    ```dart
+        test('pan wraps longitude past 180', () {
+          final c = CameraController(_makeCam(lng: 175.0));
+          c.pan(const Offset(-1000.0, 0));
+          expect(c.current.longitude, lessThan(-160.0));
+        });
+    ```
+  - Target:
+    ```dart
+        test('longitude wraps around -180/+180 boundary', () {
+          final c = CameraController(_makeCam(lng: -175));
+          c.pan(const Offset(1000000.0, 0));
+          expect(c.current.longitude, lessThan(180));
+          expect(c.current.longitude, greaterThan(155));
+        });
+    ```
+  - Replacement:
+    ```dart
+        test('longitude wraps around -180/+180 boundary', () {
+          final c = CameraController(_makeCam(lng: -175));
+          c.pan(const Offset(1000.0, 0));
+          expect(c.current.longitude, lessThan(180));
+          expect(c.current.longitude, greaterThan(155));
+        });
+    ```
+
+### Phase 19 Verification Plan
+
+### Automated Tests
+- Run all unit and integration tests to verify correctness:
+  ```bash
+  cd app_flutter && flutter test test/cesium_3d/
+  cd app_flutter && flutter test integration_test/globe_camera_drag_test.dart -d macos
+  cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
+  ```
+
+

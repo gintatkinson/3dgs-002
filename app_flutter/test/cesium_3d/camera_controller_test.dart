@@ -55,8 +55,8 @@ void main() {
     test('pan with pixel-accurate precision', () {
       final c = CameraController(_makeCam(lat: 0.0, lng: 0.0));
       c.pan(const Offset(100, 100));
-      expect(c.current.longitude, closeTo(-0.00175, 0.0001));
-      expect(c.current.latitude, closeTo(-0.00175, 0.0001));
+      expect(c.current.longitude, closeTo(-1.75638, 0.0001));
+      expect(c.current.latitude, closeTo(-1.75638, 0.0001));
     });
 
     test('pan clamps latitude to [-90, 90]', () {
@@ -67,7 +67,7 @@ void main() {
 
     test('pan wraps longitude past 180', () {
       final c = CameraController(_makeCam(lng: 175.0));
-      c.pan(const Offset(-1000000.0, 0));
+      c.pan(const Offset(-1000.0, 0));
       expect(c.current.longitude, lessThan(-160.0));
     });
 
@@ -127,7 +127,7 @@ void main() {
 
     test('longitude wraps around -180/+180 boundary', () {
       final c = CameraController(_makeCam(lng: -175));
-      c.pan(const Offset(1000000.0, 0));
+      c.pan(const Offset(1000.0, 0));
       expect(c.current.longitude, lessThan(180));
       expect(c.current.longitude, greaterThan(155));
     });

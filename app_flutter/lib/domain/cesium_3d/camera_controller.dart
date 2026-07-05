@@ -103,7 +103,7 @@ class CameraController extends ChangeNotifier {
   }
 
   void pan(Offset delta, [double shortestSide = 800.0]) {
-    final double factor = _camera.altitude * 2.8074e-5 / shortestSide;
+    final double factor = (_camera.altitude + 500000.0) * 2.8074e-5 / shortestSide;
     
     // Rotate the drag delta by the camera heading to align panning with the screen axes
     final double radH = _camera.heading * math.pi / 180.0;
