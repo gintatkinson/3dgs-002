@@ -1,10 +1,47 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 import 'package:app_flutter/domain/type_descriptor.dart';
 import 'package:app_flutter/features/properties/property_grid.dart';
+import 'package:app_flutter/core/theme/theme_controller.dart';
+import 'package:app_flutter/core/theme/theme_service.dart';
+
+class FakeThemeService implements ThemeService {
+  @override
+  Future<ThemeMode> loadThemeMode() async => ThemeMode.system;
+  @override
+  Future<void> saveThemeMode(ThemeMode mode) async {}
+  @override
+  Future<int> loadThemeScheme() async => 0;
+  @override
+  Future<void> saveThemeScheme(int scheme) async {}
+  @override
+  Future<double> loadTextScale() async => 1.0;
+  @override
+  Future<void> saveTextScale(double scale) async {}
+  @override
+  Future<Axis> loadLayoutSplitAxis() async => Axis.vertical;
+  @override
+  Future<void> saveLayoutSplitAxis(Axis axis) async {}
+  @override
+  Future<double> loadPanelOpacity() async => 0.85;
+  @override
+  Future<void> savePanelOpacity(double opacity) async {}
+}
 
 void main() {
+  Widget buildTestableWidget(Widget child) {
+    return ChangeNotifierProvider<ThemeController>(
+      create: (_) => ThemeController(FakeThemeService()),
+      child: MaterialApp(
+        home: Scaffold(
+          body: child,
+        ),
+      ),
+    );
+  }
+
   Finder findTextFieldByLabel(String labelText) {
     final Finder columnFinder = find.byWidgetPredicate((Widget widget) {
       if (widget is Column) {
@@ -46,25 +83,23 @@ void main() {
   testWidgets('Highlights first section when activeView matches section label',
       (WidgetTester tester) async {
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: PropertyGrid(
-            activeView: 'Primary',
-            fields: const [
-              FieldDescriptor(
-                  key: 'f1',
-                  label: 'Field 1',
-                  type: 'string',
-                  sectionLabel: 'Primary',
-                  sectionOrder: 0),
-              FieldDescriptor(
-                  key: 'f2',
-                  label: 'Field 2',
-                  type: 'string',
-                  sectionLabel: 'Secondary',
-                  sectionOrder: 0),
-            ],
-          ),
+      buildTestableWidget(
+        PropertyGrid(
+          activeView: 'Primary',
+          fields: const [
+            FieldDescriptor(
+                key: 'f1',
+                label: 'Field 1',
+                type: 'string',
+                sectionLabel: 'Primary',
+                sectionOrder: 0),
+            FieldDescriptor(
+                key: 'f2',
+                label: 'Field 2',
+                type: 'string',
+                sectionLabel: 'Secondary',
+                sectionOrder: 0),
+          ],
         ),
       ),
     );
@@ -80,25 +115,23 @@ void main() {
   testWidgets('Highlights first section when activeView is root',
       (WidgetTester tester) async {
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: PropertyGrid(
-            activeView: 'root',
-            fields: const [
-              FieldDescriptor(
-                  key: 'f1',
-                  label: 'Field 1',
-                  type: 'string',
-                  sectionLabel: 'Alpha',
-                  sectionOrder: 0),
-              FieldDescriptor(
-                  key: 'f2',
-                  label: 'Field 2',
-                  type: 'string',
-                  sectionLabel: 'Beta',
-                  sectionOrder: 0),
-            ],
-          ),
+      buildTestableWidget(
+        PropertyGrid(
+          activeView: 'root',
+          fields: const [
+            FieldDescriptor(
+                key: 'f1',
+                label: 'Field 1',
+                type: 'string',
+                sectionLabel: 'Alpha',
+                sectionOrder: 0),
+            FieldDescriptor(
+                key: 'f2',
+                label: 'Field 2',
+                type: 'string',
+                sectionLabel: 'Beta',
+                sectionOrder: 0),
+          ],
         ),
       ),
     );
@@ -116,22 +149,20 @@ void main() {
     Map<String, dynamic>? savedData;
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: PropertyGrid(
-            activeView: 'root',
-            fields: const [
-              FieldDescriptor(
-                  key: 'code',
-                  label: 'Code',
-                  type: 'string',
-                  pattern: r'^[A-Z]{2}$',
-                  inputFormatters: ['uppercase', 'maxLength:2']),
-            ],
-            onSave: (data) {
-              savedData = data;
-            },
-          ),
+      buildTestableWidget(
+        PropertyGrid(
+          activeView: 'root',
+          fields: const [
+            FieldDescriptor(
+                key: 'code',
+                label: 'Code',
+                type: 'string',
+                pattern: r'^[A-Z]{2}$',
+                inputFormatters: ['uppercase', 'maxLength:2']),
+          ],
+          onSave: (data) {
+            savedData = data;
+          },
         ),
       ),
     );
@@ -170,22 +201,20 @@ void main() {
     Map<String, dynamic>? savedData;
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: PropertyGrid(
-            activeView: 'root',
-            fields: const [
-              FieldDescriptor(
-                  key: 'value',
-                  label: 'Value',
-                  type: 'int',
-                  minValue: 0,
-                  maxValue: 100),
-            ],
-            onSave: (data) {
-              savedData = data;
-            },
-          ),
+      buildTestableWidget(
+        PropertyGrid(
+          activeView: 'root',
+          fields: const [
+            FieldDescriptor(
+                key: 'value',
+                label: 'Value',
+                type: 'int',
+                minValue: 0,
+                maxValue: 100),
+          ],
+          onSave: (data) {
+            savedData = data;
+          },
         ),
       ),
     );
@@ -234,22 +263,20 @@ void main() {
     Map<String, dynamic>? savedData;
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: PropertyGrid(
-            activeView: 'root',
-            fields: const [
-              FieldDescriptor(
-                  key: 'type',
-                  label: 'Type',
-                  type: 'enum',
-                  enumOptions: ['a', 'b', 'c'],
-                  enumDisplayNames: ['Option A', 'Option B', 'Option C']),
-            ],
-            onSave: (data) {
-              savedData = data;
-            },
-          ),
+      buildTestableWidget(
+        PropertyGrid(
+          activeView: 'root',
+          fields: const [
+            FieldDescriptor(
+                key: 'type',
+                label: 'Type',
+                type: 'enum',
+                enumOptions: ['a', 'b', 'c'],
+                enumDisplayNames: ['Option A', 'Option B', 'Option C']),
+          ],
+          onSave: (data) {
+            savedData = data;
+          },
         ),
       ),
     );

@@ -1615,3 +1615,29 @@ This phase implements dynamic table row heights and adds a controllable panel op
   cd app_flutter && flutter test
   ```
 
+
+## Phase 22: Stack-Based Foreground Positioning and PropertyGrid Opacity
+
+This phase implements stack-based foreground positioning in SplitWorkspace, enables paintLeadingOnTop: true for the SidebarLayout, and sets opacity on the PropertyGrid input fields and cards.
+
+### Core App Code
+
+#### [MODIFY] [split_workspace.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/layout/split_workspace.dart)
+- Add `paintLeadingOnTop` parameter to the constructor (defaulting to `false`).
+- Rewrite `SplitWorkspaceState.build` to lay out the panes using a `Stack` of `Positioned` widgets instead of a `Row` or `Column`, ordering the children list dynamically based on `paintLeadingOnTop`.
+
+#### [MODIFY] [component_factory.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/layout/component_factory.dart)
+- In the `case 'SidebarLayout'` branch of `ComponentFactory.build`, pass `paintLeadingOnTop: true` to the `SplitWorkspace` constructor.
+
+#### [MODIFY] [property_grid.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/properties/property_grid.dart)
+- Watch `ThemeController` in `PropertyGrid.build` to retrieve `panelOpacity`.
+- In `_buildSystemSection`, apply `panelOpacity` to the card background color `surfaceFill`.
+- Pass `panelOpacity` to `_buildTextField`, `_buildDropdownField`, and `_buildCommittedStatePanel` and apply it to their respective `fillColor`, `dropdownColor`, and background/decorations colors.
+
+### Phase 22 Verification Plan
+
+#### Automated Tests
+- Run all project unit and widget tests:
+  ```bash
+  cd app_flutter && flutter test
+  ```

@@ -112,18 +112,19 @@ class ComponentFactory {
           (c) => c['type'] == 'SplitWorkspace',
           orElse: () => null,
         );
-        return SplitWorkspace(
-          leading: sidebarChild != null
-              ? build(sidebarChild as Map<String, dynamic>, parentWidth, parentHeight, context)
-              : const SizedBox.shrink(),
-          trailing: splitWorkspaceChild != null
-              ? build(splitWorkspaceChild as Map<String, dynamic>, parentWidth, parentHeight, context)
-              : const SizedBox.shrink(),
-          direction: Axis.horizontal,
-          minFirstPaneSize: minPaneSize,
-          initialRatio: 0.25,
-          splitterKey: const Key('vertical_splitter'),
-        );
+            return SplitWorkspace(
+              leading: sidebarChild != null
+                  ? build(sidebarChild as Map<String, dynamic>, parentWidth, parentHeight, context)
+                  : const SizedBox.shrink(),
+              trailing: splitWorkspaceChild != null
+                  ? build(splitWorkspaceChild as Map<String, dynamic>, parentWidth, parentHeight, context)
+                  : const SizedBox.shrink(),
+              direction: Axis.horizontal,
+              minFirstPaneSize: minPaneSize,
+              initialRatio: 0.25,
+              splitterKey: const Key('vertical_splitter'),
+              paintLeadingOnTop: true,
+            );
       case 'HierarchyTreeSelector':
         final tree = SidebarTree(
           workerResult: workerResult,

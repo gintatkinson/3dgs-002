@@ -52,6 +52,8 @@ class SplitWorkspace extends StatefulWidget {
   final Key? splitterKey;
   final ValueChanged<double>? onDrag;
 
+  final bool paintLeadingOnTop;
+
   const SplitWorkspace({
     super.key,
     required this.leading,
@@ -64,6 +66,7 @@ class SplitWorkspace extends StatefulWidget {
     this.gripHeight = 40.0,
     this.splitterKey,
     this.onDrag,
+    this.paintLeadingOnTop = false,
   });
 
   @override
@@ -161,17 +164,43 @@ class _SplitWorkspaceState extends State<SplitWorkspace> {
             ? SizedBox(width: clampedFirstPane, child: RepaintBoundary(child: widget.leading))
             : SizedBox(height: clampedFirstPane, child: RepaintBoundary(child: widget.leading));
 
-        final trailingPane = Expanded(child: RepaintBoundary(child: widget.trailing));
+        final trailingPane = RepaintBoundary(child: widget.trailing);
 
-        if (isHorizontal) {
-          return Row(
-            children: [leadingPane, splitter, trailingPane],
-          );
-        } else {
-          return Column(
-            children: [leadingPane, splitter, trailingPane],
-          );
-        }
+        final splitterWidget = Positioned(
+          left: isHorizontal ? clampedFirstPane : 0,
+          right: isHorizontal ? null : 0,
+          top: isHorizontal ? 0 : clampedFirstPane,
+          bottom: isHorizontal ? 0 : null,
+          width: isHorizontal ? widget.dividerSize : null,
+          height: isHorizontal ? null : widget.dividerSize,
+          child: splitter,
+        );
+
+        final leadingWidget = Positioned(
+          left: 0,
+          right: isHorizontal ? null : 0,
+          top: 0,
+          bottom: isHorizontal ? 0 : null,
+          width: isHorizontal ? clampedFirstPane : null,
+          height: isHorizontal ? null : clampedFirstPane,
+          child: leadingPane,
+        );
+
+        final trailingWidget = Positioned(
+          left: isHorizontal ? clampedFirstPane + widget.dividerSize : 0,
+          right: 0,
+          top: isHorizontal ? 0 : clampedFirstPane + widget.dividerSize,
+          bottom: 0,
+          child: trailingPane,
+        );
+
+        final List<Widget> children = widget.paintLeadingOnTop
+            ? [trailingWidget, splitterWidget, leadingWidget]
+            : [leadingWidget, splitterWidget, trailingWidget];
+
+        return Stack(
+          children: children,
+        );
       },
     );
   }

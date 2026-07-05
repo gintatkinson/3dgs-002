@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:app_flutter/domain/type_descriptor.dart';
+import 'package:provider/provider.dart';
+import 'package:app_flutter/core/theme/theme_controller.dart';
 
 /// Converts all input characters to uppercase in a text field.
 ///
@@ -363,6 +365,7 @@ class _PropertyGridState extends State<PropertyGrid> {
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final panelOpacity = context.watch<ThemeController>().panelOpacity;
 
     final groups = <String>{};
     for (final field in _fields) {
@@ -380,7 +383,8 @@ class _PropertyGridState extends State<PropertyGrid> {
         title: group,
         isActive: isActive,
         isDark: isDark,
-        child: _buildGroupFields(group, isDark),
+        child: _buildGroupFields(group, isDark, panelOpacity),
+        panelOpacity: panelOpacity,
       );
     }).toList();
 
@@ -411,7 +415,7 @@ class _PropertyGridState extends State<PropertyGrid> {
             child: const Text('Save'),
           ),
           SizedBox(height: widget.gapSize),
-          _buildCommittedStatePanel(isDark),
+          _buildCommittedStatePanel(isDark, panelOpacity),
         ],
       ),
     );
@@ -432,11 +436,12 @@ class _PropertyGridState extends State<PropertyGrid> {
     required bool isActive,
     required bool isDark,
     required Widget child,
+    required double panelOpacity,
   }) {
     final cs = Theme.of(context).colorScheme;
     final Color brandPrimary = cs.primary;
     final Color borderColor = Theme.of(context).dividerColor;
-    final Color surfaceFill = cs.surfaceContainerHighest;
+    final Color surfaceFill = cs.surfaceContainerHighest.withOpacity(panelOpacity);
     final Color borderActive = brandPrimary;
 
     return Opacity(
@@ -507,7 +512,7 @@ class _PropertyGridState extends State<PropertyGrid> {
   ///
   /// Each field is separated by [widget.gapSize] of vertical space. An empty
   /// group renders an empty [Column] with no visible output.
-  Widget _buildGroupFields(String group, bool isDark) {
+  Widget _buildGroupFields(String group, bool isDark, double panelOpacity) {
     final groupFields = _fields
         .where((field) => (field.sectionLabel ?? 'Other') == group)
         .toList()
@@ -519,7 +524,7 @@ class _PropertyGridState extends State<PropertyGrid> {
 
     final List<Widget> fields = [];
     for (final field in groupFields) {
-      fields.add(_buildAttrField(field, isDark));
+      fields.add(_buildAttrField(field, isDark, panelOpacity));
       fields.add(SizedBox(height: widget.gapSize));
     }
 
@@ -544,7 +549,7 @@ class _PropertyGridState extends State<PropertyGrid> {
   /// the first available option implicitly selected; missing enum options or
   /// missing display names are handled gracefully (falling back to the raw
   /// value or index).
-  Widget _buildAttrField(FieldDescriptor field, bool isDark) {
+  Widget _buildAttrField(FieldDescriptor field, bool isDark, double panelOpacity) {
     final cs = Theme.of(context).colorScheme;
     final Color brandPrimary = cs.primary;
 
@@ -559,6 +564,7 @@ class _PropertyGridState extends State<PropertyGrid> {
         errorText: _errors[field.key],
         isDark: isDark,
         brandPrimary: brandPrimary,
+        panelOpacity: panelOpacity,
         items: options.asMap().entries.map((entry) {
           final int idx = entry.key;
           final String opt = entry.value;
@@ -600,6 +606,7 @@ class _PropertyGridState extends State<PropertyGrid> {
         inputFormatters: inputFormatters,
         errorText: _errors[field.key],
         brandPrimary: brandPrimary,
+        panelOpacity: panelOpacity,
       );
     }
   }
@@ -623,6 +630,7 @@ class _PropertyGridState extends State<PropertyGrid> {
     List<TextInputFormatter>? inputFormatters,
     String? errorText,
     required Color brandPrimary,
+    required double panelOpacity,
   }) {
     final cs = Theme.of(context).colorScheme;
     return Column(
@@ -643,7 +651,7 @@ class _PropertyGridState extends State<PropertyGrid> {
             isDense: true,
             contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
             filled: true,
-            fillColor: cs.surface,
+            fillColor: cs.surface.withOpacity(panelOpacity),
             enabledBorder: OutlineInputBorder(
               borderRadius: widget.inputBorderRadius,
               borderSide: BorderSide(
@@ -692,6 +700,7 @@ class _PropertyGridState extends State<PropertyGrid> {
     String? errorText,
     required bool isDark,
     required Color brandPrimary,
+    required double panelOpacity,
   }) {
     final cs = Theme.of(context).colorScheme;
     return Column(
@@ -707,13 +716,13 @@ class _PropertyGridState extends State<PropertyGrid> {
             child: DropdownButtonFormField<String>(
               isExpanded: true,
               initialValue: value,
-            dropdownColor: isDark ? cs.surfaceContainerHighest : cs.surface,
+            dropdownColor: (isDark ? cs.surfaceContainerHighest : cs.surface).withOpacity(panelOpacity),
             style: Theme.of(context).textTheme.bodyMedium,
             decoration: InputDecoration(
               isDense: true,
               contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
               filled: true,
-              fillColor: cs.surface,
+              fillColor: cs.surface.withOpacity(panelOpacity),
               enabledBorder: OutlineInputBorder(
                 borderRadius: widget.inputBorderRadius,
                 borderSide: BorderSide(
@@ -752,13 +761,13 @@ class _PropertyGridState extends State<PropertyGrid> {
   /// Exists primarily for development and debugging workflows where operators
   /// need to inspect the accumulated committed values at a glance. The panel
   /// scrolls horizontally to accommodate wide payloads without wrapping.
-  Widget _buildCommittedStatePanel(bool isDark) {
+  Widget _buildCommittedStatePanel(bool isDark, double panelOpacity) {
     final cs = Theme.of(context).colorScheme;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest,
+        color: cs.surfaceContainerHighest.withOpacity(panelOpacity),
         borderRadius: BorderRadius.circular(8.0),
         border: Border.all(
           color: Theme.of(context).dividerColor,
@@ -776,7 +785,7 @@ class _PropertyGridState extends State<PropertyGrid> {
             width: double.infinity,
             padding: const EdgeInsets.all(12.0),
             decoration: BoxDecoration(
-              color: cs.surface,
+              color: cs.surface.withOpacity(panelOpacity),
               borderRadius: BorderRadius.circular(4.0),
               border: Border.all(
                 color: Theme.of(context).dividerColor,
