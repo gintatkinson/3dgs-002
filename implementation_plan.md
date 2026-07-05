@@ -1830,6 +1830,27 @@ This phase implements inheriting the panel opacity setting from ThemeController 
   ```
 
 
+## Phase 28: Stack-based Foreground Positioning for TopographicalView Header Bar
+
+This phase performs the Stack-based foreground positioning refactoring for the TopographicalView Header Bar.
+
+### Core App Code
+
+#### [MODIFY] [topographical_view.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/topographical_view.dart)
+- Replace the root container returning `Column` with a `Stack` consisting of:
+  - A background layer containing `body` (Map + Properties panel) shifted down by 64.0 pixels.
+  - A foreground layer containing the Header Bar (Title, Buttons, Breadcrumbs, Divider) placed at the top (0 to 64.0 pixels high) with vertical padding reduced to 4.0 pixels.
+
+### Phase 28 Verification Plan
+
+#### Automated Tests
+- Run all project tests and verify they pass:
+  ```bash
+  cd app_flutter && flutter test
+  ```
+
+
+
 
 
 

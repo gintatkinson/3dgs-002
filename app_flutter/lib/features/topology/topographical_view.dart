@@ -173,62 +173,80 @@ class _TopographicalViewState extends State<TopographicalView> {
 
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor.withOpacity(panelOpacity),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Stack(
         children: [
-          // Active View Title & Breadcrumbs Row
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Flexible(
-                  child: Text(
-                    'Active View: ${widget.currentView}',
-                    style: Theme.of(context).textTheme.titleSmall,
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ElevatedButton(
-                      key: const Key('toggle_2d'),
-                      onPressed: () => setState(() => _is3d = false),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: !_is3d ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surfaceContainerHighest,
-                        foregroundColor: !_is3d ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface,
-                      ),
-                      child: const Text('2D Map'),
-                    ),
-                    const SizedBox(width: 4),
-                    ElevatedButton(
-                      key: const Key('toggle_3d'),
-                      onPressed: () => setState(() => _is3d = true),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _is3d ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surfaceContainerHighest,
-                        foregroundColor: _is3d ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface,
-                      ),
-                      child: const Text('3D Globe'),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: NavigationBreadcrumbs(
-                      items: getBreadcrumbsItems(widget.currentView, widget.treeData, onSelectView: widget.onViewSelected),
-                    ),
-                  ),
-                ),
-              ],
+          // 1. Background layer: body containing Map + Properties panel
+          Positioned.fill(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 64.0),
+              child: body,
             ),
           ),
-          const Divider(height: 1),
-          Expanded(child: body),
+          // 2. Foreground layer: Header Bar (Title, Buttons, Breadcrumbs, Divider)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 64.0,
+            child: Container(
+              color: Theme.of(context).scaffoldBackgroundColor.withOpacity(panelOpacity),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            'Active View: ${widget.currentView}',
+                            style: Theme.of(context).textTheme.titleSmall,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ElevatedButton(
+                              key: const Key('toggle_2d'),
+                              onPressed: () => setState(() => _is3d = false),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: !_is3d ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surfaceContainerHighest,
+                                foregroundColor: !_is3d ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface,
+                              ),
+                              child: const Text('2D Map'),
+                            ),
+                            const SizedBox(width: 4),
+                            ElevatedButton(
+                              key: const Key('toggle_3d'),
+                              onPressed: () => setState(() => _is3d = true),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _is3d ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surfaceContainerHighest,
+                                foregroundColor: _is3d ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface,
+                              ),
+                              child: const Text('3D Globe'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: NavigationBreadcrumbs(
+                              items: getBreadcrumbsItems(widget.currentView, widget.treeData, onSelectView: widget.onViewSelected),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
