@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:app_flutter/core/theme/theme_controller.dart';
 import 'package:app_flutter/domain/data_source.dart';
 import 'package:app_flutter/features/tree/view_models/tree_view_model.dart';
 import 'package:app_flutter/features/tree/sidebar_tree.dart';
@@ -176,6 +177,12 @@ class ComponentFactory {
         return _TableViewContainer(
           tabId: id,
           currentView: currentView,
+        );
+      case 'PropertiesPanel':
+        final panelOpacity = context.watch<ThemeController>().panelOpacity;
+        return Container(
+          color: Theme.of(context).cardColor.withOpacity(panelOpacity),
+          child: buildChildWidget(context),
         );
       default:
         return const SizedBox.shrink();

@@ -9,6 +9,7 @@ class FakeThemeService implements ThemeService {
   int themeScheme = 0;
   double textScale = 1.0;
   Axis? layoutSplitAxis;
+  double panelOpacity = 0.85;
 
   @override
   Future<ThemeMode> loadThemeMode() async => themeMode;
@@ -40,6 +41,14 @@ class FakeThemeService implements ThemeService {
   @override
   Future<void> saveLayoutSplitAxis(Axis axis) async {
     layoutSplitAxis = axis;
+  }
+
+  @override
+  Future<double> loadPanelOpacity() async => panelOpacity;
+
+  @override
+  Future<void> savePanelOpacity(double opacity) async {
+    panelOpacity = opacity;
   }
 }
 
@@ -90,6 +99,52 @@ void main() {
     });
   });
 
+  group('ThemeController - PanelOpacity', () {
+    late FakeThemeService fakeThemeService;
+    late ThemeController controller;
+
+    setUp(() {
+      fakeThemeService = FakeThemeService();
+      controller = ThemeController(fakeThemeService);
+    });
+
+    test('initial panelOpacity should be 0.85', () {
+      expect(controller.panelOpacity, 0.85);
+    });
+
+    test('loadSettings loads saved panelOpacity', () async {
+      fakeThemeService.panelOpacity = 0.5;
+      await controller.loadSettings();
+      expect(controller.panelOpacity, 0.5);
+    });
+
+    test('updatePanelOpacity updates panelOpacity, calls notifyListeners, and saves to service', () async {
+      bool notified = false;
+      controller.addListener(() {
+        notified = true;
+      });
+
+      await controller.updatePanelOpacity(0.7);
+
+      expect(controller.panelOpacity, 0.7);
+      expect(notified, true);
+      expect(fakeThemeService.panelOpacity, 0.7);
+    });
+
+    test('updatePanelOpacity with null or same value is a no-op', () async {
+      bool notified = false;
+      controller.addListener(() {
+        notified = true;
+      });
+
+      await controller.updatePanelOpacity(null);
+      expect(notified, false);
+
+      await controller.updatePanelOpacity(0.85);
+      expect(notified, false);
+    });
+  });
+
   group('SharedPreferencesThemeService - LayoutSplitAxis', () {
     setUp(() {
       SharedPreferences.setMockInitialValues({});
@@ -116,6 +171,26 @@ void main() {
       final service = SharedPreferencesThemeService();
       final loaded = await service.loadLayoutSplitAxis();
       expect(loaded, Axis.vertical);
+    });
+  });
+
+  group('SharedPreferencesThemeService - PanelOpacity', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+    });
+
+    test('loadPanelOpacity returns 0.85 by default', () async {
+      final service = SharedPreferencesThemeService();
+      final opacity = await service.loadPanelOpacity();
+      expect(opacity, 0.85);
+    });
+
+    test('savePanelOpacity persists the value and loadPanelOpacity reads it', () async {
+      final service = SharedPreferencesThemeService();
+      await service.savePanelOpacity(0.65);
+
+      final loaded = await service.loadPanelOpacity();
+      expect(loaded, 0.65);
     });
   });
 }

@@ -1107,3 +1107,511 @@ This phase implements camera heading (yaw) rotation on Shift + Left/Right arrow 
   ```bash
   cd app_flutter && flutter test test/cesium_3d/
   ```
+
+
+## Phase 21: Dynamic Table Row Heights and Controllable Panel Opacity Setting
+
+This phase implements dynamic table row heights and adds a controllable panel opacity slider to the settings panel, applied to the sidebar, tabbed container, and properties panel.
+
+### Core App Code
+
+#### [MODIFY] [theme_service.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/core/theme/theme_service.dart)
+- Add abstract methods to `ThemeService`:
+  - Target:
+    ```dart
+      /// Persists [axis] so it survives app restarts.
+      Future<void> saveLayoutSplitAxis(Axis axis);
+    }
+    ```
+  - Replacement:
+    ```dart
+      /// Persists [axis] so it survives app restarts.
+      Future<void> saveLayoutSplitAxis(Axis axis);
+
+      /// Loads the persisted panel opacity; defaults to `0.85`.
+      Future<double> loadPanelOpacity();
+
+      /// Persists the panel [opacity] so it survives app restarts.
+      Future<void> savePanelOpacity(double opacity);
+    }
+    ```
+- Implement methods in `SharedPreferencesThemeService`:
+  - Target:
+    ```dart
+      static const _layoutSplitAxisKey = 'layout_split_axis';
+    ```
+  - Replacement:
+    ```dart
+      static const _layoutSplitAxisKey = 'layout_split_axis';
+      static const _panelOpacityKey = 'panel_opacity';
+    ```
+  - Target:
+    ```dart
+      /// Writes a "horizontal" or "vertical" string.
+      @override
+      Future<void> saveLayoutSplitAxis(Axis axis) async {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final value = axis == Axis.vertical ? 'vertical' : 'horizontal';
+          await prefs.setString(_layoutSplitAxisKey, value);
+        } catch (e, stackTrace) {
+          debugPrint('Error in saveLayoutSplitAxis: $e\n$stackTrace');
+        }
+      }
+    }
+    ```
+  - Replacement:
+    ```dart
+      /// Writes a "horizontal" or "vertical" string.
+      @override
+      Future<void> saveLayoutSplitAxis(Axis axis) async {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final value = axis == Axis.vertical ? 'vertical' : 'horizontal';
+          await prefs.setString(_layoutSplitAxisKey, value);
+        } catch (e, stackTrace) {
+          debugPrint('Error in saveLayoutSplitAxis: $e\n$stackTrace');
+        }
+      }
+
+      @override
+      Future<double> loadPanelOpacity() async {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          return prefs.getDouble(_panelOpacityKey) ?? 0.85;
+        } catch (e, stackTrace) {
+          debugPrint('Error in loadPanelOpacity: $e\n$stackTrace');
+          return 0.85;
+        }
+      }
+
+      @override
+      Future<void> savePanelOpacity(double opacity) async {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setDouble(_panelOpacityKey, opacity);
+        } catch (e, stackTrace) {
+          debugPrint('Error in savePanelOpacity: $e\n$stackTrace');
+        }
+      }
+    }
+    ```
+
+#### [MODIFY] [theme_controller.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/core/theme/theme_controller.dart)
+- Add a private field `_panelOpacity`, its getter, load logic in `loadSettings()`, and a mutation method `updatePanelOpacity`:
+  - Target:
+    ```dart
+      ThemeController(this._themeService);
+      final ThemeService _themeService;
+      ThemeMode _themeMode = ThemeMode.system;
+      int _currentThemeIndex = 0;
+      Axis _layoutSplitAxis = Axis.vertical;
+
+      /// Current [ThemeMode] (light / dark / system).
+    ```
+  - Replacement:
+    ```dart
+      ThemeController(this._themeService);
+      final ThemeService _themeService;
+      ThemeMode _themeMode = ThemeMode.system;
+      int _currentThemeIndex = 0;
+      Axis _layoutSplitAxis = Axis.vertical;
+      double _panelOpacity = 0.85;
+
+      /// Current [ThemeMode] (light / dark / system).
+    ```
+  - Target:
+    ```dart
+      /// Current layout split axis orientation.
+      Axis get layoutSplitAxis => _layoutSplitAxis;
+    ```
+  - Replacement:
+    ```dart
+      /// Current layout split axis orientation.
+      Axis get layoutSplitAxis => _layoutSplitAxis;
+
+      /// Panel/overlay opacity between 0.0 and 1.0.
+      double get panelOpacity => _panelOpacity;
+    ```
+  - Target:
+    ```dart
+      Future<void> loadSettings() async {
+        _themeMode = await _themeService.loadThemeMode();
+        _currentThemeIndex = await _themeService.loadThemeScheme();
+        if (_currentThemeIndex < 0 || _currentThemeIndex >= AppThemes.customSchemes.length) {
+          _currentThemeIndex = 0;
+        }
+        _layoutSplitAxis = await _themeService.loadLayoutSplitAxis();
+        notifyListeners();
+      }
+    ```
+  - Replacement:
+    ```dart
+      Future<void> loadSettings() async {
+        _themeMode = await _themeService.loadThemeMode();
+        _currentThemeIndex = await _themeService.loadThemeScheme();
+        if (_currentThemeIndex < 0 || _currentThemeIndex >= AppThemes.customSchemes.length) {
+          _currentThemeIndex = 0;
+        }
+        _layoutSplitAxis = await _themeService.loadLayoutSplitAxis();
+        _panelOpacity = await _themeService.loadPanelOpacity();
+        notifyListeners();
+      }
+    ```
+  - Target:
+    ```dart
+      /// Updates the layout split axis orientation and persists it via [ThemeService].
+      ///
+      /// No-op when [newAxis] is null or matches the current value.
+      /// Fires `notifyListeners()` before persisting.
+      /// Persistence failure is silently swallowed.
+      Future<void> updateLayoutSplitAxis(Axis? newAxis) async {
+        if (newAxis == null || newAxis == _layoutSplitAxis) return;
+        _layoutSplitAxis = newAxis;
+        notifyListeners();
+        await _themeService.saveLayoutSplitAxis(newAxis);
+      }
+    }
+    ```
+  - Replacement:
+    ```dart
+      /// Updates the layout split axis orientation and persists it via [ThemeService].
+      ///
+      /// No-op when [newAxis] is null or matches the current value.
+      /// Fires `notifyListeners()` before persisting.
+      /// Persistence failure is silently swallowed.
+      Future<void> updateLayoutSplitAxis(Axis? newAxis) async {
+        if (newAxis == null || newAxis == _layoutSplitAxis) return;
+        _layoutSplitAxis = newAxis;
+        notifyListeners();
+        await _themeService.saveLayoutSplitAxis(newAxis);
+      }
+
+      /// Updates the panel opacity value and persists it via [ThemeService].
+      ///
+      /// No-op when [newOpacity] is null or matches the current value.
+      /// Fires `notifyListeners()` before persisting.
+      /// Persistence failure is silently swallowed.
+      Future<void> updatePanelOpacity(double? newOpacity) async {
+        if (newOpacity == null || newOpacity == _panelOpacity) return;
+        _panelOpacity = newOpacity;
+        notifyListeners();
+        await _themeService.savePanelOpacity(newOpacity);
+      }
+    }
+    ```
+
+#### [MODIFY] [settings_panel.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/core/theme/widgets/settings_panel.dart)
+- Add the "Overlay Opacity" slider underneath "Workspace Split":
+  - Target:
+    ```dart
+              SegmentedButton<Axis>(
+                segments: const [
+                  ButtonSegment(
+                    value: Axis.horizontal,
+                    icon: Icon(Icons.splitscreen_outlined, size: 18),
+                    label: Text('Horizontal'),
+                  ),
+                  ButtonSegment(
+                    value: Axis.vertical,
+                    icon: RotatedBox(
+                      quarterTurns: 1,
+                      child: Icon(Icons.splitscreen_outlined, size: 18),
+                    ),
+                    label: Text('Vertical'),
+                  ),
+                ],
+                selected: {themeController.layoutSplitAxis},
+                onSelectionChanged: (Set<Axis> newSelection) {
+                  themeController.updateLayoutSplitAxis(newSelection.first);
+                },
+              ),
+              const SizedBox(height: 16),
+
+              Text('Color', style: Theme.of(context).textTheme.titleSmall),
+    ```
+  - Replacement:
+    ```dart
+              SegmentedButton<Axis>(
+                segments: const [
+                  ButtonSegment(
+                    value: Axis.horizontal,
+                    icon: Icon(Icons.splitscreen_outlined, size: 18),
+                    label: Text('Horizontal'),
+                  ),
+                  ButtonSegment(
+                    value: Axis.vertical,
+                    icon: RotatedBox(
+                      quarterTurns: 1,
+                      child: Icon(Icons.splitscreen_outlined, size: 18),
+                    ),
+                    label: Text('Vertical'),
+                  ),
+                ],
+                selected: {themeController.layoutSplitAxis},
+                onSelectionChanged: (Set<Axis> newSelection) {
+                  themeController.updateLayoutSplitAxis(newSelection.first);
+                },
+              ),
+              const SizedBox(height: 16),
+              Text('Overlay Opacity', style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.opacity, size: 16, color: cs.onSurface.withValues(alpha: 0.5)),
+                  Expanded(
+                    child: Slider(
+                      value: themeController.panelOpacity,
+                      min: 0.0,
+                      max: 1.0,
+                      divisions: 10,
+                      label: '${(themeController.panelOpacity * 100).round()}%',
+                      onChanged: (value) => themeController.updatePanelOpacity(value),
+                    ),
+                  ),
+                  Icon(Icons.opacity, size: 22, color: cs.onSurface),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              Text('Color', style: Theme.of(context).textTheme.titleSmall),
+    ```
+
+#### [MODIFY] [sidebar_tree.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/tree/sidebar_tree.dart)
+- Import `theme_controller.dart`, watch `ThemeController`, and apply opacity to `cardColor`:
+  - Target:
+    ```dart
+    import 'package:flutter/services.dart';
+    import 'package:provider/provider.dart';
+    import 'package:app_flutter/core/theme/widgets/settings_panel.dart';
+    ```
+  - Replacement:
+    ```dart
+    import 'package:flutter/services.dart';
+    import 'package:provider/provider.dart';
+    import 'package:app_flutter/core/theme/theme_controller.dart';
+    import 'package:app_flutter/core/theme/widgets/settings_panel.dart';
+    ```
+  - Target:
+    ```dart
+      @override
+      Widget build(BuildContext context) {
+        final viewModel = context.watch<TreeViewModel>();
+        final treeData = viewModel.treeData;
+        final brandPrimary = Theme.of(context).colorScheme.primary;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            border: Border(
+              right: BorderSide(color: Theme.of(context).dividerColor),
+            ),
+          ),
+    ```
+  - Replacement:
+    ```dart
+      @override
+      Widget build(BuildContext context) {
+        final viewModel = context.watch<TreeViewModel>();
+        final treeData = viewModel.treeData;
+        final brandPrimary = Theme.of(context).colorScheme.primary;
+        final panelOpacity = context.watch<ThemeController>().panelOpacity;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor.withOpacity(panelOpacity),
+            border: Border(
+              right: BorderSide(color: Theme.of(context).dividerColor),
+            ),
+          ),
+    ```
+
+#### [MODIFY] [tabbed_container.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/tables/tabbed_container.dart)
+- Import `theme_controller.dart`, watch `ThemeController`, apply opacity to `cardColor` wrapping the entire `Column`, and set nested `Material`'s color to `Colors.transparent`:
+  - Target:
+    ```dart
+    import 'package:flutter/material.dart';
+    import 'package:provider/provider.dart';
+    import 'package:app_flutter/features/tables/view_models/tables_view_model.dart';
+    ```
+  - Replacement:
+    ```dart
+    import 'package:flutter/material.dart';
+    import 'package:provider/provider.dart';
+    import 'package:app_flutter/core/theme/theme_controller.dart';
+    import 'package:app_flutter/features/tables/view_models/tables_view_model.dart';
+    ```
+  - Target:
+    ```dart
+        if (_tabController == null) {
+          return const SizedBox.shrink();
+        }
+
+        return Column(
+          children: [
+            Material(
+              color: Theme.of(context).cardColor,
+              child: TabBar(
+                controller: _tabController!,
+                tabs: tabs.map((t) => Tab(text: t.label)).toList(),
+              ),
+            ),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController!,
+                children: List.generate(tabs.length, (idx) {
+                  return LazyTab(
+                    isSelected: _tabController!.index == idx,
+                    child: const TableViewWidget(),
+                  );
+                }),
+              ),
+            ),
+          ],
+        );
+    ```
+  - Replacement:
+    ```dart
+        if (_tabController == null) {
+          return const SizedBox.shrink();
+        }
+
+        final panelOpacity = context.watch<ThemeController>().panelOpacity;
+        return Container(
+          color: Theme.of(context).cardColor.withOpacity(panelOpacity),
+          child: Column(
+            children: [
+              Material(
+                color: Colors.transparent,
+                child: TabBar(
+                  controller: _tabController!,
+                  tabs: tabs.map((t) => Tab(text: t.label)).toList(),
+                ),
+              ),
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController!,
+                  children: List.generate(tabs.length, (idx) {
+                    return LazyTab(
+                      isSelected: _tabController!.index == idx,
+                      child: const TableViewWidget(),
+                    );
+                  }),
+                ),
+              ),
+            ],
+          ),
+        );
+    ```
+
+#### [MODIFY] [component_factory.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/layout/component_factory.dart)
+- Import `theme_controller.dart` and wrap `PropertiesPanel` case:
+  - Target:
+    ```dart
+    import 'package:flutter/material.dart';
+    import 'package:provider/provider.dart';
+    import 'package:app_flutter/domain/data_source.dart';
+    ```
+  - Replacement:
+    ```dart
+    import 'package:flutter/material.dart';
+    import 'package:provider/provider.dart';
+    import 'package:app_flutter/core/theme/theme_controller.dart';
+    import 'package:app_flutter/domain/data_source.dart';
+    ```
+  - Target:
+    ```dart
+          case 'TabbedContainer':
+            return _TabbedContainerHost(currentView: currentView);
+          case 'TableView':
+            final id = node['id'] as String? ?? '';
+            return _TableViewContainer(
+              tabId: id,
+              currentView: currentView,
+            );
+          default:
+            return const SizedBox.shrink();
+    ```
+  - Replacement:
+    ```dart
+          case 'TabbedContainer':
+            return _TabbedContainerHost(currentView: currentView);
+          case 'TableView':
+            final id = node['id'] as String? ?? '';
+            return _TableViewContainer(
+              tabId: id,
+              currentView: currentView,
+            );
+          case 'PropertiesPanel':
+            final panelOpacity = context.watch<ThemeController>().panelOpacity;
+            return Container(
+              color: Theme.of(context).cardColor.withOpacity(panelOpacity),
+              child: buildChildWidget(context),
+            );
+          default:
+            return const SizedBox.shrink();
+    ```
+
+#### [MODIFY] [table_view_widget.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/tables/table_view_widget.dart)
+- Set `dataRowMaxHeight` default to `double.infinity` and remove the `maxHeight` constraint in `_DataRow.build`:
+  - Target:
+    ```dart
+      const TableViewWidget({
+        super.key,
+        this.headingRowHeight = 32.0,
+        this.dataRowMinHeight = 28.0,
+        this.dataRowMaxHeight = 28.0,
+        this.horizontalMargin = 12.0,
+        this.columnSpacing = 24.0,
+      });
+    ```
+  - Replacement:
+    ```dart
+      const TableViewWidget({
+        super.key,
+        this.headingRowHeight = 32.0,
+        this.dataRowMinHeight = 28.0,
+        this.dataRowMaxHeight = double.infinity,
+        this.horizontalMargin = 12.0,
+        this.columnSpacing = 24.0,
+      });
+    ```
+  - Target:
+    ```dart
+      @override
+      Widget build(BuildContext context) {
+        return RepaintBoundary(
+          child: Container(
+            constraints: BoxConstraints(
+              minHeight: dataRowMinHeight,
+              maxHeight: dataRowMaxHeight,
+            ),
+            color: index.isEven ? null : Colors.black.withOpacity(0.03),
+    ```
+  - Replacement:
+    ```dart
+      @override
+      Widget build(BuildContext context) {
+        return RepaintBoundary(
+          child: Container(
+            constraints: BoxConstraints(
+              minHeight: dataRowMinHeight,
+            ),
+            color: index.isEven ? null : Colors.black.withOpacity(0.03),
+    ```
+
+### Unit Tests
+
+#### [MODIFY] [theme_controller_test.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/core/theme/theme_controller_test.dart)
+- Update `FakeThemeService` to implement `loadPanelOpacity` and `savePanelOpacity`.
+- Add test cases for `panelOpacity` initial value, loadSettings, and updatePanelOpacity.
+- Add test cases for `SharedPreferencesThemeService` loading and saving panel opacity.
+
+### Phase 21 Verification Plan
+
+#### Automated Tests
+- Run all project unit and widget tests:
+  ```bash
+  cd app_flutter && flutter test
+  ```
+

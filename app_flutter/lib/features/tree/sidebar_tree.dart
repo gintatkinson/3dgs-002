@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:app_flutter/core/theme/theme_controller.dart';
 import 'package:app_flutter/core/theme/widgets/settings_panel.dart';
 import 'package:app_flutter/core/string_resources.dart';
 import 'package:app_flutter/features/tree/tree_node_widget.dart';
@@ -39,10 +40,11 @@ class SidebarTree extends StatelessWidget {
     final viewModel = context.watch<TreeViewModel>();
     final treeData = viewModel.treeData;
     final brandPrimary = Theme.of(context).colorScheme.primary;
+    final panelOpacity = context.watch<ThemeController>().panelOpacity;
 
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: Theme.of(context).cardColor.withOpacity(panelOpacity),
         border: Border(
           right: BorderSide(color: Theme.of(context).dividerColor),
         ),

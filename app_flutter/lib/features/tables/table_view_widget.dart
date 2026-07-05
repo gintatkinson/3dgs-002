@@ -28,7 +28,7 @@ class TableViewWidget extends StatefulWidget {
     super.key,
     this.headingRowHeight = 32.0,
     this.dataRowMinHeight = 28.0,
-    this.dataRowMaxHeight = 28.0,
+    this.dataRowMaxHeight = double.infinity,
     this.horizontalMargin = 12.0,
     this.columnSpacing = 24.0,
   });
@@ -306,7 +306,6 @@ class _DataRow extends StatelessWidget {
       child: Container(
         constraints: BoxConstraints(
           minHeight: dataRowMinHeight,
-          maxHeight: dataRowMaxHeight,
         ),
         color: index.isEven ? null : Colors.black.withOpacity(0.03),
         child: Row(

@@ -22,6 +22,7 @@ class ThemeController extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system;
   int _currentThemeIndex = 0;
   Axis _layoutSplitAxis = Axis.vertical;
+  double _panelOpacity = 0.85;
 
   /// Current [ThemeMode] (light / dark / system).
   ThemeMode get themeMode => _themeMode;
@@ -33,6 +34,9 @@ class ThemeController extends ChangeNotifier {
 
   /// Current layout split axis orientation.
   Axis get layoutSplitAxis => _layoutSplitAxis;
+
+  /// Panel/overlay opacity between 0.0 and 1.0.
+  double get panelOpacity => _panelOpacity;
 
   /// Convenience getter for the currently selected [FlexSchemeData].
   ///
@@ -53,6 +57,7 @@ class ThemeController extends ChangeNotifier {
       _currentThemeIndex = 0;
     }
     _layoutSplitAxis = await _themeService.loadLayoutSplitAxis();
+    _panelOpacity = await _themeService.loadPanelOpacity();
     notifyListeners();
   }
 
@@ -91,5 +96,17 @@ class ThemeController extends ChangeNotifier {
     _layoutSplitAxis = newAxis;
     notifyListeners();
     await _themeService.saveLayoutSplitAxis(newAxis);
+  }
+
+  /// Updates the panel opacity value and persists it via [ThemeService].
+  ///
+  /// No-op when [newOpacity] is null or matches the current value.
+  /// Fires `notifyListeners()` before persisting.
+  /// Persistence failure is silently swallowed.
+  Future<void> updatePanelOpacity(double? newOpacity) async {
+    if (newOpacity == null || newOpacity == _panelOpacity) return;
+    _panelOpacity = newOpacity;
+    notifyListeners();
+    await _themeService.savePanelOpacity(newOpacity);
   }
 }

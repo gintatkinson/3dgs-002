@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:app_flutter/core/theme/theme_controller.dart';
 import 'package:app_flutter/features/tables/view_models/tables_view_model.dart';
 import 'package:app_flutter/features/tables/table_view_widget.dart';
 
@@ -113,27 +114,31 @@ class _TabbedContainerState extends State<TabbedContainer>
       return const SizedBox.shrink();
     }
 
-    return Column(
-      children: [
-        Material(
-          color: Theme.of(context).cardColor,
-          child: TabBar(
-            controller: _tabController!,
-            tabs: tabs.map((t) => Tab(text: t.label)).toList(),
+    final panelOpacity = context.watch<ThemeController>().panelOpacity;
+    return Container(
+      color: Theme.of(context).cardColor.withOpacity(panelOpacity),
+      child: Column(
+        children: [
+          Material(
+            color: Colors.transparent,
+            child: TabBar(
+              controller: _tabController!,
+              tabs: tabs.map((t) => Tab(text: t.label)).toList(),
+            ),
           ),
-        ),
-        Expanded(
-          child: TabBarView(
-            controller: _tabController!,
-            children: List.generate(tabs.length, (idx) {
-              return LazyTab(
-                isSelected: _tabController!.index == idx,
-                child: const TableViewWidget(),
-              );
-            }),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController!,
+              children: List.generate(tabs.length, (idx) {
+                return LazyTab(
+                  isSelected: _tabController!.index == idx,
+                  child: const TableViewWidget(),
+                );
+              }),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

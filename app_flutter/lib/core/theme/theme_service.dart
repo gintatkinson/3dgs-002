@@ -33,6 +33,12 @@ abstract class ThemeService {
 
   /// Persists [axis] so it survives app restarts.
   Future<void> saveLayoutSplitAxis(Axis axis);
+
+  /// Loads the persisted panel opacity; defaults to `0.85`.
+  Future<double> loadPanelOpacity();
+
+  /// Persists the panel [opacity] so it survives app restarts.
+  Future<void> savePanelOpacity(double opacity);
 }
 
 /// [ThemeService] implementation backed by [SharedPreferences].
@@ -46,6 +52,7 @@ class SharedPreferencesThemeService implements ThemeService {
   static const _schemeKey = 'theme_scheme';
   static const _textScaleKey = 'text_scale';
   static const _layoutSplitAxisKey = 'layout_split_axis';
+  static const _panelOpacityKey = 'panel_opacity';
 
   /// Reads the theme-mode string; unknown values fall back to system.
   @override
@@ -153,6 +160,27 @@ class SharedPreferencesThemeService implements ThemeService {
       await prefs.setString(_layoutSplitAxisKey, value);
     } catch (e, stackTrace) {
       debugPrint('Error in saveLayoutSplitAxis: $e\n$stackTrace');
+    }
+  }
+
+  @override
+  Future<double> loadPanelOpacity() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getDouble(_panelOpacityKey) ?? 0.85;
+    } catch (e, stackTrace) {
+      debugPrint('Error in loadPanelOpacity: $e\n$stackTrace');
+      return 0.85;
+    }
+  }
+
+  @override
+  Future<void> savePanelOpacity(double opacity) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble(_panelOpacityKey, opacity);
+    } catch (e, stackTrace) {
+      debugPrint('Error in savePanelOpacity: $e\n$stackTrace');
     }
   }
 }
