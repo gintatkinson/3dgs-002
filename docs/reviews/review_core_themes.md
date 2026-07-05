@@ -44,7 +44,7 @@ final isTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST') ||
 ```
 
 ### Issue 3: Asynchronous Race Condition on Concurrent Type Loading
-- **Tracking Issue**: [GitHub Issue #62](https://github.com/gintatkinson/3dgs-002/issues/62)
+- **Tracking Issue**: [GitHub Issue #91](https://github.com/gintatkinson/3dgs-002/issues/91)
 - **Severity**: 🟠 Important
 - **Location**: [properties_view_model.dart:L40-L45](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/properties/view_models/properties_view_model.dart#L40-L45)
 - **Issue**: If `loadType` is called multiple times sequentially (e.g., the user clicks between nodes quickly), the database resolver queries execute concurrently. If a slower, older query resolves after a newer query, the outdated data will overwrite the latest state, causing UI inconsistencies.

@@ -7,7 +7,7 @@ This report details a systematic code review of the 3D Geospatial and FFI Engine
 ## 1. Correctness
 
 ### Issue 1.1: Longitudinal Clamping in Virtual Camera (Anti-meridian Wall)
-- **Tracking Issue**: [GitHub Issue #64](https://github.com/gintatkinson/3dgs-002/issues/64)
+- **Tracking Issue**: [GitHub Issue #83](https://github.com/gintatkinson/3dgs-002/issues/83)
 - **Severity**: 🔴 Critical
 - **Location**: `app_flutter/lib/domain/cesium_3d/virtual_camera.dart`, Line 48
 - **Issue**: `VirtualCamera.clamped` uses `.clamp(-180.0, 180.0)` for longitude. Clamping longitude introduces a hard boundary at the anti-meridian (180° E/W), which prevents seamless wrapping around the globe. If a user pans or rotates across this boundary, they will hit an artificial "wall".
@@ -45,7 +45,7 @@ factory VirtualCamera.clamped({
 ---
 
 ### Issue 1.2: Memory Leaks on FFI Error Conditions
-- **Tracking Issue**: [GitHub Issue #58](https://github.com/gintatkinson/3dgs-002/issues/58)
+- **Tracking Issue**: [GitHub Issue #84](https://github.com/gintatkinson/3dgs-002/issues/84)
 - **Severity**: 🟠 Important
 - **Location**: `app_flutter/lib/domain/cesium_3d/cesium_engine.dart`, Lines 76-89
 - **Issue**: In `getVisibleTileId`, if `result` returns an error status code other than `-3` (e.g. `-100`), the `checkStatus(result)` call throws an exception, bypassing the cleanup call `calloc.free(idPtr)`. This leaks the allocated memory container.
@@ -155,6 +155,7 @@ if (response.statusCode == 200) {
 ---
 
 ### Issue 3.2: Use-After-Free Risk on Async FFI Strings
+- **Tracking Issue**: [GitHub Issue #85](https://github.com/gintatkinson/3dgs-002/issues/85)
 - **Severity**: 🟠 Important
 - **Location**: `app_flutter/lib/domain/cesium_3d/cesium_engine.dart`, Lines 145-149
 - **Issue**: In `requestTileData`, `tileIdNative` is allocated using `calloc` and freed immediately after the synchronous FFI call `requestTileData`:
@@ -197,6 +198,7 @@ void put(String key, Uint8List value) {
 ---
 
 ### Issue 5.2: Callback Failure in Tile Loading Interface
+- **Tracking Issue**: [GitHub Issue #86](https://github.com/gintatkinson/3dgs-002/issues/86)
 - **Severity**: 🟠 Important
 - **Location**: `app_flutter/lib/domain/cesium_3d/cesium_engine.dart`, Line 147
 - **Issue**: `requestTileData` accepts a Dart callback `void Function(Uint8List data) onReady` but passes `nullptr` for the callback parameters in FFI:
@@ -211,6 +213,7 @@ void put(String key, Uint8List value) {
 ## 6. Testing
 
 ### Issue 6.1: Zero Test Coverage for CesiumEngine and FFI Bindings
+- **Tracking Issue**: [GitHub Issue #87](https://github.com/gintatkinson/3dgs-002/issues/87)
 - **Severity**: 🟠 Important
 - **Location**: `app_flutter/test/cesium_3d_test.dart`
 - **Issue**: The test suite completely bypasses `CesiumEngine` and `CesiumNativeBindings`. Instead, it only tests `Cesium3DNative` (which consists of static stub functions).

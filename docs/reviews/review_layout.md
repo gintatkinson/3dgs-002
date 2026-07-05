@@ -34,6 +34,7 @@ This review covers the following files:
   ```
 
 ### Redundant Configuration Loading
+- **Tracking Issue**: [GitHub Issue #88](https://github.com/gintatkinson/3dgs-002/issues/88)
 - **Severity**: 🟠 Important
 - **Location**: `app_flutter/lib/app/app.dart` (lines 45–85) & `app_flutter/lib/features/layout/layout.dart` (lines 173–177, 302–315)
 - **Issue**: Both `DashboardPage` (via `FutureBuilder` + `rootBundle.loadString`) and `Layout` (via its own internal fallback `_loadLayoutConfig()`) contain logic to load the same `logical-layout.json` config. If `layoutConfig` is passed down, `Layout` uses it; otherwise, `Layout` loads it itself. The duplicate logic adds unnecessary nesting and complexity to the top-level app widget.
@@ -76,6 +77,7 @@ This review covers the following files:
   ```
 
 ### External View Updates Out of Sync with Sidebar Tree
+- **Tracking Issue**: [GitHub Issue #89](https://github.com/gintatkinson/3dgs-002/issues/89)
 - **Severity**: 🟠 Important
 - **Location**: `app_flutter/lib/features/layout/layout.dart` (lines 212–223)
 - **Issue**: In `didUpdateWidget`, when the active view is changed externally via `widget.activeView`, the local state `_currentView` is updated and properties are resubscribed, but the `_treeViewModel` is never notified. This causes the tree sidebar highlight to get out of sync with the main panel view when the change originates from outside `Layout`.
@@ -99,6 +101,7 @@ This review covers the following files:
   ```
 
 ### Fragile Map Type Casting
+- **Tracking Issue**: [GitHub Issue #90](https://github.com/gintatkinson/3dgs-002/issues/90)
 - **Severity**: 🟠 Important
 - **Location**: `app_flutter/lib/features/layout/layout_config_service.dart` (lines 6, 21–22, 39–40)
 - **Issue**: Safe casts such as `current is Map<String, dynamic>` and explicit casts like `as Map<String, dynamic>` will fail at runtime if the map has a different runtime type signature (such as `Map<dynamic, dynamic>` or `Map<String, Object?>` returned from certain custom JSON decoders or testing mocks). This will throw a `TypeError` (which gets caught and swallowed by the empty `catch (_)` blocks, returning silent fallbacks).
