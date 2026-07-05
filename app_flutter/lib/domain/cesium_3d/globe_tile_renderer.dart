@@ -113,7 +113,7 @@ class GlobeTileRenderer {
       x / math.pow(2, z) * 360.0 - 180.0;
 
   /// Latitude of the *northern* edge of tile row [y] at zoom [z].
-  double _tile2lat(int y, int z) {
+  double _tile2lat(double y, int z) {
     final n = math.pi * (1.0 - 2.0 * y / math.pow(2, z));
     return math.atan((math.exp(n) - math.exp(-n)) / 2.0) * 180.0 / math.pi;
   }
@@ -131,26 +131,41 @@ class GlobeTileRenderer {
   List<TileCoord> _visibleTiles(VirtualCamera camera, ui.Size viewportSize) {
     final zoom = _zoomForAltitude(camera.altitude, viewportSize.width);
     final center = _latLngToTile(camera.latitude, camera.longitude, zoom);
-    final n = math.pow(2, zoom).toInt();
     final List<TileCoord> tiles = [];
 
-    // 16 base tiles of zoom level 2 for global coverage
+    // Tier 1: Zoom 2 (global background coverage)
     for (int x = 0; x < 4; x++) {
       for (int y = 0; y < 4; y++) {
         tiles.add(TileCoord(zoom: 2, x: x, y: y));
       }
     }
 
-    // 16 detailed tiles around the camera center
+    // Tier 2: Zoom Z - 2 (Mid-resolution wider background)
+    final midZoom = zoom - 2;
+    if (midZoom > 2) {
+      final midCenter = _latLngToTile(camera.latitude, camera.longitude, midZoom);
+      final midN = math.pow(2, midZoom).toInt();
+      for (int dx = -2; dx <= 3; dx++) {
+        for (int dy = -2; dy <= 3; dy++) {
+          final tx = (midCenter.x + dx).clamp(0, midN - 1);
+          final ty = (midCenter.y + dy).clamp(0, midN - 1);
+          tiles.add(TileCoord(zoom: midZoom, x: tx, y: ty));
+        }
+      }
+    }
+
+    // Tier 3: Zoom Z (High-resolution close-up)
     if (zoom > 2) {
-      for (int dx = -1; dx <= 2; dx++) {
-        for (int dy = -1; dy <= 2; dy++) {
+      final n = math.pow(2, zoom).toInt();
+      for (int dx = -2; dx <= 2; dx++) {
+        for (int dy = -2; dy <= 2; dy++) {
           final tx = (center.x + dx).clamp(0, n - 1);
           final ty = (center.y + dy).clamp(0, n - 1);
           tiles.add(TileCoord(zoom: zoom, x: tx, y: ty));
         }
       }
     }
+
     return tiles;
   }
 
@@ -250,8 +265,8 @@ class GlobeTileRenderer {
       if (z < 0 || x < 0 || y < 0) continue;
 
       // Geographic bounds for this tile.
-      final double latN = _tile2lat(y, z);
-      final double latS = _tile2lat(y + 1, z);
+      final double latN = _tile2lat(y.toDouble(), z);
+      final double latS = _tile2lat((y + 1).toDouble(), z);
       final double lonW = _tile2lon(x, z);
       final double lonE = _tile2lon(x + 1, z);
 
@@ -262,12 +277,14 @@ class GlobeTileRenderer {
 
       for (int r = 0; r <= subdivisions; r++) {
         final double v = r / subdivisions;
-        final double lat = latN + (latS - latN) * v;
+        final double latDeg = _tile2lat(y + v, z);
+        final double lat = _rad(latDeg);
         final double texY = v * 256.0;
 
         for (int c = 0; c <= subdivisions; c++) {
           final double u = c / subdivisions;
-          final double lon = lonW + (lonE - lonW) * u;
+          final double lonDeg = lonW + (lonE - lonW) * u;
+          final double lon = _rad(lonDeg);
           final double texX = u * 256.0;
 
           final projected = projectFn(lat, lon);

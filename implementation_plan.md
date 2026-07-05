@@ -1641,3 +1641,24 @@ This phase implements stack-based foreground positioning in SplitWorkspace, enab
   ```bash
   cd app_flutter && flutter test
   ```
+
+
+## Phase 23: Three-Tier Tile Loading Pyramid and Fractional Latitude Mapping
+
+This phase implements the three-tier tile loading pyramid and the fractional latitude mapping to eliminate global tile distortion and low-resolution borders.
+
+### Core App Code
+
+#### [MODIFY] [globe_tile_renderer.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/cesium_3d/globe_tile_renderer.dart)
+- Modify the `_tile2lat` method signature and body to accept `double y` instead of `int y`.
+- Replace linear latitude interpolation with fractional `_tile2lat` lookup inside `renderTiles`.
+- Replace visible tile computation in `_visibleTiles` with a three-tier visible tile loading pyramid.
+
+### Phase 23 Verification Plan
+
+#### Automated Tests
+- Run all project unit and widget tests:
+  ```bash
+  cd app_flutter && flutter test
+  ```
+
