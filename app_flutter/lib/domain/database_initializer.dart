@@ -89,6 +89,16 @@ class DatabaseInitializer {
     ''');
 
     await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_instances_parent_type
+      ON instances(parent_node_id, type_name);
+    ''');
+
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_instances_type_name
+      ON instances(type_name);
+    ''');
+
+    await db.execute('''
       CREATE TABLE IF NOT EXISTS type_definitions (
         type_name TEXT PRIMARY KEY,
         display_name TEXT NOT NULL,

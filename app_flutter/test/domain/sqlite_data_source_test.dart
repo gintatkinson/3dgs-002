@@ -50,4 +50,18 @@ void main() {
 
     await db.close();
   });
+
+  test('database initialization creates idx_instances_parent_type and idx_instances_type_name indexes', () async {
+    final db = await DatabaseInitializer.create(dbPath: inMemoryDatabasePath, seed: false);
+
+    final results = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type='index' AND name IN ('idx_instances_parent_type', 'idx_instances_type_name')"
+    );
+
+    final indexNames = results.map((row) => row['name'] as String).toList();
+    expect(indexNames, contains('idx_instances_parent_type'));
+    expect(indexNames, contains('idx_instances_type_name'));
+
+    await db.close();
+  });
 }
