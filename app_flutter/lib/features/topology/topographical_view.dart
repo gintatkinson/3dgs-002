@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:app_flutter/core/theme/theme_controller.dart';
 import 'package:app_flutter/features/layout/breadcrumbs.dart';
 import 'package:app_flutter/features/topology/topology_map.dart';
 import 'package:app_flutter/features/layout/split_workspace.dart';
@@ -139,6 +141,7 @@ class _TopographicalViewState extends State<TopographicalView> {
 
   @override
   Widget build(BuildContext context) {
+    final panelOpacity = context.watch<ThemeController>().panelOpacity;
     final camera = _resolveCamera();
 
     final Widget leadingWidget = _is3d
@@ -169,7 +172,7 @@ class _TopographicalViewState extends State<TopographicalView> {
         : leadingWidget;
 
     return Container(
-      color: Theme.of(context).scaffoldBackgroundColor,
+      color: Theme.of(context).scaffoldBackgroundColor.withOpacity(panelOpacity),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

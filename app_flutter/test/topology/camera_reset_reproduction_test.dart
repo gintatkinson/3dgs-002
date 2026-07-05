@@ -1,10 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:app_flutter/core/theme/theme_controller.dart';
+import 'package:app_flutter/core/theme/theme_service.dart';
 import 'package:app_flutter/domain/cesium_3d/camera_controller.dart';
 import 'package:app_flutter/domain/cesium_3d/virtual_camera.dart';
 import 'package:app_flutter/features/topology/scene_3d_viewport.dart';
 import 'package:app_flutter/features/topology/topographical_view.dart';
 import 'package:app_flutter/features/topology/topology_map.dart';
+
+class FakeThemeService implements ThemeService {
+  @override
+  Future<ThemeMode> loadThemeMode() async => ThemeMode.system;
+  @override
+  Future<void> saveThemeMode(ThemeMode mode) async {}
+  @override
+  Future<int> loadThemeScheme() async => 0;
+  @override
+  Future<void> saveThemeScheme(int scheme) async {}
+  @override
+  Future<double> loadTextScale() async => 1.0;
+  @override
+  Future<void> saveTextScale(double scale) async {}
+  @override
+  Future<Axis> loadLayoutSplitAxis() async => Axis.vertical;
+  @override
+  Future<void> saveLayoutSplitAxis(Axis axis) async {}
+  @override
+  Future<double> loadPanelOpacity() async => 0.85;
+  @override
+  Future<void> savePanelOpacity(double opacity) async {}
+}
 
 // dim0 = longitude (x), dim1 = latitude (y) per resolveCoordinate
 const _topologyData = TopologyData(
@@ -83,12 +109,15 @@ class _ParentWrapperState extends State<_ParentWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
-        body: TopographicalView(
-          currentView: _currentView,
-          onViewSelected: widget.onViewSelected,
-          topologyData: widget.topologyData,
+    return ChangeNotifierProvider<ThemeController>(
+      create: (_) => ThemeController(FakeThemeService()),
+      child: MaterialApp(
+        home: Scaffold(
+          body: TopographicalView(
+            currentView: _currentView,
+            onViewSelected: widget.onViewSelected,
+            topologyData: widget.topologyData,
+          ),
         ),
       ),
     );
@@ -404,12 +433,15 @@ void main() {
         });
 
         await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(
-              body: TopographicalView(
-                currentView: 'TestNode',
-                onViewSelected: (_) {},
-                topologyData: data,
+          ChangeNotifierProvider<ThemeController>(
+            create: (_) => ThemeController(FakeThemeService()),
+            child: MaterialApp(
+              home: Scaffold(
+                body: TopographicalView(
+                  currentView: 'TestNode',
+                  onViewSelected: (_) {},
+                  topologyData: data,
+                ),
               ),
             ),
           ),

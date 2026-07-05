@@ -1665,12 +1665,19 @@ This phase implements the three-tier tile loading pyramid and the fractional lat
 
 ## Phase 24: PropertiesPanel Background Opacity Inheritance for TopographicalView
 
-This phase applies the PropertiesPanel background opacity inheritance to `TopographicalView`'s child.
+This phase applies the PropertiesPanel background opacity inheritance to `TopographicalView`'s background container.
 
 ### Core App Code
 
-#### [MODIFY] [component_factory.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/layout/component_factory.dart)
-- In `case 'TopographicalView'`, retrieve `panelOpacity` from `ThemeController` and wrap `buildChildWidget(context)` inside a `Container` with background `cardColor` matching the `panelOpacity` setting.
+#### [MODIFY] [topographical_view.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/topographical_view.dart)
+- Import `package:app_flutter/core/theme/theme_controller.dart` and `package:provider/provider.dart`.
+- Watch `ThemeController` inside `TopographicalView.build` to read `panelOpacity`.
+- In the root `Container`, change the background color from `Theme.of(context).scaffoldBackgroundColor` to `Theme.of(context).scaffoldBackgroundColor.withOpacity(panelOpacity)`.
+
+#### [MODIFY] [camera_reset_reproduction_test.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/topology/camera_reset_reproduction_test.dart)
+- Import `package:provider/provider.dart`, `package:app_flutter/core/theme/theme_controller.dart`, and `package:app_flutter/core/theme/theme_service.dart`.
+- Define a local `FakeThemeService` to implement `ThemeService`.
+- Wrap `TopographicalView` in `ChangeNotifierProvider<ThemeController>` using the fake theme service.
 
 ### Phase 24 Verification Plan
 
