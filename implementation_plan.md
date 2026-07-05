@@ -1802,13 +1802,26 @@ This phase restores transparent overflow for the 3D globe custom painter and ens
 #### [MODIFY] [split_workspace.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/layout/split_workspace.dart)
 - Wrap the `splitter` inside the `splitterWidget` Positioned widget (around lines 169-177) in a `RepaintBoundary` so it gets its own compositing layer and is guaranteed to render on top of the map.
 
-### Phase 26 Verification Plan
+
+## Phase 27: Inherit Panel Opacity in Split Workspace Splitter Bars
+
+This phase implements inheriting the panel opacity setting from ThemeController for the splitter bars in SplitWorkspace.
+
+### Core App Code
+
+#### [MODIFY] [split_workspace.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/layout/split_workspace.dart)
+- Import `package:provider/provider.dart` and `package:app_flutter/core/theme/theme_controller.dart` at the top of the file.
+- Retrieve the current `panelOpacity` inside `_SplitWorkspaceState.build` via `context.watch<ThemeController>().panelOpacity`.
+- In the splitter's `Container` decoration, change `color` from `Theme.of(context).dividerColor` to `Theme.of(context).cardColor.withOpacity(panelOpacity)`, keeping the borders defined by `Theme.of(context).dividerColor`.
+
+### Phase 27 Verification Plan
 
 #### Automated Tests
 - Run all project tests and verify they pass:
   ```bash
   cd app_flutter && flutter test
   ```
+
 
 
 

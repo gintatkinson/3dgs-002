@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:app_flutter/core/theme/theme_controller.dart';
 
 /// A resizable split pane that lays out [leading] and [trailing] widgets
 /// along [direction] with a draggable divider.
@@ -79,6 +81,7 @@ class _SplitWorkspaceState extends State<SplitWorkspace> {
 
   @override
   Widget build(BuildContext context) {
+    final panelOpacity = context.watch<ThemeController>().panelOpacity;
     return LayoutBuilder(
       builder: (context, constraints) {
         final totalSize = widget.direction == Axis.horizontal
@@ -125,7 +128,7 @@ class _SplitWorkspaceState extends State<SplitWorkspace> {
               width: isHorizontal ? widget.dividerSize : double.infinity,
               height: isHorizontal ? double.infinity : widget.dividerSize,
               decoration: BoxDecoration(
-                color: Theme.of(context).dividerColor,
+                color: Theme.of(context).cardColor.withOpacity(panelOpacity),
                 border: isHorizontal
                     ? Border(
                         left: BorderSide(
