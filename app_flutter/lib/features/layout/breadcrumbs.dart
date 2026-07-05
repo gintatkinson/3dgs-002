@@ -206,8 +206,6 @@ List<BreadcrumbItem> getBreadcrumbsItems(
       onClick: () {
         if (treeData.isNotEmpty) {
           onSelectView?.call(getFirstLeafId(treeData.first));
-        } else {
-          onSelectView?.call(getFirstLeafId(treeData.first));
         }
       },
     ),

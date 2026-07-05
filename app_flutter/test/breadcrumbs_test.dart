@@ -103,4 +103,20 @@ void main() {
     final SingleChildScrollView scrollView = tester.widget<SingleChildScrollView>(scrollViewFinder);
     expect(scrollView.scrollDirection, Axis.horizontal);
   });
+
+  test('getBreadcrumbsItems onClick handles empty treeData safely', () {
+    bool selected = false;
+    final items = getBreadcrumbsItems(
+      'someView',
+      [],
+      onSelectView: (view) => selected = true,
+    );
+    expect(items.length, 2);
+    expect(items.first.id, 'home');
+    expect(items.first.onClick, isNotNull);
+    
+    // Invoke onClick and ensure it doesn't throw StateError
+    expect(() => items.first.onClick!(), returnsNormally);
+    expect(selected, isFalse);
+  });
 }
