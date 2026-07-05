@@ -1662,3 +1662,22 @@ This phase implements the three-tier tile loading pyramid and the fractional lat
   cd app_flutter && flutter test
   ```
 
+
+## Phase 24: PropertiesPanel Background Opacity Inheritance for TopographicalView
+
+This phase applies the PropertiesPanel background opacity inheritance to `TopographicalView`'s child.
+
+### Core App Code
+
+#### [MODIFY] [component_factory.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/layout/component_factory.dart)
+- In `case 'TopographicalView'`, retrieve `panelOpacity` from `ThemeController` and wrap `buildChildWidget(context)` inside a `Container` with background `cardColor` matching the `panelOpacity` setting.
+
+### Phase 24 Verification Plan
+
+#### Automated Tests
+- Run all project unit and widget tests:
+  ```bash
+  cd app_flutter && flutter test
+  ```
+
+

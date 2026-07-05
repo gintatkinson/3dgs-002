@@ -161,10 +161,14 @@ class ComponentFactory {
         );
       case 'TopographicalView':
         final treeData = treeViewModel?.treeData ?? [];
+        final panelOpacity = context.watch<ThemeController>().panelOpacity;
         return TopographicalView(
           currentView: currentView,
           onViewSelected: onViewSelected,
-          child: buildChildWidget(context),
+          child: Container(
+            color: Theme.of(context).cardColor.withOpacity(panelOpacity),
+            child: buildChildWidget(context),
+          ),
           topologyData: resolveTopologyData(),
           treeData: treeData,
           splitMinFirstPaneSize: minPaneSize,
