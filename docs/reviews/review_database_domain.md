@@ -90,12 +90,14 @@ This review evaluates the code quality, correctness, security, performance, arch
   ```
 
 ### 5. Hardcoded Mock Data Patterns Leaked into SQLite Queries
+- **Tracking Issue**: [GitHub Issue #113](docs/reviews/review_database_domain.md)
 - **Severity**: 🟠 Important
 - **Location**: [sqlite_data_source.dart:266-270](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/data_sources/sqlite_data_source.dart#L266-L270)
 - **Issue**: Database queries in `fetchChildrenForNode` hardcode specific demo node type names (`'Detail_A'`, `'Detail_B'`, `'Detail_C'`) and naming conventions (`LIKE '%_Child_%'`). This breaks the domain-agnostic capability of the database adapter.
 - **Suggestion**: Generalize the queries to use the schema metadata structure (e.g., filtering children based on the `type_relations` table) rather than hardcoded string filters.
 
 ### 6. Architectural Purity Violations (Circular/Leaked Dependencies)
+- **Tracking Issue**: [GitHub Issue #114](docs/reviews/review_database_domain.md)
 - **Severity**: 🟠 Important
 - **Location**: [data_source.dart:1-8](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/data_source.dart#L1-L8), [icon_mapper.dart:1](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/icon_mapper.dart#L1), [column_model.dart:3](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/column_model.dart#L3)
 - **Issue**: The `domain` layer contains direct dependencies on presentation concepts (`TreeNode`, `TopologyData`, `IconData` and `package:flutter/material.dart`). This couples the domain layers tightly to the UI layer and makes it harder to run headless tests or swap styling frameworks.
@@ -104,6 +106,7 @@ This review evaluates the code quality, correctness, security, performance, arch
   - Perform mapping from domain entities to UI models (like `TreeNode` or `IconData`) in the presentation or feature layer.
 
 ### 7. Overly Restrictive Unique Constraint on Type Relations
+- **Tracking Issue**: [GitHub Issue #115](docs/reviews/review_database_domain.md)
 - **Severity**: 🟠 Important
 - **Location**: [database_initializer.dart:127](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/database_initializer.dart#L127)
 - **Issue**: `type_relations` defines a `UNIQUE(parent_type_name, child_type_name)` constraint. This prevents a parent type from having multiple relations to the same child type (e.g., a `substation` node containing both a `primary_transformer` and a `secondary_transformer` relation of the same type `transformer`).
@@ -118,6 +121,7 @@ This review evaluates the code quality, correctness, security, performance, arch
 ## 🟡 Suggestion Severity
 
 ### 8. Regular Expression Re-compilation Performance Hotspot
+- **Tracking Issue**: [GitHub Issue #116](docs/reviews/review_database_domain.md)
 - **Severity**: 🟡 Suggestion
 - **Location**: [instance_record.dart:128](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/instance_record.dart#L128)
 - **Issue**: During batch schema validation, compiling a new `RegExp` object inside a hot loop (`for (final fd in fields)`) triggers high CPU usage and garbage collection overhead.
@@ -132,6 +136,7 @@ This review evaluates the code quality, correctness, security, performance, arch
   ```
 
 ### 9. Redundant String Conversions in Validator
+- **Tracking Issue**: [GitHub Issue #117](docs/reviews/review_database_domain.md)
 - **Severity**: 🟡 Suggestion
 - **Location**: [instance_record.dart:92-115](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/instance_record.dart#L92-L115)
 - **Issue**: If a field's value is already parsed as `int` or `double` within the attributes map, the validator converts it to a string (`value.toString()`) and parses it again.
@@ -145,6 +150,7 @@ This review evaluates the code quality, correctness, security, performance, arch
   ```
 
 ### 10. Failed Map Type Casting on jsonDecode
+- **Tracking Issue**: [GitHub Issue #118](docs/reviews/review_database_domain.md)
 - **Severity**: 🟡 Suggestion
 - **Location**: [instance_record.dart:44](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/instance_record.dart#L44)
 - **Issue**: `decoded is Map<String, dynamic>` check fails if `jsonDecode` returns a `Map<dynamic, dynamic>`.
@@ -156,7 +162,8 @@ This review evaluates the code quality, correctness, security, performance, arch
   }
   ```
 
-### 11. Dead Code: Obsolete `AttributeDefinition` Class
+### 11. Dead Code: Obsolete AttributeDefinition Class
+- **Tracking Issue**: [GitHub Issue #119](docs/reviews/review_database_domain.md)
 - **Severity**: 🟡 Suggestion
 - **Location**: [schema.dart:1-56](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/schema.dart#L1-L56)
 - **Issue**: The `AttributeDefinition` class in `schema.dart` is not imported or used anywhere in the Flutter app source files; it is fully superseded by `FieldDescriptor`.
@@ -167,12 +174,14 @@ This review evaluates the code quality, correctness, security, performance, arch
 ## 💡 Nitpick Severity
 
 ### 12. Top-Level main() Entrypoint in Library File
+- **Tracking Issue**: [GitHub Issue #124](docs/reviews/review_database_domain.md)
 - **Severity**: 💡 Nitpick
 - **Location**: [database_initializer.dart:8-27](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/database_initializer.dart#L8-27)
 - **Issue**: Placing a runnable `main()` script inside `lib/domain/` violates Dart package structure conventions.
 - **Suggestion**: Move the script to a `tool/` directory (e.g. `tool/regenerate_db.dart`).
 
 ### 13. Swallowed Database Initializer Exceptions
+- **Tracking Issue**: [GitHub Issue #125](docs/reviews/review_database_domain.md)
 - **Severity**: 💡 Nitpick
 - **Location**: [repository_resolver.dart:154-164](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/repository_resolver.dart#L154-L164)
 - **Issue**: Empty catch blocks (`catch (_) {}`) swallow asset load and unzip issues during database initialization, hindering error diagnostics.

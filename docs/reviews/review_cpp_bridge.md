@@ -64,6 +64,7 @@ This document provides a comprehensive code review of the C++ bridge native libr
 ## 2. Thread Safety and Concurrency
 
 ### 🟠 Important: Lifetime Race on Deallocating Active `BridgeState`
+- **Tracking Issue**: [GitHub Issue #93](docs/reviews/review_cpp_bridge.md)
 - **Location**: [`cesium_native_bridge/src/bridge.cpp:46-49`](file:///Users/perkunas/jail/3dgs-002/cesium_native_bridge/src/bridge.cpp#L46-L49)
 - **Issue**: `bridge_shutdown` deletes the `BridgeState` map entry under lock. However, if background worker threads (like those spawned by cesium-native's `CesiumAsync` operations) or callback dispatches are still active, they might attempt to reference `BridgeState` members (like callbacks or user data pointers) after they have been deleted.
 - **Suggestion**: Manage `BridgeState` using `std::shared_ptr` rather than `std::unique_ptr`, and ensure that active tasks hold a reference to keep the state alive. Furthermore, implement an explicit cancellation/join step during shutdown to block until all pending worker threads have stopped.
@@ -120,6 +121,7 @@ This document provides a comprehensive code review of the C++ bridge native libr
 ```
 
 ### 🟠 Important: Assertion Failures inside `cesium-native` on Invalid Coordinates
+- **Tracking Issue**: [GitHub Issue #94](docs/reviews/review_cpp_bridge.md)
 - **Location**: [`cesium_native_bridge/src/bridge.cpp:99-124`](file:///Users/perkunas/jail/3dgs-002/cesium_native_bridge/src/bridge.cpp#L99-L124)
 - **Issue**: `bridge_cartographic_to_ecef` delegates directly to `CesiumGeospatial::Cartographic::fromDegrees` and `ellipsoid.cartographicToCartesian`. If the input latitude is out of bounds (not in `[-90, 90]`) or is NaN/Infinity, `cesium-native` or `glm` may trigger `assert()` statements. In C/C++, failed assertions do not throw catchable C++ exceptions; they write to stderr and call `abort()`, crashing the Dart VM.
 - **Suggestion**: Pre-validate coordinates on the C++ side before calling `cesium-native` classes.

@@ -121,6 +121,7 @@ This review covers the following files:
 ## 3. Performance & Quality
 
 ### Hardcoded Default Ratios and Snapping during Resizing
+- **Tracking Issue**: [GitHub Issue #102](docs/reviews/review_layout.md)
 - **Severity**: 🟡 Suggestion
 - **Location**: `app_flutter/lib/features/layout/split_workspace.dart` (lines 79–120)
 - **Issue**: The split workspace keeps the first pane size as an absolute pixel count (`_firstPaneSize`). When the parent container is resized (e.g., maximizing the window), the split pane does not scale proportionally but stays at its absolute size. If the window shrinks below the absolute size, the first pane gets clamped but doesn't restore its proportion when the window is expanded again.
@@ -162,6 +163,7 @@ This review covers the following files:
   ```
 
 ### Hardcoded Initial Active View
+- **Tracking Issue**: [GitHub Issue #103](docs/reviews/review_layout.md)
 - **Severity**: 💡 Nitpick
 - **Location**: `app_flutter/lib/app/app.dart` (line 44)
 - **Issue**: `_activeView` is hardcoded to `'Master_1'`. If the database is empty or doesn't contain a node with this ID, the UI will try to watch non-existent properties. Leaving it `null` would allow the `Layout` widget's automatic fallback (`_updateCurrentViewFromLayout()`) to resolve and highlight the first valid tree node dynamically.

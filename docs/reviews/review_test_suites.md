@@ -45,6 +45,7 @@ This document presents a comprehensive code review of the Flutter unit, widget, 
 ## 🟠 Important Severity Issues
 
 ### 2. Bare Asserts and Lack of Test Suite Wrapper
+- **Tracking Issue**: [GitHub Issue #120](docs/reviews/review_test_suites.md)
 * **Severity**: 🟠 Important
 * **Category**: Testing / Correctness
 * **Location**: [ffi_integration_test.dart:28](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/cesium_3d/ffi_integration_test.dart#L28)
@@ -95,6 +96,7 @@ This document presents a comprehensive code review of the Flutter unit, widget, 
   ```
 
 ### 4. Non-Isolated Unit/Widget Tests (Database Dependency)
+- **Tracking Issue**: [GitHub Issue #121](docs/reviews/review_test_suites.md)
 * **Severity**: 🟠 Important
 * **Category**: Architecture / Quality
 * **Location**: [widget_test.dart:25-29](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/widget_test.dart#L25-L29), [layout_test.dart:130-132](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/layout_test.dart#L130-L132)
@@ -108,6 +110,7 @@ This document presents a comprehensive code review of the Flutter unit, widget, 
   ```
 
 ### 5. Writing Untracked Files to the Repository Root
+- **Tracking Issue**: [GitHub Issue #122](docs/reviews/review_test_suites.md)
 * **Severity**: 🟠 Important
 * **Category**: Security / Quality
 * **Location**: [node_iteration_test.dart:16-19](file:///Users/perkunas/jail/3dgs-002/app_flutter/integration_test/node_iteration_test.dart#L16-L19)
@@ -205,6 +208,7 @@ This document presents a comprehensive code review of the Flutter unit, widget, 
 ## 💡 Nitpick Severity Issues
 
 ### 10. Pervasive `as dynamic` Casting for Widget States
+- **Tracking Issue**: [GitHub Issue #123](docs/reviews/review_test_suites.md)
 * **Severity**: 💡 Nitpick
 * **Category**: Quality / Type Safety
 * **Location**: [scroll_zoom_test.dart:37](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/topology/scroll_zoom_test.dart#L37), [right_click_drag_test.dart:30](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/cesium_3d/right_click_drag_test.dart#L30), [shift_drag_test.dart:30](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/cesium_3d/shift_drag_test.dart#L30), [ctrl_drag_test.dart:30](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/cesium_3d/ctrl_drag_test.dart#L30), [double_click_fly_test.dart:29](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/cesium_3d/double_click_fly_test.dart#L29), [scroll_zoom_test.dart:43](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/cesium_3d/scroll_zoom_test.dart#L43), [hud_update_test.dart:67](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/cesium_3d/hud_update_test.dart#L67), [camera_drag_test.dart:39](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/cesium_3d/camera_drag_test.dart#L39)

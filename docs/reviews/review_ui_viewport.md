@@ -73,6 +73,7 @@ Each issue has been categorized and graded by severity:
   ```
 
 ### 🟠 Hardcoded Starry Background Loop in Painter
+- **Tracking Issue**: [GitHub Issue #95](docs/reviews/review_ui_viewport.md)
 * **Severity**: 🟠 Important
 * **Location**: [scene_3d_viewport.dart:L1127-1137](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/scene_3d_viewport.dart#L1127-L1137)
 * **Issue**: The starry background loop instantiates `math.Random(42)` and calculates coordinates for 100 stars on every call to `paint()`.
@@ -88,6 +89,7 @@ Each issue has been categorized and graded by severity:
   ```
 
 ### 🟡 Abrupt Zoom Scale in Scale Gesture Detector
+- **Tracking Issue**: [GitHub Issue #96](docs/reviews/review_ui_viewport.md)
 * **Severity**: 🟡 Suggestion
 * **Location**: [scene_3d_viewport.dart:L447-453](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/scene_3d_viewport.dart#L447-L453)
 * **Issue**: The scale update gesture uses only the sign of the scale difference multiplied by a constant zoom step: `(details.scale - 1.0).sign * 20.0`.
@@ -105,6 +107,7 @@ Each issue has been categorized and graded by severity:
 ## 2. `app_flutter/lib/features/topology/topographical_view.dart`
 
 ### 🟠 UI Layout Overflow Risk in Header
+- **Tracking Issue**: [GitHub Issue #97](docs/reviews/review_ui_viewport.md)
 * **Severity**: 🟠 Important
 * **Location**: [topographical_view.dart:L197-243](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/topographical_view.dart#L197-L243)
 * **Issue**: The top header layout uses a single horizontal `Row` containing a title, two toggle buttons, and breadcrumbs.
@@ -161,6 +164,7 @@ Each issue has been categorized and graded by severity:
 ## 4. `app_flutter/lib/features/topology/topology_map.dart`
 
 ### 🟠 Double ScrollView Hierarchy for Panning
+- **Tracking Issue**: [GitHub Issue #98](docs/reviews/review_ui_viewport.md)
 * **Severity**: 🟠 Important
 * **Location**: [topology_map.dart:L667-674](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/topology_map.dart#L667-L674)
 * **Issue**: The canvas uses nested horizontal and vertical `SingleChildScrollView` widgets to implement 2D panning.
@@ -187,6 +191,7 @@ Each issue has been categorized and graded by severity:
 * **Suggestion**: Pre-allocate or cache text painters.
 
 ### 🟡 Playback Time Index Wrap Precision Loss
+- **Tracking Issue**: [GitHub Issue #99](docs/reviews/review_ui_viewport.md)
 * **Severity**: 🟡 Suggestion
 * **Location**: [topology_map.dart:L496-505](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/topology_map.dart#L496-L505)
 * **Issue**: On looping back, `currentTimeIndex` is reset abruptly to `minT` without preserving the overshoot remainder.
@@ -223,6 +228,7 @@ Each issue has been categorized and graded by severity:
   ```
 
 ### 🟡 Sticky Expanded Ellipsis State
+- **Tracking Issue**: [GitHub Issue #100](docs/reviews/review_ui_viewport.md)
 * **Severity**: 🟡 Suggestion
 * **Location**: [breadcrumbs.dart:L71-103](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/layout/breadcrumbs.dart#L71-L103)
 * **Issue**: If the user clicks the `...` ellipsis button to expand collapsed breadcrumbs, `_isExpanded` is set to `true`. This state is never reset when navigating to another view (where `widget.items` changes).
@@ -240,6 +246,7 @@ Each issue has been categorized and graded by severity:
   ```
 
 ### 💡 Bulky Breadcrumb Segments (`ActionChip`)
+- **Tracking Issue**: [GitHub Issue #101](docs/reviews/review_ui_viewport.md)
 * **Severity**: 💡 Nitpick
 * **Location**: [breadcrumbs.dart:L127](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/layout/breadcrumbs.dart#L127), [breadcrumbs.dart:L144](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/layout/breadcrumbs.dart#L144)
 * **Issue**: Breadcrumb path links are rendered using `ActionChip`.

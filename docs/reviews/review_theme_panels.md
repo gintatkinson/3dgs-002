@@ -86,6 +86,7 @@ The review is structured according to the categories: **Correctness**, **Perform
     ```
 
 ### 🟠 Global Fallback State Mutation in `TreeViewModel`
+- **Tracking Issue**: [GitHub Issue #104](docs/reviews/review_theme_panels.md)
 *   **Severity**: 🟠 Important
 *   **Location**: [tree_view_model.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/tree/view_models/tree_view_model.dart#L58)
 *   **Issue**: If `roots` is empty, the view model calls `_treeData = List<TreeNode>.from(defaultTreeData);`. This is a shallow copy of the list. The elements inside the list are still the exact same shared `TreeNode` references from the global `defaultTreeData` array. Sorting the list or dynamically adding child nodes will mutate the global `defaultTreeData` array elements, leaking state changes across different model instances.
@@ -106,6 +107,7 @@ The review is structured according to the categories: **Correctness**, **Perform
     ```
 
 ### 🟠 StateError on Watch Subscription in `TablesViewModel`
+- **Tracking Issue**: [GitHub Issue #105](docs/reviews/review_theme_panels.md)
 *   **Severity**: 🟠 Important
 *   **Location**: [tables_view_model.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/tables/view_models/tables_view_model.dart#L249)
 *   **Issue**: The properties change listener does a `_tabs.firstWhere((t) => t.id == _selectedTabId)`. If `_selectedTabId` is null or does not match any tab in `_tabs`, this throws a `StateError` inside the stream listener and stops execution.
@@ -119,6 +121,7 @@ The review is structured according to the categories: **Correctness**, **Perform
     ```
 
 ### 🟠 Multi-Tab Rendering and Keeping Alive Bug in `TabbedContainer`
+- **Tracking Issue**: [GitHub Issue #106](docs/reviews/review_theme_panels.md)
 *   **Severity**: 🟠 Important
 *   **Location**: [tabbed_container.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/tables/tabbed_container.dart#L130-L137)
 *   **Issue**: `TabBarView` keeps all tabs alive in the widget tree using `LazyTab` and `wantKeepAlive => true`. However, `TablesViewModel` only holds a single active table dataset (`rows` and `headers`) for the active tab. Consequently, every tab kept alive in the tree will render the exact same active tab's data. During transitions, the user will see wrong data in the adjacent tab until the swipe finishes and `selectTab` updates the view model.
@@ -129,6 +132,7 @@ The review is structured according to the categories: **Correctness**, **Perform
 ## 2. Performance
 
 ### 🟠 GlobalKey Allocation Performance Issue in `TreeViewModel`
+- **Tracking Issue**: [GitHub Issue #107](docs/reviews/review_theme_panels.md)
 *   **Severity**: 🟠 Important
 *   **Location**: [tree_view_model.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/tree/view_models/tree_view_model.dart#L267)
 *   **Issue**: On every `loadTree` or child node expansion, `_buildNodeKeys` is called and executes `_nodeKeys[node.id] = GlobalKey();`. Creating brand new `GlobalKey` instances on every update forces Flutter to tear down the entire widget tree for the nodes (breaking animations, focus states, and causing jank).
@@ -146,12 +150,14 @@ The review is structured according to the categories: **Correctness**, **Perform
     ```
 
 ### 🟡 Date Parsing inside Cell Build Method
+- **Tracking Issue**: [GitHub Issue #108](docs/reviews/review_theme_panels.md)
 *   **Severity**: 🟡 Suggestion
 *   **Location**: [table_view_widget.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/tables/table_view_widget.dart#L406)
 *   **Issue**: `_formatDate` runs `DateTime.parse` during widget build for every cell of type 'date'. Since date parsing is relatively heavy, executing this during scroll in the `itemBuilder` can cause frame drops (jank).
 *   **Suggestion**: Pre-format dates in the view model or data parser, or cache formatted dates.
 
 ### 💡 Redundant Repaint Boundaries in `TableViewWidget`
+- **Tracking Issue**: [GitHub Issue #109](docs/reviews/review_theme_panels.md)
 *   **Severity**: 💡 Nitpick
 *   **Location**: [table_view_widget.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/tables/table_view_widget.dart#L124) and [line 305](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/tables/table_view_widget.dart#L305)
 *   **Issue**: Nesting `RepaintBoundary` nodes (one around the scrollable `ListView.builder` and another around every row item `_DataRow`) is redundant. This creates unnecessary engine layers and increases memory consumption.
@@ -162,6 +168,7 @@ The review is structured according to the categories: **Correctness**, **Perform
 ## 3. Quality (Aesthetics, Accessibility, and UX)
 
 ### 🟠 Accessible Tap Target Size violation on Tree Node Toggle
+- **Tracking Issue**: [GitHub Issue #110](docs/reviews/review_theme_panels.md)
 *   **Severity**: 🟠 Important
 *   **Location**: [tree_node_widget.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/tree/tree_node_widget.dart#L104-L116)
 *   **Issue**: The expand/collapse text button (`+`/`−`) has a tiny hit target (`Padding(all: 2.0)` around a single character). According to Material Design guidelines, interactive elements must have a minimum size of 48x48 logical pixels to ensure ease of tapping.
@@ -178,6 +185,7 @@ The review is structured according to the categories: **Correctness**, **Perform
     ```
 
 ### 🟠 Broken Swipe Animation in `TabbedContainer`
+- **Tracking Issue**: [GitHub Issue #111](docs/reviews/review_theme_panels.md)
 *   **Severity**: 🟠 Important
 *   **Location**: [tabbed_container.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/tables/tabbed_container.dart#L169)
 *   **Issue**: `LazyTab` wraps the tab child in `Offstage(offstage: !widget.isSelected)`. Since `TabBarView` performs smooth scroll translation transitions between adjacent tabs, hiding the adjacent tab during transition renders it blank/invisible. This breaks the premium visual swipe transition entirely.
@@ -192,6 +200,7 @@ The review is structured according to the categories: **Correctness**, **Perform
     ```
 
 ### 🟡 Keyboard Holding (Key Repeat) Ignored in `SidebarTree`
+- **Tracking Issue**: [GitHub Issue #112](docs/reviews/review_theme_panels.md)
 *   **Severity**: 🟡 Suggestion
 *   **Location**: [sidebar_tree.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/tree/sidebar_tree.dart#L87)
 *   **Issue**: Tree navigation only responds to `KeyDownEvent`. If the user holds down the Up or Down arrow key, the tree will not scroll continuously because `KeyRepeatEvent` is ignored.

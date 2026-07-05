@@ -171,6 +171,7 @@ if (response.statusCode == 200) {
 ## 4. Quality
 
 ### Issue 4.1: Erroneous TileCache Eviction during Duplicate Writes
+- **Tracking Issue**: [GitHub Issue #92](docs/reviews/review_geospatial.md)
 - **Severity**: 🟡 Suggestion
 - **Location**: `app_flutter/lib/domain/cesium_3d/tile_fetcher.dart`, Lines 50-57
 - **Issue**: In `TileCache.put`, the size check `if (_map.length >= _maxSize)` runs regardless of whether `key` is already present. If a duplicate write occurs for an existing key when the cache is full, it will evict the first entry and then overwrite the existing key, causing the cache size to shrink by 1.
