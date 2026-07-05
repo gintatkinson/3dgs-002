@@ -7,6 +7,8 @@ This document provides a comprehensive code review of the C++ bridge native libr
 ## 1. Memory Safety
 
 ### 🔴 Critical: Use-After-Free / Dangling Pointer in `bridge_get_last_error`
+- **Tracking Issue**: [GitHub Issue #74](https://github.com/gintatkinson/3dgs-002/issues/74)
+- **Severity**: 🔴 Critical
 - **Location**: [`cesium_native_bridge/src/bridge.cpp:56-61`](file:///Users/perkunas/jail/3dgs-002/cesium_native_bridge/src/bridge.cpp#L56-L61)
 - **Issue**: The function returns a `const char*` pointing to the internal character buffer of the `std::string` inside the `BridgeState` object (`it->second->lastError.c_str()`). As soon as the function returns, `g_statesMutex` is unlocked and the lock is released. If another thread modifies `lastError` or destroys the `BridgeState` object by calling `bridge_shutdown`, the returned pointer immediately becomes a dangling pointer. Reading from this memory on the Dart FFI side will cause a Use-After-Free (UAF) bug, data corruption, or application crash.
 - **Suggestion**: Do not return pointers to transient internal state. Instead, use one of the following approaches:
@@ -36,11 +38,15 @@ This document provides a comprehensive code review of the C++ bridge native libr
 ```
 
 ### 🔴 Critical: Silently Discarded Config & Potential Use-After-Free
+- **Tracking Issue**: [GitHub Issue #75](https://github.com/gintatkinson/3dgs-002/issues/75)
+- **Severity**: 🔴 Critical
 - **Location**: `cesium_native_bridge/src/bridge.cpp:28-44`
 - **Issue**: `bridge_initialize` takes config pointer but never stores config values or copies config layout to internal state map entries. If the caller assumes config variables are persisted in native bridge context, freeing configurations immediately after initialization (as done in `cesium_engine.dart`) will leave the FFI references invalid and cause crash.
 - **Suggestion**: Copy the tileset configuration data layout structures into state on native side initialization.
 
 ### 🟠 Important: Signed Size Integer Wrap-around in `bridge_alloc`
+- **Tracking Issue**: [GitHub Issue #77](https://github.com/gintatkinson/3dgs-002/issues/77)
+- **Severity**: 🟠 Important
 - **Location**: [`cesium_native_bridge/src/resource_manager.cpp:7-9`](file:///Users/perkunas/jail/3dgs-002/cesium_native_bridge/src/resource_manager.cpp#L7-L9)
 - **Issue**: `bridge_alloc(int32_t size_bytes)` accepts a signed 32-bit integer. It casts it directly to `size_t` (which is unsigned 64-bit on mac/64-bit targets) for `malloc`. If Dart calls `bridge_alloc` with a negative number, the static cast wraps it around to a massive positive number (e.g., `-1` becomes `18446744073709551615`), leading to failed allocations or undefined memory manager behavior.
 - **Suggestion**: Check for non-positive values before casting, or modify the signature to accept an unsigned size type (e.g., `uint32_t`).
@@ -72,6 +78,8 @@ This document provides a comprehensive code review of the C++ bridge native libr
 ## 3. Error Handling and Exception Boundaries
 
 ### 🔴 Critical: C++ Exception Propagation causing Dart VM Aborts
+- **Tracking Issue**: [GitHub Issue #76](https://github.com/gintatkinson/3dgs-002/issues/76)
+- **Severity**: 🔴 Critical
 - **Location**: [`cesium_native_bridge/src/bridge.cpp:28-44`](file:///Users/perkunas/jail/3dgs-002/cesium_native_bridge/src/bridge.cpp#L28-L44)
 - **Issue**: Functions like `bridge_initialize` allocate heap memory using `std::make_unique` and insert items into `std::unordered_map`. If these operations run out of memory, they throw `std::bad_alloc`. If a C++ exception crosses the `extern "C"` FFI boundary, the Dart VM cannot catch it and will abort the entire process instantly.
 - **Suggestion**: Wrap all C++ FFI entry points in a generic `try-catch` block catching `std::exception` and `...` to intercept exceptions and map them to error codes.

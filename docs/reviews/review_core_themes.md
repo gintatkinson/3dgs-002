@@ -7,6 +7,7 @@ This document contains a thorough code review of the 10 core configuration and t
 ## 1. Correctness
 
 ### Issue 1: Web Crash due to Guardless Platform.environment Access
+- **Tracking Issue**: [GitHub Issue #60](https://github.com/gintatkinson/3dgs-002/issues/60)
 - **Severity**: 🔴 Critical
 - **Location**: [main.dart:L22](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/main.dart#L22)
 - **Issue**: The startup process queries `Platform.environment` directly. Accessing `Platform.environment` on Flutter Web throws an `UnsupportedError` (since `dart:io` platform properties are not implemented for web targets), crashing the app on startup.
@@ -20,6 +21,7 @@ final isTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST') ||
 ```
 
 ### Issue 2: Memory/Lifecycle Crash: ChangeNotifier updates after Disposal
+- **Tracking Issue**: [GitHub Issue #62](https://github.com/gintatkinson/3dgs-002/issues/62)
 - **Severity**: 🟠 Important
 - **Location**: [theme_controller.dart:L61](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/core/theme/theme_controller.dart#L61) and [text_scaler.dart:L31](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/core/theme/text_scaler.dart#L31)
 - **Issue**: Both `ThemeController` and `TextScalerController` await asynchronous futures (e.g. database/shared-pref reading) in their load methods, then execute `notifyListeners()`. If the controller is disposed before the load completes (which happens frequently during widget/integration testing or hot reloads), Flutter will throw a fatal runtime error (`A ThemeController was used after being disposed.`).
@@ -42,6 +44,7 @@ final isTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST') ||
 ```
 
 ### Issue 3: Asynchronous Race Condition on Concurrent Type Loading
+- **Tracking Issue**: [GitHub Issue #62](https://github.com/gintatkinson/3dgs-002/issues/62)
 - **Severity**: 🟠 Important
 - **Location**: [properties_view_model.dart:L40-L45](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/properties/view_models/properties_view_model.dart#L40-L45)
 - **Issue**: If `loadType` is called multiple times sequentially (e.g., the user clicks between nodes quickly), the database resolver queries execute concurrently. If a slower, older query resolves after a newer query, the outdated data will overwrite the latest state, causing UI inconsistencies.
@@ -61,6 +64,7 @@ final isTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST') ||
 ```
 
 ### Issue 4: Wrong Luminance Context for Selected Swatch Checkmark
+- **Tracking Issue**: [GitHub Issue #70](https://github.com/gintatkinson/3dgs-002/issues/70)
 - **Severity**: 🟠 Important
 - **Location**: [settings_panel.dart:L115-L118](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/core/theme/widgets/settings_panel.dart#L115-L118)
 - **Issue**: The checkmark icon's color contrast is computed using `scheme.light.primary.computeLuminance()` even when the interface is in dark mode (where `scheme.dark.primary` is the active background color). If a theme has a dark primary in light mode and a light primary in dark mode, the check icon will render with poor contrast.
@@ -120,6 +124,7 @@ final isTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST') ||
 ## 2. Performance
 
 ### Issue 1: Main UI Thread Blockage on Isolate Spawning Failure
+- **Tracking Issue**: [GitHub Issue #71](https://github.com/gintatkinson/3dgs-002/issues/71)
 - **Severity**: 🟠 Important
 - **Location**: [background_worker.dart:L35-L44](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/core/background_worker.dart#L35-L44)
 - **Issue**: If the background isolate fails to launch (common in single-threaded runtimes like web, or under high OS process stress), the catch handler immediately triggers the exact same heavy arithmetic calculation loop (1,000,000 iterations) *synchronously on the main thread*. This will cause significant UI frame drops (jank).

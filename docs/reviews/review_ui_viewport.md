@@ -14,6 +14,7 @@ Each issue has been categorized and graded by severity:
 ## 1. `app_flutter/lib/features/topology/scene_3d_viewport.dart`
 
 ### 🔴 Unused Projection Parameters & Broken User Rotation
+* **Tracking Issue**: [GitHub Issue #64](https://github.com/gintatkinson/3dgs-002/issues/64)
 * **Severity**: 🔴 Critical
 * **Location**: [scene_3d_viewport.dart:L1012-1020](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/scene_3d_viewport.dart#L1012-L1020)
 * **Issue**: The parameters `rotationY` and `tilt` in `ProjectedPoint project(...)` are declared but never used in the function body.
@@ -32,6 +33,7 @@ Each issue has been categorized and graded by severity:
   ```
 
 ### 🟠 High Memory Churn: TextPainter Allocation in Paint Loop
+* **Tracking Issue**: [GitHub Issue #65](https://github.com/gintatkinson/3dgs-002/issues/65)
 * **Severity**: 🟠 Important
 * **Location**: [scene_3d_viewport.dart:L1587-1600](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/scene_3d_viewport.dart#L1587-L1600)
 * **Issue**: `TextPainter` and `TextSpan` are instantiated, styled, and laid out inside the painter's `paint` method for every visible node on every single frame.
@@ -55,6 +57,7 @@ Each issue has been categorized and graded by severity:
   ```
 
 ### 🟠 Unsynchronized Frame Updates via Timer.periodic
+* **Tracking Issue**: [GitHub Issue #66](https://github.com/gintatkinson/3dgs-002/issues/66)
 * **Severity**: 🟠 Important
 * **Location**: [scene_3d_viewport.dart:L479-485](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/scene_3d_viewport.dart#L479-L485)
 * **Issue**: The double-tap fly-to camera animation utilizes `Timer.periodic` with a hardcoded 16ms duration to tick the camera position.
@@ -204,6 +207,7 @@ Each issue has been categorized and graded by severity:
 ## 5. `app_flutter/lib/features/layout/breadcrumbs.dart`
 
 ### 🔴 Redundant Logic & RangeError Crash on Empty `treeData`
+* **Tracking Issue**: [GitHub Issue #67](https://github.com/gintatkinson/3dgs-002/issues/67)
 * **Severity**: 🔴 Critical
 * **Location**: [breadcrumbs.dart:L207-211](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/layout/breadcrumbs.dart#L207-L211)
 * **Issue**: The `onClick` handler of the home breadcrumb accesses `treeData.first` inside both the `if` and `else` branches of `treeData.isNotEmpty`.

@@ -7,6 +7,7 @@ This review evaluates the code quality, correctness, security, performance, arch
 ## 🔴 Critical Severity
 
 ### 1. Missing Tree and Topology Implementations in Firebase Adapter
+- **Tracking Issue**: [GitHub Issue #63](https://github.com/gintatkinson/3dgs-002/issues/63)
 - **Severity**: 🔴 Critical
 - **Location**: [firebase_data_source.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/data_sources/firebase_data_source.dart#L255-L267)
 - **Issue**: `fetchRootNodes()`, `fetchChildrenForNode()`, and `fetchTopologyData()` are empty stubs returning empty lists or static empty models. If the application is configured to run with the `'firebase'` datasource, the sidebar tree navigation and the interactive topology map will be completely empty and broken.
@@ -31,6 +32,7 @@ This review evaluates the code quality, correctness, security, performance, arch
   ```
 
 ### 2. Platform Class Crashes on Flutter Web
+- **Tracking Issue**: [GitHub Issue #60](https://github.com/gintatkinson/3dgs-002/issues/60)
 - **Severity**: 🔴 Critical
 - **Location**: [repository_resolver.dart:114](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/repository_resolver.dart#L114), [database_initializer.dart:51](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/database_initializer.dart#L51)
 - **Issue**: Direct calls to `Platform.environment` and `Platform.isWindows`/`isLinux`/`isMacOS` from `dart:io` throw an `Unsupported operation: Platform._environment` exception on Flutter Web at startup. Since `RepositoryResolver.resolve` is called globally on app launch, this crash blocks the app from initializing on web even if SQLite is not selected.
@@ -51,6 +53,7 @@ This review evaluates the code quality, correctness, security, performance, arch
 ## 🟠 Important Severity
 
 ### 3. Local-Only Stream Broadcasts in Firebase Adapter
+- **Tracking Issue**: [GitHub Issue #72](https://github.com/gintatkinson/3dgs-002/issues/72)
 - **Severity**: 🟠 Important
 - **Location**: [firebase_data_source.dart:168-175](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/data_sources/firebase_data_source.dart#L168-L175)
 - **Issue**: `watchProperties` listens to an in-memory `StreamController` populated only when local writes happen via `saveProperties`. It does not listen to Firestore database snapshots. Consequently, real-time sync across different clients/devices is broken.
@@ -68,6 +71,7 @@ This review evaluates the code quality, correctness, security, performance, arch
   ```
 
 ### 4. High Firestore Read Latency & Billing Overhead
+- **Tracking Issue**: [GitHub Issue #73](https://github.com/gintatkinson/3dgs-002/issues/73)
 - **Severity**: 🟠 Important
 - **Location**: [firebase_data_source.dart:82-93](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/data_sources/firebase_data_source.dart#L82-L93)
 - **Issue**: `typeFor` performs a full network fetch of the schema types document via `discoverTypes()` on every call, running a linear scan `O(N)`. This causes excessive billing costs and network latency.

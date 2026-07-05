@@ -7,6 +7,7 @@ This report details a systematic code review of the 3D Geospatial and FFI Engine
 ## 1. Correctness
 
 ### Issue 1.1: Longitudinal Clamping in Virtual Camera (Anti-meridian Wall)
+- **Tracking Issue**: [GitHub Issue #64](https://github.com/gintatkinson/3dgs-002/issues/64)
 - **Severity**: 🔴 Critical
 - **Location**: `app_flutter/lib/domain/cesium_3d/virtual_camera.dart`, Line 48
 - **Issue**: `VirtualCamera.clamped` uses `.clamp(-180.0, 180.0)` for longitude. Clamping longitude introduces a hard boundary at the anti-meridian (180° E/W), which prevents seamless wrapping around the globe. If a user pans or rotates across this boundary, they will hit an artificial "wall".
@@ -44,6 +45,7 @@ factory VirtualCamera.clamped({
 ---
 
 ### Issue 1.2: Memory Leaks on FFI Error Conditions
+- **Tracking Issue**: [GitHub Issue #58](https://github.com/gintatkinson/3dgs-002/issues/58)
 - **Severity**: 🟠 Important
 - **Location**: `app_flutter/lib/domain/cesium_3d/cesium_engine.dart`, Lines 76-89
 - **Issue**: In `getVisibleTileId`, if `result` returns an error status code other than `-3` (e.g. `-100`), the `checkStatus(result)` call throws an exception, bypassing the cleanup call `calloc.free(idPtr)`. This leaks the allocated memory container.
@@ -72,6 +74,7 @@ String? getVisibleTileId(int index) {
 ## 2. Performance
 
 ### Issue 2.1: Garbage Collection Pressure and CPU Overhead on Render Loops
+- **Tracking Issue**: [GitHub Issue #65](https://github.com/gintatkinson/3dgs-002/issues/65)
 - **Severity**: 🔴 Critical
 - **Location**: `app_flutter/lib/domain/cesium_3d/globe_tile_renderer.dart`, Lines 184-206, 250
 - **Issue**: `renderTiles` invokes `beginTileFetch` on every single layout/paint frame (60Hz or 120Hz). `beginTileFetch` maps and filters visible tiles by accessing `.key` multiple times for up to 77 tiles, generating a significant number of string allocations (e.g., `'$zoom/$x/$y'`). This introduces heavy garbage collection (GC) pressure, causing potential UI frame drops (jank).
@@ -99,6 +102,7 @@ void beginTileFetch(VirtualCamera camera, ui.Size viewportSize) {
 ---
 
 ### Issue 2.2: Inefficient String Splitting and Sorting on Every Frame
+- **Tracking Issue**: [GitHub Issue #65](https://github.com/gintatkinson/3dgs-002/issues/65)
 - **Severity**: 🟠 Important
 - **Location**: `app_flutter/lib/domain/cesium_3d/globe_tile_renderer.dart`, Lines 252-257
 - **Issue**: During every frame rendering, the code converts `_loadedImages` entries to a list, splits the keys (e.g., `'12/402/230'`) by `'/'`, parses the zoom values, and sorts the list:
@@ -128,6 +132,7 @@ for (final zoom in _loadedImagesByZoom.keys.toList()..sort()) {
 ## 3. Security
 
 ### Issue 3.1: Network Resource/Socket Leaks on Bad Server Status
+- **Tracking Issue**: [GitHub Issue #60](https://github.com/gintatkinson/3dgs-002/issues/60)
 - **Severity**: 🔴 Critical
 - **Location**: `app_flutter/lib/domain/cesium_3d/tile_fetcher.dart`, Lines 150-161
 - **Issue**: If `fetchTile` receives a non-200 HTTP response (such as 404 or 500 errors), the stream is ignored and the socket is never drained or closed. Under Dart's `HttpClient`, undrained streams leak the underlying TCP socket connection. Over time, repeated errors will exhaust the system's available sockets, causing all subsequent network calls to hang indefinitely.

@@ -18,6 +18,7 @@ This document presents a comprehensive code review of the Flutter unit, widget, 
 ## 🔴 Critical Severity Issues
 
 ### 1. Hardcoded Absolute Path in FFI Integration Test
+* **Tracking Issue**: [GitHub Issue #60](https://github.com/gintatkinson/3dgs-002/issues/60)
 * **Severity**: 🔴 Critical
 * **Category**: Correctness / Portability
 * **Location**: [ffi_integration_test.dart:10](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/cesium_3d/ffi_integration_test.dart#L10)
@@ -74,6 +75,7 @@ This document presents a comprehensive code review of the Flutter unit, widget, 
   ```
 
 ### 3. Sleep Loops in Test Bindings (Real-Time Delays)
+* **Tracking Issue**: [GitHub Issue #78](https://github.com/gintatkinson/3dgs-002/issues/78)
 * **Severity**: 🟠 Important
 * **Category**: Performance / Testing
 * **Location**: [widget_test.dart:48-51](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/widget_test.dart#L48-L51), [layout_test.dart:101-117](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/layout_test.dart#L101-L117)
@@ -131,6 +133,7 @@ This document presents a comprehensive code review of the Flutter unit, widget, 
 ## 🟡 Suggestion Severity Issues
 
 ### 6. Flaky Timing Assertions in Performance Benchmarks
+* **Tracking Issue**: [GitHub Issue #79](https://github.com/gintatkinson/3dgs-002/issues/79)
 * **Severity**: 🟡 Suggestion
 * **Category**: Testing / Performance
 * **Location**: [data_table_benchmark_test.dart:256](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/features/tables/data_table_benchmark_test.dart#L256)
@@ -147,6 +150,7 @@ This document presents a comprehensive code review of the Flutter unit, widget, 
   ```
 
 ### 7. Code Duplication of FakeThemeService
+* **Tracking Issue**: [GitHub Issue #80](https://github.com/gintatkinson/3dgs-002/issues/80)
 * **Severity**: 🟡 Suggestion
 * **Category**: Quality / Maintainability
 * **Location**: [camera_reset_reproduction_test.dart:12](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/topology/camera_reset_reproduction_test.dart#L12), [property_grid_test.dart:10](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/property_grid_test.dart#L10), [theme_controller_test.dart:7](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/core/theme/theme_controller_test.dart#L7)
@@ -160,6 +164,7 @@ This document presents a comprehensive code review of the Flutter unit, widget, 
   ```
 
 ### 8. Brittle Widget Tree Traversal Finder
+* **Tracking Issue**: [GitHub Issue #81](https://github.com/gintatkinson/3dgs-002/issues/81)
 * **Severity**: 🟡 Suggestion
 * **Category**: Testing / Quality
 * **Location**: [property_grid_test.dart:45-81](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/property_grid_test.dart#L45-L81)
@@ -181,6 +186,7 @@ This document presents a comprehensive code review of the Flutter unit, widget, 
   ```
 
 ### 9. Invoking Stubs on StatefulWidget Instances
+* **Tracking Issue**: [GitHub Issue #82](https://github.com/gintatkinson/3dgs-002/issues/82)
 * **Severity**: 🟡 Suggestion
 * **Category**: Architecture / Testing
 * **Location**: [cesium_3d_test.dart:178-183](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/cesium_3d_test.dart#L178-L183)

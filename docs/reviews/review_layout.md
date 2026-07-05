@@ -12,6 +12,7 @@ This review covers the following files:
 ## 1. Context & Architecture
 
 ### Synchronous Disk I/O on UI Thread
+- **Tracking Issue**: [GitHub Issue #68](https://github.com/gintatkinson/3dgs-002/issues/68)
 - **Severity**: 🔴 Critical
 - **Location**: `app_flutter/lib/features/layout/layout.dart` (lines 146–161, 241–256)
 - **Issue**: The layout engine reads configuration files synchronously using `File.readAsStringSync()` during the widget build phase (via `_getDefaultRatio()`, `_resolveCoordinateMapping()`, and `_resolveLabelsMapping()`). Synchronous disk operations block the main UI thread, resulting in frame drops (jank). Furthermore, using `dart:io` `File` with relative paths (`.pipeline/...`) is non-portable and will fail on mobile platforms (iOS/Android) where assets must be loaded via the Flutter `rootBundle`.
@@ -58,6 +59,7 @@ This review covers the following files:
 ## 2. Correctness & Reactivity
 
 ### Split Workspace Zero-Constraints Overflow
+- **Tracking Issue**: [GitHub Issue #69](https://github.com/gintatkinson/3dgs-002/issues/69)
 - **Severity**: 🟠 Important
 - **Location**: `app_flutter/lib/features/layout/split_workspace.dart` (lines 91–100)
 - **Issue**: The layout builder performs layout calculations even when constraints are zero (e.g., during the initial layout pass or inside unconstrained layouts). Although the documentation states "when constraints are zero, the splitter is not rendered", there is no guard clause. As a result, `clampedFirstPane` is clamped to `widget.minFirstPaneSize` (since `max(min, 0 - min) => min`), forcing the layout of leading/trailing panes at full minimum size within a 0-pixel space, triggering layout overflow exceptions.

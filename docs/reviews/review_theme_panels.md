@@ -8,6 +8,7 @@ The review is structured according to the categories: **Correctness**, **Perform
 ## 1. Correctness
 
 ### 🔴 Broken Sorting when Columns are Hidden in `TableViewWidget`
+*   **Tracking Issue**: [GitHub Issue #61](https://github.com/gintatkinson/3dgs-002/issues/61)
 *   **Severity**: 🔴 Critical
 *   **Location**: [table_view_widget.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/tables/table_view_widget.dart#L78-L86)
 *   **Issue**: `_sortColumnIndex` represents the index in the *visible* column list (`headers`), but the sorting function reads the row cells using `a[_sortColumnIndex!]` directly. The cells list in a row corresponds to the *full* column list (`allHeaders`). When some columns are hidden, the visible index will point to incorrect data cells, sorting by the wrong column or throwing an index out of bounds exception.
@@ -31,6 +32,7 @@ The review is structured according to the categories: **Correctness**, **Perform
     ```
 
 ### 🔴 Layout Alignment Bug between Header and Data Cells in `TableViewWidget`
+*   **Tracking Issue**: [GitHub Issue #61](https://github.com/gintatkinson/3dgs-002/issues/61)
 *   **Severity**: 🔴 Critical
 *   **Location**: [table_view_widget.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/tables/table_view_widget.dart#L388-L389)
 *   **Issue**: The header cell width checks and respects `columnWidth ?? colWidth`, but the data cell width is hardcoded to `colWidth`. If any column specifies a custom width via its model, the headers and data columns will misalign visually.
@@ -44,6 +46,7 @@ The review is structured according to the categories: **Correctness**, **Perform
     ```
 
 ### 🔴 State Rebuilding Crash on Dispose in `PropertyGrid` Focus Node Listener
+*   **Tracking Issue**: [GitHub Issue #61](https://github.com/gintatkinson/3dgs-002/issues/61)
 *   **Severity**: 🔴 Critical
 *   **Location**: [property_grid.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/properties/property_grid.dart#L182-L193)
 *   **Issue**: During widget didUpdateWidget or disposal, calling `focusNode.dispose()` on a currently focused text field causes it to lose focus. This triggers its focus change listener synchronously. The listener then calls `_triggerBlurSave`, which performs a `setState` or triggers a callback that triggers parent widget updates. Calling `setState` inside the build or update phase triggers the Flutter framework crash: `setState() or markNeedsBuild() called during build`.
@@ -69,6 +72,7 @@ The review is structured according to the categories: **Correctness**, **Perform
     ```
 
 ### 🔴 Dropdown Value Sync Bug in `PropertyGrid`
+*   **Tracking Issue**: [GitHub Issue #61](https://github.com/gintatkinson/3dgs-002/issues/61)
 *   **Severity**: 🔴 Critical
 *   **Location**: [property_grid.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/properties/property_grid.dart#L718)
 *   **Issue**: `DropdownButtonFormField` is built with `initialValue: value` instead of `value: value`. `initialValue` is only applied once during initialization. If the parent updates `initialValues` or `committedData` externally after initialization, the dropdown selection will not update, leaving the UI state out of sync.
