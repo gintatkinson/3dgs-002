@@ -1875,3 +1875,27 @@ This phase implements collapse/expand functionality for the Camera Stats and Map
   ```bash
   cd app_flutter && flutter test
   ```
+
+
+## Phase 30: Default Camera Pitch to -89.9 Degrees
+
+This phase sets the default camera pitch to -89.9 degrees to ensure a clean top-down view by default.
+
+### Core App Code
+
+#### [MODIFY] [topographical_view.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/topographical_view.dart)
+- Update default pitch in `_resolveCamera` from `-45.0` to `-89.9`.
+
+### Unit and Widget Tests
+
+#### [MODIFY] [camera_reset_reproduction_test.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/topology/camera_reset_reproduction_test.dart)
+- Update expected initial pitch value from `-45.0` to `-89.9`.
+
+### Phase 30 Verification Plan
+
+#### Automated Tests
+- Run all project unit and widget tests:
+  ```bash
+  cd app_flutter && flutter test
+  ```
+
