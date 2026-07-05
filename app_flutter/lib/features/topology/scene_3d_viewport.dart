@@ -111,6 +111,8 @@ class Scene3DViewportState extends State<Scene3DViewport> {
   bool _showLinks = true;
   bool _showLabels = true;
   bool _showDropLines = true;
+  bool _showCameraStats = true;
+  bool _showMapConfig = true;
 
   GlobeTileRenderer? _tileRenderer;
   Timer? _flyTimer;
@@ -540,343 +542,108 @@ class Scene3DViewportState extends State<Scene3DViewport> {
             ),
             
             // Left HUD (Camera Stats & Tile Status)
-            Positioned(
-              top: 16,
-              left: 16,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0x990A0E1A), // semi-transparent
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color(0x33FFFFFF), // fine borders
-                        width: 1.0,
+            if (_showCameraStats)
+              Positioned(
+                top: 16,
+                left: 16,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0x990A0E1A), // semi-transparent
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0x33FFFFFF), // fine borders
+                          width: 1.0,
+                        ),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x1F000000),
+                            blurRadius: 8,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
                       ),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x1F000000),
-                          blurRadius: 8,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          'CAMERA STATS',
-                          style: TextStyle(
-                            color: Color(0xFF00E5FF),
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'monospace',
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Latitude: ${_cameraController.current.latitude.toStringAsFixed(6)}',
-                          style: const TextStyle(
-                            color: Color(0xFFE0E0E0),
-                            fontFamily: 'monospace',
-                            fontSize: 11,
-                          ),
-                        ),
-                        Text(
-                          'Longitude: ${_cameraController.current.longitude.toStringAsFixed(6)}',
-                          style: const TextStyle(
-                            color: Color(0xFFE0E0E0),
-                            fontFamily: 'monospace',
-                            fontSize: 11,
-                          ),
-                        ),
-                        Text(
-                          'Altitude: ${_cameraController.current.altitude} meters',
-                          style: const TextStyle(
-                            color: Color(0xFFE0E0E0),
-                            fontFamily: 'monospace',
-                            fontSize: 11,
-                          ),
-                        ),
-                        Text(
-                          'Pitch/Yaw/Roll: ${_cameraController.current.pitch} / ${_cameraController.current.heading} / ${_cameraController.current.roll}',
-                          style: const TextStyle(
-                            color: Color(0xFFE0E0E0),
-                            fontFamily: 'monospace',
-                            fontSize: 11,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'TILE STATUS',
-                          style: TextStyle(
-                            color: Color(0xFF00E5FF),
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'monospace',
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'cesium-native WGS84 ECEF transforms active',
-                          style: TextStyle(
-                            color: Color(0xFFE0E0E0),
-                            fontFamily: 'monospace',
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            
-            // Right HUD: Map Configuration Panel (Right Sidebar overlay)
-            Positioned(
-              top: 16,
-              right: 16,
-              bottom: 16,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: Container(
-                    width: 280,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0x990A0E1A), // dark translucent background
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color(0x3300E5FF), // fine cyan border
-                        width: 1.0,
-                      ),
-                    ),
-                    child: SingleChildScrollView(
-                      physics: _globeFocusNode.hasFocus
-                          ? const NeverScrollableScrollPhysics()
-                          : null,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.settings,
-                                color: Color(0xFF00E5FF),
-                                size: 16,
-                              ),
-                              const SizedBox(width: 8),
-                              const Expanded(
-                                child: Text(
-                                  'MAP CONFIGURATION',
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 1,
-                                  style: TextStyle(
-                                    color: Color(0xFF00E5FF),
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'monospace',
-                                    fontSize: 13,
-                                    letterSpacing: 1.0,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          const Divider(color: Color(0x2200E5FF), height: 1),
-                          const SizedBox(height: 12),
-                          
-                          // Astronomical Body Selection
-                          const Text(
-                            'ASTRONOMICAL BODY',
-                            style: TextStyle(
-                              color: Color(0xFFB0BEC5),
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'monospace',
-                              fontSize: 10,
-                              letterSpacing: 0.8,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              _buildBodyButton('Earth'),
-                              _buildBodyButton('Mars'),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              _buildBodyButton('Proxima Centauri'),
-                            ],
-                          ),
-                          
-                          const SizedBox(height: 16),
-                          const Divider(color: Color(0x2200E5FF), height: 1),
-                          const SizedBox(height: 16),
-
-                          // Base Layer Style Selection
-                          const Text(
-                            'BASE LAYER STYLE',
-                            style: TextStyle(
-                              color: Color(0xFFB0BEC5),
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'monospace',
-                              fontSize: 10,
-                              letterSpacing: 0.8,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              _buildStyleButton('Dark Map'),
-                              _buildStyleButton('Street Map'),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              _buildStyleButton('Satellite Map'),
-                              _buildStyleButton('Light Map'),
-                            ],
-                          ),
-                          
-                          const SizedBox(height: 16),
-                          const Divider(color: Color(0x2200E5FF), height: 1),
-                          const SizedBox(height: 16),
-                          
-                          // 3D Surface Elevation
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      '3D SURFACE ELEVATION',
-                                      style: TextStyle(
-                                        color: Color(0xFFCFD8DC),
-                                        fontWeight: FontWeight.bold,
-                                        fontFamily: 'monospace',
-                                        fontSize: 10,
-                                        letterSpacing: 0.8,
-                                      ),
-                                    ),
-                                    if (_elevationActive) ...[
-                                      const SizedBox(height: 4),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0x1F4CAF50),
-                                          border: Border.all(color: const Color(0xFF4CAF50), width: 1.0),
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: const Text(
-                                          'ACTIVE 3D',
-                                          style: TextStyle(
-                                            color: Color(0xFF4CAF50),
-                                            fontSize: 8,
-                                            fontWeight: FontWeight.bold,
-                                            fontFamily: 'monospace',
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ],
+                              const Text(
+                                'CAMERA STATS',
+                                style: TextStyle(
+                                  color: Color(0xFF00E5FF),
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'monospace',
+                                  fontSize: 12,
                                 ),
                               ),
-                              Switch(
-                                value: _elevationActive,
-                                onChanged: (val) {
-                                  setState(() {
-                                    _elevationActive = val;
-                                  });
-                                },
-                                activeColor: const Color(0xFF00E5FF),
-                                activeTrackColor: const Color(0x6600E5FF),
-                                inactiveThumbColor: const Color(0xFF78909C),
-                                inactiveTrackColor: const Color(0x33FFFFFF),
+                              InkWell(
+                                key: const Key('collapse_camera_stats_button'),
+                                onTap: () => setState(() => _showCameraStats = false),
+                                child: const Icon(
+                                  Icons.close,
+                                  size: 14,
+                                  color: Color(0xAAFFFFFF),
+                                ),
                               ),
                             ],
                           ),
-                          
-                          const SizedBox(height: 16),
-                          const Divider(color: Color(0x2200E5FF), height: 1),
-                          const SizedBox(height: 16),
-                          
-                          // Visibility Toggles
-                          const Text(
-                            'VISIBILITY TOGGLES',
-                            style: TextStyle(
-                              color: Color(0xFFB0BEC5),
-                              fontWeight: FontWeight.bold,
+                          const SizedBox(height: 6),
+                          Text(
+                            'Latitude: ${_cameraController.current.latitude.toStringAsFixed(6)}',
+                            style: const TextStyle(
+                              color: Color(0xFFE0E0E0),
                               fontFamily: 'monospace',
-                              fontSize: 10,
-                              letterSpacing: 0.8,
+                              fontSize: 11,
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          _buildVisibilityToggle('Devices / Nodes', _showDevices, (val) {
-                            setState(() {
-                              _showDevices = val;
-                            });
-                          }),
-                          _buildVisibilityToggle('Topology Links', _showLinks, (val) {
-                            setState(() {
-                              _showLinks = val;
-                            });
-                          }),
-                          _buildVisibilityToggle('Address Labels', _showLabels, (val) {
-                            setState(() {
-                              _showLabels = val;
-                            });
-                          }),
-                          _buildVisibilityToggle('Vertical Drop Lines', _showDropLines, (val) {
-                            setState(() {
-                              _showDropLines = val;
-                            });
-                          }),
-                          
-                          const SizedBox(height: 24),
-                          
-                          // Reset Button
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton(
-                              onPressed: () {
-                                setState(() {
-                                  _astronomicalBody = 'Earth';
-                                  _activeStyle = 'Satellite Map';
-                                  _elevationActive = true;
-                                  _showDevices = true;
-                                  _showLinks = true;
-                                  _showLabels = true;
-                                  _showDropLines = true;
-                                  _tileRenderer?.setProvider(ImageryProvider.arcGisSatellite);
-                                });
-                              },
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Color(0xFF00E5FF), width: 1.0),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                backgroundColor: const Color(0x0D00E5FF),
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                              ),
-                              child: const Text(
-                                'RESET CAMERA PERSPECTIVE',
-                                style: TextStyle(
-                                  color: Color(0xFF00E5FF),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  fontFamily: 'monospace',
-                                  letterSpacing: 0.8,
-                                ),
-                              ),
+                          Text(
+                            'Longitude: ${_cameraController.current.longitude.toStringAsFixed(6)}',
+                            style: const TextStyle(
+                              color: Color(0xFFE0E0E0),
+                              fontFamily: 'monospace',
+                              fontSize: 11,
+                            ),
+                          ),
+                          Text(
+                            'Altitude: ${_cameraController.current.altitude} meters',
+                            style: const TextStyle(
+                              color: Color(0xFFE0E0E0),
+                              fontFamily: 'monospace',
+                              fontSize: 11,
+                            ),
+                          ),
+                          Text(
+                            'Pitch/Yaw/Roll: ${_cameraController.current.pitch} / ${_cameraController.current.heading} / ${_cameraController.current.roll}',
+                            style: const TextStyle(
+                              color: Color(0xFFE0E0E0),
+                              fontFamily: 'monospace',
+                              fontSize: 11,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'TILE STATUS',
+                            style: TextStyle(
+                              color: Color(0xFF00E5FF),
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'monospace',
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'cesium-native WGS84 ECEF transforms active',
+                            style: TextStyle(
+                              color: Color(0xFFE0E0E0),
+                              fontFamily: 'monospace',
+                              fontSize: 11,
                             ),
                           ),
                         ],
@@ -885,7 +652,314 @@ class Scene3DViewportState extends State<Scene3DViewport> {
                   ),
                 ),
               ),
-            ),
+            if (!_showCameraStats)
+              Positioned(
+                top: 16,
+                left: 16,
+                child: ClipOval(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0x990A0E1A),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0x33FFFFFF), width: 1.0),
+                      ),
+                      child: IconButton(
+                        key: const Key('expand_camera_stats_button'),
+                        icon: const Icon(Icons.analytics_outlined, size: 18, color: Color(0xFF00E5FF)),
+                        padding: EdgeInsets.zero,
+                        onPressed: () => setState(() => _showCameraStats = true),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            
+            // Right HUD: Map Configuration Panel (Right Sidebar overlay)
+            if (_showMapConfig)
+              Positioned(
+                top: 16,
+                right: 16,
+                bottom: 16,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                      width: 280,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0x990A0E1A), // dark translucent background
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0x3300E5FF), // fine cyan border
+                          width: 1.0,
+                        ),
+                      ),
+                      child: SingleChildScrollView(
+                        physics: _globeFocusNode.hasFocus
+                            ? const NeverScrollableScrollPhysics()
+                            : null,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.settings,
+                                  color: Color(0xFF00E5FF),
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 8),
+                                const Expanded(
+                                  child: Text(
+                                    'MAP CONFIGURATION',
+                                    style: TextStyle(
+                                      color: Color(0xFF00E5FF),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.0,
+                                    ),
+                                  ),
+                                ),
+                                InkWell(
+                                  key: const Key('collapse_map_config_button'),
+                                  onTap: () => setState(() => _showMapConfig = false),
+                                  child: const Icon(
+                                    Icons.close,
+                                    size: 14,
+                                    color: Color(0xAAFFFFFF),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            const Divider(color: Color(0x2200E5FF), height: 1),
+                            const SizedBox(height: 12),
+                            
+                            // Astronomical Body Selection
+                            const Text(
+                              'ASTRONOMICAL BODY',
+                              style: TextStyle(
+                                color: Color(0xFFB0BEC5),
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'monospace',
+                                fontSize: 10,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                _buildBodyButton('Earth'),
+                                _buildBodyButton('Mars'),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                _buildBodyButton('Proxima Centauri'),
+                              ],
+                            ),
+                            
+                            const SizedBox(height: 16),
+                            const Divider(color: Color(0x2200E5FF), height: 1),
+                            const SizedBox(height: 16),
+
+                            // Base Layer Style Selection
+                            const Text(
+                              'BASE LAYER STYLE',
+                              style: TextStyle(
+                                color: Color(0xFFB0BEC5),
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'monospace',
+                                fontSize: 10,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                _buildStyleButton('Dark Map'),
+                                _buildStyleButton('Street Map'),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                _buildStyleButton('Satellite Map'),
+                                _buildStyleButton('Light Map'),
+                              ],
+                            ),
+                            
+                            const SizedBox(height: 16),
+                            const Divider(color: Color(0x2200E5FF), height: 1),
+                            const SizedBox(height: 16),
+                            
+                            // 3D Surface Elevation
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        '3D SURFACE ELEVATION',
+                                        style: TextStyle(
+                                          color: Color(0xFFCFD8DC),
+                                          fontWeight: FontWeight.bold,
+                                          fontFamily: 'monospace',
+                                          fontSize: 10,
+                                          letterSpacing: 0.8,
+                                        ),
+                                      ),
+                                      if (_elevationActive) ...[
+                                        const SizedBox(height: 4),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0x1F4CAF50),
+                                            border: Border.all(color: const Color(0xFF4CAF50), width: 1.0),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: const Text(
+                                            'ACTIVE 3D',
+                                            style: TextStyle(
+                                              color: Color(0xFF4CAF50),
+                                              fontSize: 8,
+                                              fontWeight: FontWeight.bold,
+                                              fontFamily: 'monospace',
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                Switch(
+                                  value: _elevationActive,
+                                  onChanged: (val) {
+                                    setState(() {
+                                      _elevationActive = val;
+                                    });
+                                  },
+                                  activeColor: const Color(0xFF00E5FF),
+                                  activeTrackColor: const Color(0x6600E5FF),
+                                  inactiveThumbColor: const Color(0xFF78909C),
+                                  inactiveTrackColor: const Color(0x33FFFFFF),
+                                ),
+                              ],
+                            ),
+                            
+                            const SizedBox(height: 16),
+                            const Divider(color: Color(0x2200E5FF), height: 1),
+                            const SizedBox(height: 16),
+                            
+                            // Visibility Toggles
+                            const Text(
+                              'VISIBILITY TOGGLES',
+                              style: TextStyle(
+                                color: Color(0xFFB0BEC5),
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'monospace',
+                                fontSize: 10,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            _buildVisibilityToggle('Devices / Nodes', _showDevices, (val) {
+                              setState(() {
+                                _showDevices = val;
+                              });
+                            }),
+                            _buildVisibilityToggle('Topology Links', _showLinks, (val) {
+                              setState(() {
+                                _showLinks = val;
+                              });
+                            }),
+                            _buildVisibilityToggle('Address Labels', _showLabels, (val) {
+                              setState(() {
+                                _showLabels = val;
+                              });
+                            }),
+                            _buildVisibilityToggle('Vertical Drop Lines', _showDropLines, (val) {
+                              setState(() {
+                                _showDropLines = val;
+                              });
+                            }),
+                            
+                            const SizedBox(height: 24),
+                            
+                            // Reset Button
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _astronomicalBody = 'Earth';
+                                    _activeStyle = 'Satellite Map';
+                                    _elevationActive = true;
+                                    _showDevices = true;
+                                    _showLinks = true;
+                                    _showLabels = true;
+                                    _showDropLines = true;
+                                    _tileRenderer?.setProvider(ImageryProvider.arcGisSatellite);
+                                  });
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(color: Color(0xFF00E5FF), width: 1.0),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  backgroundColor: const Color(0x0D00E5FF),
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                ),
+                                child: const Text(
+                                  'RESET CAMERA PERSPECTIVE',
+                                  style: TextStyle(
+                                    color: Color(0xFF00E5FF),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'monospace',
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            if (!_showMapConfig)
+              Positioned(
+                top: 16,
+                right: 16,
+                child: ClipOval(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0x990A0E1A),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0x3300E5FF), width: 1.0),
+                      ),
+                      child: IconButton(
+                        key: const Key('expand_map_config_button'),
+                        icon: const Icon(Icons.settings, size: 18, color: Color(0xFF00E5FF)),
+                        padding: EdgeInsets.zero,
+                        onPressed: () => setState(() => _showMapConfig = true),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),

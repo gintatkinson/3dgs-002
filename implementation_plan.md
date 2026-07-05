@@ -1850,7 +1850,28 @@ This phase performs the Stack-based foreground positioning refactoring for the T
   ```
 
 
+## Phase 29: Hideable/Collapse Functionality for Camera Stats and Map Configuration Panels in Scene3DViewport
 
+This phase implements collapse/expand functionality for the Camera Stats and Map Configuration panels in Scene3DViewport.
 
+### Core App Code
 
+#### [MODIFY] [scene_3d_viewport.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/scene_3d_viewport.dart)
+- Add the visibility state flags `_showCameraStats` and `_showMapConfig` to `Scene3DViewportState`.
+- Wrap the Camera Stats panel and Map Configuration panel in conditional checks (`if (_showCameraStats)` and `if (_showMapConfig)`).
+- When `_showCameraStats` is `false`, render a small circular blur container at `top: 16, left: 16` containing a tap toggle to expand the stats.
+- When `_showCameraStats` is `true`, add a small close icon (`Icons.close`) aligned to the right of the `CAMERA STATS` title inside a `Row` to trigger collapse.
+- When `_showMapConfig` is `false`, render a small circular blur container at `top: 16, right: 16` containing a tap toggle to expand the config.
+- When `_showMapConfig` is `true`, add a close icon (`Icons.close`) aligned to the right of the `MAP CONFIGURATION` title inside the header `Row` to trigger collapse.
 
+### Phase 29 Verification Plan
+
+#### Automated Tests
+- Create a new widget test `app_flutter/test/cesium_3d/collapse_hud_test.dart` to verify the collapse/expand functionality for Camera Stats and Map Configuration panels:
+  - Verify that both panels are visible initially.
+  - Verify that clicking the collapse buttons hides the panels and displays the small circular expand buttons.
+  - Verify that clicking the expand buttons restores the full panels.
+- Run all project tests and verify they pass:
+  ```bash
+  cd app_flutter && flutter test
+  ```
