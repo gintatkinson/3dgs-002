@@ -165,11 +165,12 @@ class SqliteDataSource implements DataSource {
     try {
       final unflattened = _unflatten(data);
       final dataJson = jsonEncode(unflattened);
-      await _db.insert(
-        'properties',
-        {'node_id': nodeId, 'data_json': dataJson},
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      await _db.rawInsert('''
+        INSERT INTO properties (node_id, data_json)
+        VALUES (?, ?)
+        ON CONFLICT(node_id) DO UPDATE SET
+          data_json = excluded.data_json
+      ''', [nodeId, dataJson]);
       _propertiesController.add({'nodeId': nodeId, 'data': data});
     } catch (e, stackTrace) {
       debugPrint('Error in saveProperties($nodeId): $e\n$stackTrace');
