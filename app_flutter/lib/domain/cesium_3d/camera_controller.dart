@@ -16,8 +16,6 @@ class CameraController extends ChangeNotifier {
   static const double keyboardStep = 5.0;
   static const double minAltitude = 100.0;
   static const double maxAltitude = 40000000.0;
-  static const double minPitch = -89.0;
-  static const double maxPitch = 89.0;
 
   CameraController(this._camera);
 
@@ -75,13 +73,19 @@ class CameraController extends ChangeNotifier {
       if (diff < -180) diff += 360;
       return _wrapHeadingStatic(from + diff * t);
     }
+    double lerpPitch(double from, double to) {
+      double diff = to - from;
+      if (diff > 180) diff -= 360;
+      if (diff < -180) diff += 360;
+      return _wrapPitchStatic(from + diff * t);
+    }
 
     return VirtualCamera.clamped(
       latitude: a.latitude + (b.latitude - a.latitude) * t,
       longitude: lerpLng(a.longitude, b.longitude),
       altitude: a.altitude + (b.altitude - a.altitude) * t,
       heading: lerpHeading(a.heading, b.heading),
-      pitch: a.pitch + (b.pitch - a.pitch) * t,
+      pitch: lerpPitch(a.pitch, b.pitch),
       roll: a.roll + (b.roll - a.roll) * t,
     );
   }
@@ -124,7 +128,7 @@ class CameraController extends ChangeNotifier {
       latitude: _camera.latitude, longitude: _camera.longitude,
       altitude: _camera.altitude,
       heading: _wrapHeading(_camera.heading - delta.dx * dragSensitivity),
-      pitch: (_camera.pitch - delta.dy * dragSensitivity).clamp(minPitch, maxPitch),
+      pitch: _wrapPitch(_camera.pitch - delta.dy * dragSensitivity),
       roll: _camera.roll,
     );
     notifyListeners();
@@ -174,7 +178,7 @@ class CameraController extends ChangeNotifier {
     _camera = VirtualCamera.clamped(
       latitude: _camera.latitude, longitude: _camera.longitude,
       altitude: _camera.altitude, heading: _camera.heading,
-      pitch: (_camera.pitch + degrees).clamp(minPitch, maxPitch),
+      pitch: _wrapPitch(_camera.pitch + degrees),
       roll: _camera.roll,
     );
     notifyListeners();
@@ -190,5 +194,14 @@ class CameraController extends ChangeNotifier {
     while (heading > 360) heading -= 360;
     while (heading < 0) heading += 360;
     return heading;
+  }
+
+  double _wrapPitch(double pitch) => _wrapPitchStatic(pitch);
+
+  static double _wrapPitchStatic(double pitch) {
+    double p = pitch;
+    while (p > 180.0) p -= 360.0;
+    while (p < -180.0) p += 360.0;
+    return p;
   }
 }

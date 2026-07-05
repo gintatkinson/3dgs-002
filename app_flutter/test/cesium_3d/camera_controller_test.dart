@@ -207,6 +207,18 @@ void main() {
         expect(c.current.altitude, equals(CameraController.maxAltitude));
       });
     });
+
+    test('keyboardTilt wraps pitch past 180', () {
+      final c = CameraController(_makeCam(pitch: 175));
+      c.keyboardTilt(10);
+      expect(c.current.pitch, equals(-175.0));
+    });
+
+    test('keyboardTilt wraps pitch past -180', () {
+      final c = CameraController(_makeCam(pitch: -175));
+      c.keyboardTilt(-10);
+      expect(c.current.pitch, equals(175.0));
+    });
   });
 
   group('VirtualCamera equality', () {

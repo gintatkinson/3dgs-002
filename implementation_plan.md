@@ -957,3 +957,24 @@ This phase details the changes required to rotate the drag delta by the camera's
   cd app_flutter && flutter test integration_test/globe_camera_drag_test.dart -d macos
   cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
   ```
+
+## Phase 18: Expand Camera Pitch Limits with Wrapping
+
+This phase details the changes required to expand the camera pitch limits to the full 360-degree range in the CameraController by wrapping the pitch parameter between [-180.0, 180.0].
+
+### Core App Code
+
+#### [MODIFY] [camera_controller.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/cesium_3d/camera_controller.dart)
+- Remove `minPitch` and `maxPitch` constants.
+- Implement the `_wrapPitch` helper function to wrap values to the `[-180.0, 180.0]` range.
+- Replace pitch clamping with `_wrapPitch` wherever pitch is updated.
+
+### Phase 18 Verification Plan
+
+### Automated Tests
+- Run the unit and integration tests to verify correctness:
+  ```bash
+  cd app_flutter && flutter test test/cesium_3d/
+  cd app_flutter && flutter test integration_test/globe_camera_drag_test.dart -d macos
+  cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
+  ```
