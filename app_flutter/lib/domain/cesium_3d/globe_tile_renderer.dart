@@ -134,11 +134,21 @@ class GlobeTileRenderer {
     final n = math.pow(2, zoom).toInt();
     final List<TileCoord> tiles = [];
 
-    for (int dx = -1; dx <= 2; dx++) {
-      for (int dy = -1; dy <= 2; dy++) {
-        final tx = (center.x + dx).clamp(0, n - 1);
-        final ty = (center.y + dy).clamp(0, n - 1);
-        tiles.add(TileCoord(zoom: zoom, x: tx, y: ty));
+    // 16 base tiles of zoom level 2 for global coverage
+    for (int x = 0; x < 4; x++) {
+      for (int y = 0; y < 4; y++) {
+        tiles.add(TileCoord(zoom: 2, x: x, y: y));
+      }
+    }
+
+    // 16 detailed tiles around the camera center
+    if (zoom > 2) {
+      for (int dx = -1; dx <= 2; dx++) {
+        for (int dy = -1; dy <= 2; dy++) {
+          final tx = (center.x + dx).clamp(0, n - 1);
+          final ty = (center.y + dy).clamp(0, n - 1);
+          tiles.add(TileCoord(zoom: zoom, x: tx, y: ty));
+        }
       }
     }
     return tiles;
@@ -224,7 +234,13 @@ class GlobeTileRenderer {
     // Kick off fetches for tiles that may be needed soon.
     beginTileFetch(camera, size);
 
-    for (final entry in _loadedImages.entries) {
+    final sortedEntries = _loadedImages.entries.toList()
+      ..sort((e1, e2) {
+        final z1 = int.tryParse(e1.key.split('/')[0]) ?? 0;
+        final z2 = int.tryParse(e2.key.split('/')[0]) ?? 0;
+        return z1.compareTo(z2);
+      });
+    for (final entry in sortedEntries) {
       final key = entry.key;
       final parts = key.split('/');
       if (parts.length != 3) continue;

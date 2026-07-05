@@ -58,7 +58,6 @@ class Scene3DViewportState extends State<Scene3DViewport> {
 
     final camera = _cameraController.current;
     final double zoomScale = 6378137.0 / camera.altitude;
-    final double sphereRadius = size.shortestSide * 0.32 * zoomScale;
     final Offset center = Offset(size.width * 0.45, size.height * 0.5);
 
     final double baseRotation = -(camera.longitude * math.pi / 180.0);
@@ -87,10 +86,11 @@ class Scene3DViewportState extends State<Scene3DViewport> {
     final ProjectedPoint projected = painter.project(
       latRad,
       lngRad,
-      sphereRadius,
+      6378137.0,
       center,
       baseRotation,
       baseTilt,
+      size,
     );
 
     return projected.offset;
@@ -345,22 +345,47 @@ class Scene3DViewportState extends State<Scene3DViewport> {
   }
 
   VirtualCamera? _clickToCamera(Offset localPosition, Size size) {
-    final double zoomScale = 6378137.0 / _cameraController.current.altitude;
-    final double sphereRadius = size.shortestSide * 0.32 * zoomScale;
+    final camera = _cameraController.current;
+    final double zoomScale = 6378137.0 / camera.altitude;
     final Offset center = Offset(size.width * 0.45, size.height * 0.5);
 
-    final double dx = localPosition.dx - center.dx;
-    final double dy = -(localPosition.dy - center.dy);
+    final painter = Scene3DViewportPainter(
+      camera: camera,
+      activeStyle: _activeStyle,
+      astronomicalBody: _astronomicalBody,
+      elevationActive: _elevationActive,
+      showDevices: _showDevices,
+      showLinks: _showLinks,
+      showLabels: _showLabels,
+      showDropLines: _showDropLines,
+      topologyData: widget.topologyData,
+      userRotationX: 0.0,
+      userTilt: 0.0,
+      zoomScale: zoomScale,
+      tileRenderer: _tileRenderer,
+      imageryProvider: _providerForStyle(_activeStyle),
+    );
 
-    if (dx * dx + dy * dy > sphereRadius * sphereRadius) {
+    final ProjectedPoint earthCenterProj = painter.project(0.0, 0.0, 0.0, center, 0.0, 0.0, size);
+    final Offset projectedCenter = earthCenterProj.offset;
+
+    final double cRad = 6378137.0 + camera.altitude;
+    final double F = size.shortestSide * 1.2;
+    final double radDiff1 = cRad * cRad - 6378137.0 * 6378137.0;
+    final double projectedRadius = 6378137.0 * F / math.sqrt(radDiff1 <= 0.0 ? 1.0 : radDiff1);
+
+    final double dx = localPosition.dx - projectedCenter.dx;
+    final double dy = -(localPosition.dy - projectedCenter.dy);
+
+    if (dx * dx + dy * dy > projectedRadius * projectedRadius) {
       return null;
     }
 
-    final double radDiff = sphereRadius * sphereRadius - dx * dx - dy * dy;
+    final double radDiff = projectedRadius * projectedRadius - dx * dx - dy * dy;
     final double zFinal = math.sqrt(radDiff < 0.0 ? 0.0 : radDiff);
 
-    final double baseRotation = -(_cameraController.current.longitude * math.pi / 180.0);
-    final double baseTilt = -(_cameraController.current.latitude * math.pi / 180.0);
+    final double baseRotation = -(camera.longitude * math.pi / 180.0);
+    final double baseTilt = -(camera.latitude * math.pi / 180.0);
 
     final double cosT = math.cos(baseTilt);
     final double sinT = math.sin(baseTilt);
@@ -373,13 +398,13 @@ class Scene3DViewportState extends State<Scene3DViewport> {
     final double y = yRot;
     final double z = dx * sinY + zRot * cosY;
 
-    final double lat = math.asin((y / sphereRadius).clamp(-1.0, 1.0));
+    final double lat = math.asin((y / projectedRadius).clamp(-1.0, 1.0));
     final double lng = math.atan2(x, z);
 
     final double latDeg = lat * 180.0 / math.pi;
     final double lngDeg = lng * 180.0 / math.pi;
 
-    final targetAlt = (_cameraController.current.altitude * 0.5).clamp(
+    final targetAlt = (camera.altitude * 0.5).clamp(
       CameraController.minAltitude,
       CameraController.maxAltitude,
     );
@@ -388,9 +413,9 @@ class Scene3DViewportState extends State<Scene3DViewport> {
       latitude: latDeg,
       longitude: lngDeg,
       altitude: targetAlt,
-      heading: _cameraController.current.heading,
-      pitch: _cameraController.current.pitch,
-      roll: _cameraController.current.roll,
+      heading: camera.heading,
+      pitch: camera.pitch,
+      roll: camera.roll,
     );
   }
 
@@ -893,71 +918,101 @@ class Scene3DViewportPainter extends CustomPainter {
     this.imageryProvider = ImageryProvider.arcGisSatellite,
   });
 
-  ProjectedPoint project(double lat, double lng, double sphereRadius, Offset center, double rotationY, double tilt) {
+  ProjectedPoint project(
+    double lat,
+    double lng,
+    double height, // passed as height in meters (e.g. 6378137.0 + alt)
+    Offset center,
+    double rotationY,
+    double tilt,
+    Size size,
+  ) {
     final CesiumEngine? engine = CesiumEngine.instance;
     final double radLng = camera.longitude * math.pi / 180.0;
     final double radLat = camera.latitude * math.pi / 180.0;
 
-    double sx = 0.0;
-    double sy = 0.0;
-    double sz = 0.0;
+    final double R = 6378137.0;
+
+    double px = 0.0;
+    double py = 0.0;
+    double pz = 0.0;
 
     if (engine != null && engine.isReady) {
-      final ecef = engine.cartographicToEcef(lat * 180.0 / math.pi, lng * 180.0 / math.pi, 0.0);
+      final ecef = engine.cartographicToEcef(lat * 180.0 / math.pi, lng * 180.0 / math.pi, height - R);
       if (ecef != null) {
         final (x, y, z) = ecef;
-        final scale = sphereRadius / 6378137.0;
-        sx = x * scale;
-        sy = z * scale;
-        sz = y * scale;
+        px = x;
+        py = y;
+        pz = z;
       }
     } else {
-      final double x = sphereRadius * math.cos(lat) * math.sin(lng);
-      final double y = sphereRadius * math.sin(lat);
-      final double z = sphereRadius * math.cos(lat) * math.cos(lng);
-      sx = z;
-      sy = y;
-      sz = x;
+      px = height * math.cos(lat) * math.cos(lng);
+      py = height * math.cos(lat) * math.sin(lng);
+      pz = height * math.sin(lat);
     }
 
-    // 1. Rotate ECEF coordinates by camera longitude (around ECEF Z-axis)
-    final double cosY = math.cos(-radLng);
-    final double sinY = math.sin(-radLng);
-    final double x1 = sx * cosY - sz * sinY;
-    final double z1 = sx * sinY + sz * cosY;
-    final double y1 = sy;
+    // Camera position in ECEF
+    final double cRad = R + camera.altitude;
+    final double cx = cRad * math.cos(radLat) * math.cos(radLng);
+    final double cy = cRad * math.cos(radLat) * math.sin(radLng);
+    final double cz = cRad * math.sin(radLat);
 
-    // 2. Rotate around camera East axis by camera latitude
-    final double cosX = math.cos(-radLat);
-    final double sinX = math.sin(-radLat);
-    final double xRot = x1 * cosX - y1 * sinX;
-    final double yRot = x1 * sinX + y1 * cosX;
-    final double zRot = z1;
+    // Camera local ENU basis
+    final double ux = math.cos(radLat) * math.cos(radLng);
+    final double uy = math.cos(radLat) * math.sin(radLng);
+    final double uz = math.sin(radLat);
 
-    // 3. Apply camera pitch (tilt around local East horizontal axis)
-    final double P = (camera.pitch + 45.0) * math.pi / 180.0;
-    final double cosP = math.cos(P);
-    final double sinP = math.sin(P);
-    final double xPitch = xRot * cosP - yRot * sinP;
-    final double yPitch = xRot * sinP + yRot * cosP;
-    final double zPitch = zRot;
+    final double ex = -math.sin(radLng);
+    final double ey = math.cos(radLng);
+    final double ez = 0.0;
 
-    // 4. Apply camera heading (rotation around optical axis)
-    final double H = camera.heading * math.pi / 180.0;
-    final double cosH = math.cos(H);
-    final double sinH = math.sin(H);
-    final double xFinal = xPitch;
-    final double yFinal = yPitch * cosH - zPitch * sinH;
-    final double zFinal = yPitch * sinH + zPitch * cosH;
+    final double nx = -math.sin(radLat) * math.cos(radLng);
+    final double ny = -math.sin(radLat) * math.sin(radLng);
+    final double nz = math.cos(radLat);
 
-    // Culling check: front hemisphere contains points where xRot >= 0.0
-    final double depthVal = xRot < 0.0 ? -1.0 : xFinal;
+    // Relative vector from camera to point
+    final double rx = px - cx;
+    final double ry = py - cy;
+    final double rz = pz - cz;
 
-    // Orthographic projection (directly map 3D to 2D):
-    final double rx = zFinal;
-    final double ry = yFinal;
+    // Project onto ENU basis
+    final double x_enu = rx * ex + ry * ey + rz * ez;
+    final double y_enu = rx * nx + ry * ny + rz * nz;
+    final double z_enu = rx * ux + ry * uy + rz * uz;
 
-    return ProjectedPoint(Offset(center.dx + rx, center.dy - ry), depthVal);
+    // Apply camera pitch and heading
+    final double H_rad = camera.heading * math.pi / 180.0;
+    final double alpha = (camera.pitch + 90.0) * math.pi / 180.0;
+
+    final double cosH = math.cos(H_rad);
+    final double sinH = math.sin(H_rad);
+    final double cosA = math.cos(alpha);
+    final double sinA = math.sin(alpha);
+
+    final double x1 = x_enu * cosH + y_enu * sinH;
+    final double y1 = -x_enu * sinH + y_enu * cosH;
+    final double z1 = z_enu;
+
+    final double x_cam = x1;
+    final double y_cam = y1 * cosA - z1 * sinA;
+    final double z_cam = y1 * sinA + z1 * cosA;
+
+    // Optical axis is along negative z_cam
+    final double depth = -z_cam;
+
+    // Horizon culling check using physical distance
+    final double distSq = rx * rx + ry * ry + rz * rz;
+    final double horizonLimitSq = cRad * cRad - R * R;
+    final double depthVal = distSq > horizonLimitSq ? -1.0 : depth;
+
+    // Focal length (45-degree FOV)
+    final double F = size.shortestSide * 1.2;
+    final double pScale = depth <= 0.0 ? 1.0 : F / depth;
+
+    final double rx_pixel = x_cam * pScale;
+    final double ry_pixel = y_cam * pScale;
+
+    return ProjectedPoint(Offset(center.dx + rx_pixel, center.dy - ry_pixel), depthVal);
   }
 
   // Convert degrees to radians
@@ -965,13 +1020,17 @@ class Scene3DViewportPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final double sphereRadius = size.shortestSide * 0.32 * zoomScale;
     // Shift center to the left to give space to the config overlay sidebar
     final Offset center = Offset(size.width * 0.45, size.height * 0.5);
 
-    // In orthographic projection, the sphere silhouette is static at screen center and sphereRadius
-    final Offset projectedCenter = center;
-    final double projectedRadius = sphereRadius;
+    // In paint, calculate the projected Earth center and visual radius dynamically
+    final ProjectedPoint earthCenterProj = project(0.0, 0.0, 0.0, center, 0.0, 0.0, size);
+    final Offset projectedCenter = earthCenterProj.offset;
+
+    final double cRad = 6378137.0 + camera.altitude;
+    final double F = size.shortestSide * 1.2;
+    final double radDiff = cRad * cRad - 6378137.0 * 6378137.0;
+    final double projectedRadius = 6378137.0 * F / math.sqrt(radDiff <= 0.0 ? 1.0 : radDiff);
 
     // 1. Draw Starry Space Background (~100 stars)
     final math.Random rand = math.Random(42);
@@ -1092,8 +1151,8 @@ class Scene3DViewportPainter extends CustomPainter {
         final double lat1 = -math.pi / 2 + j * (math.pi / meridianSteps);
         final double lat2 = -math.pi / 2 + (j + 1) * (math.pi / meridianSteps);
         
-        final ProjectedPoint p1 = project(lat1, lng, sphereRadius, center, rotationAngle, tilt);
-        final ProjectedPoint p2 = project(lat2, lng, sphereRadius, center, rotationAngle, tilt);
+        final ProjectedPoint p1 = project(lat1, lng, 6378137.0, center, rotationAngle, tilt, size);
+        final ProjectedPoint p2 = project(lat2, lng, 6378137.0, center, rotationAngle, tilt, size);
         
         if (p1.z >= 0 && p2.z >= 0) {
           canvas.drawLine(p1.offset, p2.offset, frontGridPaint);
@@ -1109,8 +1168,8 @@ class Scene3DViewportPainter extends CustomPainter {
         final double lng1 = j * (2 * math.pi / parallelSteps);
         final double lng2 = (j + 1) * (2 * math.pi / parallelSteps);
         
-        final ProjectedPoint p1 = project(lat, lng1, sphereRadius, center, rotationAngle, tilt);
-        final ProjectedPoint p2 = project(lat, lng2, sphereRadius, center, rotationAngle, tilt);
+        final ProjectedPoint p1 = project(lat, lng1, 6378137.0, center, rotationAngle, tilt, size);
+        final ProjectedPoint p2 = project(lat, lng2, 6378137.0, center, rotationAngle, tilt, size);
         
         if (p1.z >= 0 && p2.z >= 0) {
           canvas.drawLine(p1.offset, p2.offset, frontGridPaint);
@@ -1141,12 +1200,12 @@ class Scene3DViewportPainter extends CustomPainter {
         final List<ProjectedPoint> pts = [];
         for (int s = 0; s <= steps; s++) {
           final double lng = s * (2 * math.pi / steps);
-          final p = project(latMin, lng, sphereRadius * 1.002, center, rotationAngle, tilt);
+          final p = project(latMin, lng, 6378137.0 * 1.002, center, rotationAngle, tilt, size);
           if (p.z >= 0.0) pts.add(p);
         }
         for (int s = steps; s >= 0; s--) {
           final double lng = s * (2 * math.pi / steps);
-          final p = project(latMax, lng, sphereRadius * 1.002, center, rotationAngle, tilt);
+          final p = project(latMax, lng, 6378137.0 * 1.002, center, rotationAngle, tilt, size);
           if (p.z >= 0.0) pts.add(p);
         }
 
@@ -1210,14 +1269,15 @@ class Scene3DViewportPainter extends CustomPainter {
         camera,
         size,
         center,
-        sphereRadius,
+        6378137.0,
         (double latDeg, double lngDeg) => project(
           _rad(latDeg),
           _rad(lngDeg),
-          sphereRadius,
+          6378137.0,
           center,
           rotationAngle,
           tilt,
+          size,
         ),
       );
     }
@@ -1316,21 +1376,21 @@ class Scene3DViewportPainter extends CustomPainter {
       final bool isSatellite = nodeType == 'SATELLITE' || id.toLowerCase().contains('sat') || alt > 100000.0;
       final bool isUnderwater = alt <= 10.0;
       
-      double orbitRadius;
+      double orbitHeight;
       String type;
       double speed = 0.0;
 
       if (isSatellite) {
         type = 'space';
-        orbitRadius = sphereRadius * 1.35;
+        orbitHeight = 6378137.0 + alt;
         // Deterministic orbital speed is 0.0 for geostationary constellation
         speed = 0.0;
       } else if (isUnderwater) {
         type = 'underwater';
-        orbitRadius = sphereRadius * 0.95;
+        orbitHeight = 6378137.0 + alt;
       } else {
         type = 'ground';
-        orbitRadius = sphereRadius;
+        orbitHeight = 6378137.0 + alt;
       }
 
       final double currentLng = baseLng + rotationAngle * speed;
@@ -1351,7 +1411,7 @@ class Scene3DViewportPainter extends CustomPainter {
         const int steps = 60;
         for (int step = 0; step <= steps; step++) {
           final double stepLng = baseLng + (step / steps) * 2 * math.pi;
-          final stepProj = project(lat, stepLng, orbitRadius, center, rotationAngle, tilt);
+          final stepProj = project(lat, stepLng, orbitHeight, center, rotationAngle, tilt, size);
           
           if (stepProj.z >= 0.0) {
             if (!orbitStarted) {
@@ -1369,14 +1429,14 @@ class Scene3DViewportPainter extends CustomPainter {
       }
 
       // Project the node
-      final proj = project(lat, currentLng, orbitRadius, center, rotationAngle, tilt);
+      final proj = project(lat, currentLng, orbitHeight, center, rotationAngle, tilt, size);
       
       if (proj.z >= 0) {
         allProjectedNodes[id] = proj;
 
         // Draw vertical drop line from satellite to surface
         if (type == 'space' && showDropLines) {
-          final surfaceProj = project(lat, currentLng, sphereRadius, center, rotationAngle, tilt);
+          final surfaceProj = project(lat, currentLng, 6378137.0, center, rotationAngle, tilt, size);
           final Paint dropPaint = Paint()
             ..color = const Color(0x80FFFFFF)
             ..style = PaintingStyle.stroke

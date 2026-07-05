@@ -877,5 +877,31 @@ This phase details the changes required to revert 3D projection formulas and bac
   cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
   ```
 
+## Phase 16: True 3D Perspective Camera Model, Multi-resolution Base Tile Pyramid, and Double-click Gesture Sync
+
+This phase documents the implementation of the true 3D perspective camera model, multi-resolution base tile pyramid, and updating the double-click gesture sync.
+
+### Core App Code
+
+#### [MODIFY] [globe_tile_renderer.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/cesium_3d/globe_tile_renderer.dart)
+- In `_visibleTiles`, always include the 16 base tiles of zoom level 2.
+- In `renderTiles`, sort `_loadedImages` entries by zoom level before drawing so that lower-zoom base tiles are drawn first, and detailed tiles are drawn on top.
+
+#### [MODIFY] [scene_3d_viewport.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/features/topology/scene_3d_viewport.dart)
+- Implement the true 3D camera model, ENU basis projection, and perspective projection in `Scene3DViewportPainter.project`.
+- Update `Scene3DViewportPainter.paint` to pass `size` to all `project` calls and use physical height values (e.g. `6378137.0` for tiles/surface and `6378137.0 + alt` for nodes).
+- Update the `_clickToCamera` logic to calculate `dx` and `dy` relative to `projectedCenter` instead of static `center`.
+
+## Phase 16 Verification Plan
+
+### Automated Tests
+- Run the unit and integration tests to verify correctness:
+  ```bash
+  cd app_flutter && flutter test test/cesium_3d/
+  cd app_flutter && flutter test integration_test/globe_camera_drag_test.dart -d macos
+  cd app_flutter && flutter test integration_test/globe_camera_rotation_visual_test.dart -d macos
+  ```
+
+
 
 
