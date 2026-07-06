@@ -37,7 +37,20 @@ We will systematically process the following open bug backlog in order of oldest
     - Add tests/verify that table columns align and sorting maps to the correct column when columns are hidden.
 * **Issue #60**: Platform Initialization Crashes on Web and Hardcoded Path in FFI Tests
 * **Issue #61**: Table View Sorting Crash, Swatch Misalignment, and Focus State Rebuilding Failures
-* **Issue #62**: ChangeNotifier Disposal Notifications and Asynchronous Query Race Conditions
+* **Issue #62**: ChangeNotifier Disposal Notifications and Asynchronous Query Race Conditions [ACTIVE]
+  - File: `app_flutter/lib/core/theme/theme_controller.dart`
+    - Add class variable `bool _disposed = false;`.
+    - Override `dispose()` to set `_disposed = true` and call `super.dispose()`.
+    - Override `notifyListeners()` to only notify if `!_disposed`.
+    - Guard async methods `loadSettings()`, `updateThemeMode()`, `updateThemeScheme()`, `updateLayoutSplitAxis()`, and `updatePanelOpacity()` with `if (_disposed) return;` after each `await` and before state update or notifying listeners.
+  - File: `app_flutter/lib/core/theme/text_scaler.dart`
+    - Add class variable `bool _disposed = false;`.
+    - Override `dispose()` to set `_disposed = true` and call `super.dispose()`.
+    - Override `notifyListeners()` to only notify if `!_disposed`.
+    - Guard `load()` with `if (_disposed) return;` after `await`.
+  - File: `app_flutter/lib/features/properties/view_models/properties_view_model.dart`
+    - Add class variable `String? _activeTypeName;`.
+    - Modify `loadType(String typeName)` to set `_activeTypeName = typeName` before `await`, and guard with `if (_disposed) return;` and `if (_activeTypeName != typeName) return;` after `await` before updating `_currentType` and calling `notifyListeners()`.
 * **Issue #63**: Firebase Adapter Real-Time Stream Broadcast and Missing Query Realizations
 * ... [rest of backlog issues #64 to #141]
 

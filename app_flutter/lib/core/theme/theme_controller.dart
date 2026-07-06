@@ -23,6 +23,7 @@ class ThemeController extends ChangeNotifier {
   int _currentThemeIndex = 0;
   Axis _layoutSplitAxis = Axis.vertical;
   double _panelOpacity = 0.85;
+  bool _disposed = false;
 
   /// Current [ThemeMode] (light / dark / system).
   ThemeMode get themeMode => _themeMode;
@@ -51,13 +52,25 @@ class ThemeController extends ChangeNotifier {
   /// index is silently clamped to 0. Fires `notifyListeners()` on
   /// completion even if values are unchanged.
   Future<void> loadSettings() async {
-    _themeMode = await _themeService.loadThemeMode();
-    _currentThemeIndex = await _themeService.loadThemeScheme();
+    final mode = await _themeService.loadThemeMode();
+    if (_disposed) return;
+    _themeMode = mode;
+
+    final scheme = await _themeService.loadThemeScheme();
+    if (_disposed) return;
+    _currentThemeIndex = scheme;
     if (_currentThemeIndex < 0 || _currentThemeIndex >= AppThemes.customSchemes.length) {
       _currentThemeIndex = 0;
     }
-    _layoutSplitAxis = await _themeService.loadLayoutSplitAxis();
-    _panelOpacity = await _themeService.loadPanelOpacity();
+
+    final axis = await _themeService.loadLayoutSplitAxis();
+    if (_disposed) return;
+    _layoutSplitAxis = axis;
+
+    final opacity = await _themeService.loadPanelOpacity();
+    if (_disposed) return;
+    _panelOpacity = opacity;
+
     notifyListeners();
   }
 
@@ -71,6 +84,7 @@ class ThemeController extends ChangeNotifier {
     _themeMode = newThemeMode;
     notifyListeners();
     await _themeService.saveThemeMode(newThemeMode);
+    if (_disposed) return;
   }
 
   /// Updates the colour-scheme index and persists it via [ThemeService].
@@ -84,6 +98,7 @@ class ThemeController extends ChangeNotifier {
     _currentThemeIndex = newIndex;
     notifyListeners();
     await _themeService.saveThemeScheme(newIndex);
+    if (_disposed) return;
   }
 
   /// Updates the layout split axis orientation and persists it via [ThemeService].
@@ -96,6 +111,7 @@ class ThemeController extends ChangeNotifier {
     _layoutSplitAxis = newAxis;
     notifyListeners();
     await _themeService.saveLayoutSplitAxis(newAxis);
+    if (_disposed) return;
   }
 
   /// Updates the panel opacity value and persists it via [ThemeService].
@@ -108,5 +124,19 @@ class ThemeController extends ChangeNotifier {
     _panelOpacity = newOpacity;
     notifyListeners();
     await _themeService.savePanelOpacity(newOpacity);
+    if (_disposed) return;
+  }
+
+  @override
+  void notifyListeners() {
+    if (!_disposed) {
+      super.notifyListeners();
+    }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 }
