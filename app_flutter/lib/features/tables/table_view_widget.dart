@@ -75,11 +75,18 @@ class _TableViewWidgetState extends State<TableViewWidget> {
     var rows = viewModel.rows;
     final testId = '${viewModel.tabId}-table';
 
+    final headerIndices = <String, int>{
+      for (int idx = 0; idx < allHeaders.length; idx++)
+        allHeaders[idx].key: idx
+    };
+
     if (_sortColumnIndex != null && _sortColumnIndex! < headers.length) {
       final sortedRows = List<List<String>>.from(rows);
+      final key = headers[_sortColumnIndex!].key;
+      final absIdx = headerIndices[key] ?? _sortColumnIndex!;
       sortedRows.sort((a, b) {
-        final aVal = a[_sortColumnIndex!];
-        final bVal = b[_sortColumnIndex!];
+        final aVal = absIdx < a.length ? a[absIdx] : '';
+        final bVal = absIdx < b.length ? b[absIdx] : '';
         return _sortAscending ? aVal.compareTo(bVal) : bVal.compareTo(aVal);
       });
       rows = sortedRows;
@@ -91,10 +98,6 @@ class _TableViewWidgetState extends State<TableViewWidget> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final headerIndices = <String, int>{
-          for (int idx = 0; idx < allHeaders.length; idx++)
-            allHeaders[idx].key: idx
-        };
         final colCount = headers.length;
         final spacingWidth = colCount > 1
             ? (colCount - 1) * widget.columnSpacing
@@ -196,6 +199,7 @@ class _HeaderRow extends StatelessWidget {
       key: Key('$testId-header'),
       height: headingRowHeight,
       decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
         border: Border(
           bottom: BorderSide(color: Theme.of(context).dividerColor),
         ),
@@ -216,6 +220,7 @@ class _HeaderRow extends StatelessWidget {
               isActiveSort: sortColumnIndex == i,
               sortAscending: sortAscending,
               onTap: headers[i].sortable ? () => onSort(i) : null,
+              isNumeric: headers[i].type == 'int' || headers[i].type == 'double',
             ),
         ],
       ),
@@ -235,6 +240,7 @@ class _HeaderCell extends StatelessWidget {
   final bool isActiveSort;
   final bool sortAscending;
   final VoidCallback? onTap;
+  final bool isNumeric;
 
   const _HeaderCell({
     required this.label,
@@ -248,6 +254,7 @@ class _HeaderCell extends StatelessWidget {
     required this.isActiveSort,
     required this.sortAscending,
     required this.onTap,
+    required this.isNumeric,
   });
 
   @override
@@ -264,7 +271,7 @@ class _HeaderCell extends StatelessWidget {
           right: isLast ? horizontalMargin : columnSpacing / 2,
         ),
         child: Align(
-          alignment: Alignment.centerLeft,
+          alignment: isNumeric ? Alignment.centerRight : Alignment.centerLeft,
           child: sortable
               ? GestureDetector(
                   onTap: onTap,
@@ -386,7 +393,7 @@ class _DataCell extends StatelessWidget {
     }
 
     return SizedBox(
-      width: colWidth,
+      width: columnModel.width ?? colWidth,
       child: Padding(
         padding: EdgeInsets.only(
           left: isFirst ? horizontalMargin : columnSpacing / 2,
