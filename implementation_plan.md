@@ -22,90 +22,24 @@ This plan details the end-to-end execution of the **Recursive Debugging Protocol
 
 ## Proposed Changes
 
-We will systematically process the following open bug backlog in order of oldest to newest, executing targeted fixes on their corresponding files as identified by the Step 1 (Reproduction) and Step 3 (Investigation) subagents:
+We will systematically process the following open bug backlog in order of oldest to newest, executing targeted fixes on their corresponding files:
 
 ### Backlog Queue:
-* **Issue #58**: 3D Geospatial Engine FFI Memory Leak and Infinite Loop Vulnerabilities
-  - File: `app_flutter/lib/domain/cesium_3d/camera_controller.dart`
-    - Update `_wrapLngStatic`, `_wrapHeadingStatic`, `_wrapPitchStatic`, and `_wrapLng` to use modulo arithmetic instead of `while` loops for wrapping. Explicitly return `0.0` if input values are `isNaN` or `isInfinite`.
-  - File: `app_flutter/lib/domain/cesium_3d/virtual_camera.dart`
-    - In the constructor, explicitly check `isNaN` and `isInfinite` for all coordinate doubles and throw `CoordinateValidationException` if any are invalid.
-    - In `VirtualCamera.clamped` factory, fallback to `0.0` for any `isNaN` or `isInfinite` input before clamping.
-  - File: `app_flutter/lib/domain/cesium_3d/globe_tile_renderer.dart`
-    - In `setProvider`, dispose of all active images in `_loadedImages` before clearing.
-    - In `_fetchAndDecode`, when evicting an image, call `.dispose()` on it.
-    - Add a public `dispose()` method to dispose of all loaded images and clear the map.
-  - File: `app_flutter/lib/domain/cesium_3d/native/native_resource.dart`
-    - Add `_isReleased` flag/getter and safety checks in `release()` to prevent double-free and detach finalizers.
-  - File: `app_flutter/test/cesium_3d_test.dart`
-    - Add regression tests for `VirtualCamera` handling of `NaN` and infinity.
-  - File: `app_flutter/test/cesium_3d/native_resource_test.dart`
-    - Create a new test file to verify `NativeResource.release()` safety.
-* **Issue #59**: Workspace Controls, Table Rendering, and Theme Compilation Failures
+* **Issue #58**: 3D Geospatial Engine FFI Memory Leak and Infinite Loop Vulnerabilities [CLOSED]
+* **Issue #59**: Workspace Controls, Table Rendering, and Theme Compilation Failures [ACTIVE]
+  - File: `app_flutter/lib/features/properties/property_grid.dart`
+    - Update `DropdownButtonFormField` (around line 718) to replace `initialValue: value` with `value: value` to resolve the compilation error.
+  - File: `app_flutter/lib/features/tables/table_view_widget.dart`
+    - Update `_DataCell` (around line 389) to size itself using `columnModel.width ?? colWidth` instead of hardcoding `colWidth`, resolving the column alignment layout mismatch with headers.
+    - Update table sorting logic (around lines 81-82) to map `_sortColumnIndex!` (visible header index) to its corresponding absolute index in `allHeaders` (or `headerIndices`) before accessing row values, correcting sorting behaviour when columns are hidden.
+    - Update `_HeaderRow` container decoration (around line 195) to include `color: Theme.of(context).colorScheme.surface` to give it a solid background color and prevent scrolled rows from showing through.
+  - File: `app_flutter/test/layout_test.dart` or new test file
+    - Add tests/verify that table columns align and sorting maps to the correct column when columns are hidden.
 * **Issue #60**: Platform Initialization Crashes on Web and Hardcoded Path in FFI Tests
 * **Issue #61**: Table View Sorting Crash, Swatch Misalignment, and Focus State Rebuilding Failures
 * **Issue #62**: ChangeNotifier Disposal Notifications and Asynchronous Query Race Conditions
 * **Issue #63**: Firebase Adapter Real-Time Stream Broadcast and Missing Query Realizations
-* **Issue #64**: Unused projection rotation parameters in Scene3DViewport
-* **Issue #65**: High text painter GC allocation churn in high-frequency rendering loop
-* **Issue #66**: Unsynchronized frame updates via Timer.periodic in fly-to animation
-* **Issue #67**: Redundant home click logic causing RangeError on empty tree
-* **Issue #68**: Synchronous disk I/O on UI thread causing jank and web crash
-* **Issue #69**: Zero-constraints splitter layout overflow in SplitWorkspace
-* **Issue #70**: Color luminance contrast mismatch in SettingsPanel swatches
-* **Issue #71**: Main UI Thread Blockage on Isolate Spawning Failure in BackgroundWorker
-* **Issue #72**: Local-Only Stream Broadcasts in Firebase Adapter
-* **Issue #73**: Redundant Network Scans and Discovery in Firebase Adapter
-* **Issue #83**: Longitudinal Clamping in Virtual Camera (Anti-meridian Wall)
-* **Issue #84**: Memory Leaks on FFI Error Conditions in CesiumEngine
-* **Issue #85**: Use-After-Free Risk on Async FFI Strings in requestTileData
-* **Issue #86**: Callback Failure in Tile Loading Interface
-* **Issue #87**: Zero Test Coverage for CesiumEngine and FFI Bindings
-* **Issue #88**: Redundant Configuration Loading in app.dart and layout.dart
-* **Issue #89**: External View Updates Out of Sync with Sidebar Tree in Layout
-* **Issue #90**: Fragile Map Type Casting in LayoutConfigService
-* **Issue #91**: Asynchronous Race Condition on Concurrent Type Loading
-* **Issue #92**: Erroneous TileCache Eviction during Duplicate Writes
-* **Issue #93**: Lifetime Race on Deallocating Active BridgeState in C++ Bridge
-* **Issue #94**: Assertion Failures inside cesium-native on Invalid Coordinates
-* **Issue #95**: Hardcoded Starry Background Loop in Painter
-* **Issue #96**: Abrupt Zoom Scale in Scale Gesture Detector
-* **Issue #97**: UI Layout Overflow Risk in Header
-* **Issue #98**: Double ScrollView Hierarchy for Panning
-* **Issue #99**: Playback Time Index Wrap Precision Loss
-* **Issue #100**: Sticky Expanded Ellipsis State in Breadcrumbs
-* **Issue #101**: Bulky Breadcrumb Segments (ActionChip) Visual Presentation
-* **Issue #102**: Split Workspace Pane Size Snapping and Non-Proportional Scaling
-* **Issue #103**: Hardcoded Initial Active View blocks fallbacks
-* **Issue #104**: Global Fallback State Mutation in TreeViewModel
-* **Issue #105**: StateError on Watch Subscription in TablesViewModel
-* **Issue #106**: Multi-Tab Rendering and Keeping Alive Bug in TabbedContainer
-* **Issue #107**: GlobalKey Allocation Performance Issue in TreeViewModel
-* **Issue #108**: Heavy Date Parsing inside Cell Build Method in TableViewWidget
-* **Issue #109**: Redundant Repaint Boundaries in TableViewWidget
-* **Issue #110**: Accessible Tap Target Size violation on Tree Node Toggle button
-* **Issue #111**: Broken Swipe Animation in TabbedContainer
-* **Issue #112**: Keyboard Holding (Key Repeat) Ignored in SidebarTree
-* **Issue #113**: Hardcoded Mock Data Patterns Leaked into SQLite Queries
-* **Issue #114**: Architectural Purity Violations (Circular/Leaked Dependencies) in Domain Layer
-* **Issue #115**: Overly Restrictive Unique Constraint on Type Relations
-* **Issue #116**: Regular Expression Re-compilation Performance Hotspot
-* **Issue #117**: Redundant String Conversions in Validator
-* **Issue #118**: Failed Map Type Casting on jsonDecode
-* **Issue #119**: Dead Code: Obsolete AttributeDefinition Class
-* **Issue #120**: Bare Asserts and Lack of Test Suite Wrapper in ffi_integration_test.dart
-* **Issue #121**: Non-Isolated Unit/Widget Tests (Database FFI Dependency)
-* **Issue #122**: Writing Untracked Files to the Repository Root in stress tests
-* **Issue #123**: Pervasive 'as dynamic' Casting for Widget States in test suites
-* **Issue #124**: Top-Level main() Entrypoint in Library File database_initializer.dart
-* **Issue #125**: Swallowed Database Initializer Exceptions in RepositoryResolver
-* **Issue #134**: NaN Check Bypass in VirtualCamera Constructor
-* **Issue #135**: GPU/Native Memory Leak: Missing ui.Image Disposal
-* **Issue #136**: Native Double-Free Vulnerability in NativeResource
-* **Issue #138**: Decoded Tile Image Cache Capacity Thrashing
-* **Issue #139**: Globe Navigation: Lack of Hierarchical Quadtree Fallback Rendering
-* **Issue #140**: Globe Navigation: Redundant Main-Thread Image Decoding on Cache Misses
-* **Issue #141**: Globe Navigation: Unthrottled Repaint Cycles (setState Storms)
+* ... [rest of backlog issues #64 to #141]
 
 ---
 
