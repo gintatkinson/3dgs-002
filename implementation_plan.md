@@ -51,3 +51,14 @@ We will systematically process the following open bug backlog in order of oldest
   cd app_flutter && flutter test
   ```
 * Every bug fix is verified by writing/extending test suites to cover the defect scenarios and ensuring they pass cleanly.
+
+## Issue Link Fixing Task (Subagents 1-5)
+
+Subagents 1-5 are tasked with inspecting issues in `gintatkinson/3dgs-002` and `gintatkinson/digital-pipeline-repo`, correcting any missing/broken file or issue markdown links.
+
+### Planned Temporary Files:
+- `/Users/perkunas/jail/3dgs-002/scratch/temp_issue_1.md`: Used to buffer and overwrite the corrected issue body before updating.
+- `/Users/perkunas/jail/3dgs-002/scratch/temp_issue_2.md`: Used to buffer and overwrite the corrected issue body before updating.
+- `/Users/perkunas/jail/3dgs-002/scratch/temp_issue_3.md`: Used to buffer and overwrite the corrected issue body before updating.
+- `/Users/perkunas/jail/3dgs-002/scratch/temp_issue_4.md`: Used to buffer and overwrite the corrected issue body before updating.
+- `/Users/perkunas/jail/3dgs-002/scratch/temp_issue_5.md`: Used to buffer and overwrite the corrected issue body before updating.
