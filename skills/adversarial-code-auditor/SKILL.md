@@ -9,7 +9,7 @@ metadata:
   category: auditing
   risk: low
   source: custom
-  version: "1.2"
+  version: "1.4"
 ---
 
 # Adversarial Code Auditor
@@ -83,9 +83,54 @@ Every audit subagent operates through one of these four lenses, weighted by the 
 
 ---
 
+## Severity Calibration (MANDATORY)
+
+Every finding MUST be classified against this objective rubric. Inflated severity invalidates the audit.
+
+| Severity | Criteria | Example |
+|----------|----------|---------|
+| **Critical** | Crashes the process, corrupts memory, or leaks resources on every invocation with **current code paths**. Must be reachable from existing callers. | `checkStatus` throws before `calloc.free` — memory leak on every error path |
+| **Important** | Produces wrong behavior, degrades under load, or creates a correctness risk reachable in edge cases. | LRU cache evicts entries on duplicate writes; cache contract violation |
+| **Suggestion** | Code improvement, missing guard for a forward-looking risk, missing test coverage, documentation gap, dead code. **Not a bug in current code paths.** | Missing input validation for future callers; no test for edge case; misleading docstring |
+| **Nitpick** | Style, naming, formatting. No correctness impact. | Commented-out block; inconsistent naming |
+
+**Hard rules:**
+- If the code contains an explicit guard that already handles the scenario (try/catch, NaN check, null check), you MUST acknowledge it. "No validation" is false if any validation exists. **Read the code before claiming absence.**
+- A stub function that cannot throw does NOT have an "exception propagation" risk. Do not flag impossible scenarios.
+- If a finding describes behavior that would only occur after future code changes, it is **Suggestion**, not Critical.
+- Every finding MUST cite at least one exact file:line pair. If you cannot cite a specific line, do not report it.
+
+---
+
+## UML Diagram Requirements (MANDATORY for Critical & Important)
+
+Every Critical and Important finding MUST include a Mermaid UML diagram in section 4. The diagram type is determined by the defect category:
+
+| Pillar | Defect Pattern | Required UML Diagram |
+|--------|---------------|---------------------|
+| Memory Safety | UAF / double-free / dangling pointer | `sequenceDiagram` — show threads/lifelines, the point of free, and the point of use-after-free |
+| Memory Safety | Exception crossing FFI / missing guard | `sequenceDiagram` — show the throw path from C++ through the FFI boundary to the Dart VM abort |
+| Memory Safety | Buffer overflow / signed wrap | `classDiagram` — show the type contract violation (signed to unsigned cast) |
+| Resource Lifecycle | Missing dispose / leak on error path | `sequenceDiagram` — show allocation, the exception branch, and the skipped free |
+| Resource Lifecycle | Cache eviction / LRU violation | `stateDiagram-v2` — show the cache state machine with the invariant violation |
+| Concurrency | ChangeNotifier post-disposal | `sequenceDiagram` — show the async continuation after dispose has been called |
+| Concurrency | TOCTOU / async race | `sequenceDiagram` — show two concurrent callers racing on shared state |
+| Test Integrity | FFI-dependent test / missing mock | `classDiagram` — show the test dependency on real FFI instead of mock interface |
+
+**UML conformance rules:**
+- Sequence diagrams MUST use named lifelines (not generic `Actor`), MUST include `alt`/`loop` combined fragments for branches.
+- Class diagrams MUST show composition (`*--`) or association (`-->`) for relationships, MUST NOT contain isolated classes.
+- State diagrams MUST use `stateDiagram-v2` syntax, MUST include transition labels.
+- Use Case interaction defects MUST use `flowchart` with `([oval])` shapes, a `subgraph` boundary, and stereotype annotations (`«include»`, `«extend»`).
+- Every diagram MUST trace to specific `file:line` references from the Correctness Analysis (Section 3). No placeholder diagrams.
+
+---
+
 ## Step-by-Step Workflow
 
 ### Step 0 — Pre-flight: Cluster Scoping (Coordinator)
+
+This skill runs end-to-end once authorized. No internal gates after start.
 
 Before dispatching auditors, scope the target cluster:
 
@@ -97,8 +142,7 @@ Before dispatching auditors, scope the target cluster:
 3. **Extract file:line references** from each issue body. If an issue body lacks file paths, skip it for the audit — static review needs target files.
 4. **Build a per-file hit list**: deduplicate and group by source file. Rank by issue count (most-referenced files first).
 5. **Select the target pillar** — if the user specified one, use it. Otherwise, audit the highest-density pillar.
-
-**Gate:** Produce a scoping summary with the target pillar, file hit list, and issue count. Wait for human authorization (`PROCEED`) before continuing to Step 1.
+6. **Produce scoping summary** with target pillar, file hit list, and issue count. Then proceed directly to Step 1 — no intermediate gate.
 
 ### Step 1 — Per-File Adversarial Audit (Auditor Subagents)
 
@@ -176,8 +220,14 @@ ISSUE_BODY:
 ## 3. Correctness Analysis
 [Detailed explanation of WHY the defect is a defect — trace the data flow, identify the invariant being violated, explain the failure mode in concrete terms. Reference the actual source code lines and the 8-dimension review that revealed this finding.]
 
-## 4. UML Diagrams (when applicable)
-[Mermaid classDiagram, sequenceDiagram, or stateDiagram-v2 if it clarifies the defect's mechanics.]
+## 4. UML Diagrams (MANDATORY for Critical & Important)
+Select diagram type per the UML Diagram Requirements table. Every diagram MUST trace to specific file:line references from Section 3.
+
+```mermaid
+sequenceDiagram
+    participant ...
+    ...
+```
 
 ## 5. Affected Callers / Downstream Impact
 - [Caller 1] — [how it triggers or is affected by this defect]
@@ -195,17 +245,27 @@ ISSUE_BODY:
 Adversarial [Pillar] Audit — `docs/audits/adversarial-audit-[pillar]-[YYYY-MM-DD].md`
 ```
 
-Each issue body MUST include all 7 sections. The Output MUST be clearly delimited with `ISSUE_TITLE:` and `ISSUE_BODY:` markers so the Issue Filer can parse them.
-- **Severity**: Critical | Important | Suggestion | Nitpick
-- **Location**: `path/to/file.dart:123`
-- **Issue**: Clear description of the problem
-- **Pillar**: [Memory Safety | Resource Lifecycle | Concurrency | Test Integrity]
-- **Suggestion**: Specific recommendation for remediation
+Each issue body MUST include all 7 sections. Section 4 (UML Diagram) is MANDATORY for Critical and Important findings — select the diagram type from the UML Diagram Requirements table. Suggestions may skip section 4.
+
+The Output MUST be clearly delimited with `ISSUE_TITLE:` and `ISSUE_BODY:` markers.
 ```
 
 For Suggestions: produce a comment body with the same level of detail, delimited with `COMMENT_FOR_ISSUE: #NNN` and `COMMENT_BODY:`.
 
 **D. Auditor Subagent returns:** All issue bodies and comment bodies for its file, clearly delimited. The subagent does NOT create issues — it only produces the text.
+
+**D.1 — Coordinator Quality Gate (BEFORE FILING)**
+
+Before writing any temp file or running `gh`, the coordinator MUST verify each finding:
+1. Every Critical/Important finding cites at least one exact `file:line` reference.
+2. The severity matches the Severity Calibration rubric (Critical = crashes/leaks from current callers; not forward-looking; not stubs that can't throw).
+3. The code at the cited lines actually exists and contains the claimed defect.
+4. Any claim of "no validation" or "lacks check" is accurate — if the code has a guard, the finding is wrong.
+5. **UML Diagram present** — Critical and Important findings MUST include a Mermaid UML diagram in section 4. The diagram type must match the UML Diagram Requirements table. Reject placeholder diagrams (empty participants, no lifelines, no transitions).
+
+A finding that fails any check: REJECT it. Do not file. Report the rejection reason in the aggregate report.
+
+A finding that passes all checks: write to temp file and file via `gh --body-file` as specified in Step 1.E.
 
 ### Step 1.E — Coordinator Files Findings
 
@@ -295,16 +355,17 @@ After the audit completes:
 ## Persistence Rules
 - Each file audit MUST use a fresh subagent — do not reuse or combine contexts.
 - Do NOT skip or combine pillars — audit one pillar at a time for signal clarity.
-- Every Critical and Important finding MUST be filed as a GitHub issue.
-- The coordinator MUST NOT perform file audits itself — scope, dispatch, file, verify.
-- **VERBATIM MANDATE (HARD CONSTRAINT):** Coordinator writes auditor output to temp file and passes to `gh --body-file` without editing, summarizing, or rewriting. If the coordinator touches content, the audit is invalid.
-- Coordinator verifies char count after file write. If count mismatches, re-read auditor output and retry.
+- The coordinator MUST NOT perform file audits itself — scope, dispatch, verify, file.
+- **Quality Gate (HARD CONSTRAINT):** After auditors return, the coordinator MUST verify each finding against the Severity Calibration rubric. Reject findings that: lack exact file:line citations, classify forward-looking risks as Critical, flag impossible scenarios (stubs that can't throw), or make claims contradicted by the actual source code.
+- **Verbatim for passed findings:** Findings that pass the quality gate are written to temp file and passed to `gh --body-file` without editing, summarizing, or rewriting. Verbatim char count verified after write.
+- **Rejected findings:** Documented with rejection reason in the aggregate report. Not filed. Ask the auditor to correct and resubmit if warranted.
 
 ## Audit Checklist
-- [ ] Step 0: Cluster scoped, file hit list built, pillar selected, human authorization received
+- [ ] Step 0: Cluster scoped, file hit list built, pillar selected, scoping summary produced
 - [ ] Step 1: All files audited by isolated subagents with full 7-section issue bodies
-- [ ] Step 1.E: Coordinator wrote auditor output to temp files verbatim and ran `gh --body-file`
-- [ ] Step 1.E: Coordinator verified each filed issue body char count matches auditor output
+- [ ] Step D.1: Coordinator quality-gated each finding (line citations, severity rubric, fact-checked)
+- [ ] Step 1.E: Findings that passed quality gate filed via `gh --body-file`
+- [ ] Step 1.E: Rejected findings documented with reasons in aggregate report
 - [ ] Step 2: Cross-reference deduplication complete
 - [ ] Step 3: Aggregate risk report saved to `docs/audits/`
 - [ ] Step 4: Back-propagation decision made (upstream proposal)
@@ -313,11 +374,13 @@ After the audit completes:
 
 ## How to Run This Skill
 
-1. **Phase 0:** Query open bugs. Classify into pillars. Build file hit list. Present scoping summary. Wait for PROCEED.
+1. **Phase 0:** Query open bugs. Classify into pillars. Build file hit list. Produce scoping summary. Proceed directly to Phase 1 (no intermediate PROCEED gate — the user triggered this skill, it runs end-to-end).
 
 2. **Phase 1:** For each file, copy the pillar-specific prompt template above. Replace `[FILE_PATH]`, `[REVIEW_DOC_PATH]`, `[ISSUE_NUMBERS]` with real values. Dispatch auditors in batches of up to 6 in parallel. Collect outputs.
 
-3. **Phase 1.E:** For each finding in auditor output, write body to temp file verbatim, then:
+3. **Phase D.1 (Quality Gate):** Review each auditor finding. Verify line citations exist and point to real code. Check severity against the Calibration rubric. Reject findings that: lack line numbers, flag stubs as Critical, claim "no validation" when guards exist, or conflate forward-looking risks with current bugs.
+
+4. **Phase 1.E:** For findings that passed the quality gate, write body to temp file verbatim, then:
    ```bash
    gh issue create --repo gintatkinson/3dgs-002 --title "[title]" --label "bug" --body-file /tmp/gh_body.md
    ```
@@ -325,13 +388,13 @@ After the audit completes:
    ```bash
    gh issue comment N --repo gintatkinson/3dgs-002 --body-file /tmp/gh_comment.md
    ```
-   Never edit auditor output before filing. Char count must match.
+   Passed findings go verbatim. Char count verification required.
 
-4. **Phase 2:** Cross-reference for duplicates. Link related findings across files.
+5. **Phase 2:** Cross-reference for duplicates. Link related findings across files.
 
-5. **Phase 3:** Produce aggregate report.
+6. **Phase 3:** Produce aggregate report. Include both filed issues and rejected findings with reasons.
 
-6. **Repeat** for remaining pillars. Stop only when all open bugs have audit coverage or human intervenes.
+7. **Repeat** for remaining pillars. Stop only when all open bugs have audit coverage or human intervenes.
 
 ### Memory Safety Auditor Prompt
 
@@ -342,6 +405,14 @@ Pillar: Memory Safety. 8-dimension review. Weight Correctness HIGH.
 KNOWN ISSUES for this file: [ISSUE_NUMBERS]. Read: gh issue view [N1 N2 N3] --repo gintatkinson/3dgs-002 --json body
 
 Focus: double-free, UAF, dangling pointers, exception safety at extern "C", malloc/free pairing, NativeFinalizer correctness, mutex lifetime in async callbacks, string lifetime across FFI.
+
+HARD RULES:
+- Every finding MUST cite exact file:line. No line = no report.
+- Before claiming NEW issue: read known issue bodies via gh. If the root cause is already described, output COMMENT_FOR_ISSUE, not a new ISSUE.
+- Apply Severity Calibration rubric. Only reachable-from-current-callers is Critical. Forward-looking/future-risk is Suggestion.
+- Verify facts against source. "No validation" is only true if zero checks exist. If a NaN guard exists, say so.
+- Stub functions that cannot throw have no exception risk. Do not flag.
+- Section 4 UML diagram is MANDATORY for every Critical and Important finding. Select diagram type from the UML Diagram Requirements table. Use file:line references from Section 3 as lifeline/transition annotations.
 
 Produce 7-section issue bodies. Confirms/Extends -> comment. Discovered -> new issue.
 Return output. PROCEED
@@ -357,6 +428,13 @@ KNOWN ISSUES for this file: [ISSUE_NUMBERS]. Read: gh issue view [N1 N2 N3] --re
 
 Focus: missing dispose() on GPU resources, cache eviction correctness, sync I/O on UI thread, GC allocation churn in paint/build, repaint storms, widget tree depth, BackdropFilter overhead.
 
+HARD RULES:
+- Every finding MUST cite exact file:line. No line = no report.
+- Before claiming NEW issue: read known issue bodies via gh. If the root cause is already described, output COMMENT_FOR_ISSUE, not a new ISSUE.
+- Apply Severity Calibration rubric. Only reachable-from-current-callers is Critical. Forward-looking/future-risk is Suggestion.
+- Verify facts against source. Read the code before claiming a pattern is missing.
+- Section 4 UML diagram is MANDATORY for every Critical and Important finding. Select diagram type from the UML Diagram Requirements table. Use file:line references from Section 3 as lifeline/transition annotations.
+
 Produce 7-section issue bodies. Confirms/Extends -> comment. Discovered -> new issue.
 Return output. PROCEED
 ```
@@ -371,6 +449,13 @@ KNOWN ISSUES for this file: [ISSUE_NUMBERS]. Read: gh issue view [N1 N2 N3] --re
 
 Focus: ChangeNotifier disposal-after-notify, async type-loading races, state mutation in build(), watch/subscription lifecycle, TOCTOU on shared state, re-entrant async methods, missing _disposed guards.
 
+HARD RULES:
+- Every finding MUST cite exact file:line. No line = no report.
+- Before claiming NEW issue: read known issue bodies via gh. If the root cause is already described, output COMMENT_FOR_ISSUE, not a new ISSUE.
+- Apply Severity Calibration rubric. Only reachable-from-current-callers is Critical. Forward-looking/future-risk is Suggestion.
+- Verify facts against source. Read the code before claiming a guard is missing.
+- Section 4 UML diagram is MANDATORY for every Critical and Important finding. Select diagram type from the UML Diagram Requirements table. Use file:line references from Section 3 as lifeline/transition annotations.
+
 Produce 7-section issue bodies. Confirms/Extends -> comment. Discovered -> new issue.
 Return output. PROCEED
 ```
@@ -384,6 +469,13 @@ Pillar: Test Integrity. 8-dimension review. Weight Correctness HIGH.
 KNOWN ISSUES for this file: [ISSUE_NUMBERS]. Read: gh issue view [N1 N2 N3] --repo gintatkinson/3dgs-002 --json body
 
 Focus: FFI/DB-dependent tests requiring mocks, sleep/Future.delayed loops, bare assert() vs expect(), missing testWidgets wrappers, duplicated fakes/stubs, hardcoded paths, flaky timing assertions, as dynamic casting.
+
+HARD RULES:
+- Every finding MUST cite exact file:line. No line = no report.
+- Before claiming NEW issue: read known issue bodies via gh. If the root cause is already described, output COMMENT_FOR_ISSUE, not a new ISSUE.
+- Apply Severity Calibration rubric. Missing test coverage is a Suggestion, not Critical.
+- Verify facts against source. If a test file exists at the expected path, acknowledge it.
+- Section 4 UML diagram is MANDATORY for every Critical and Important finding. Select diagram type from the UML Diagram Requirements table. Use file:line references from Section 3 as lifeline/transition annotations.
 
 Produce 7-section issue bodies. Confirms/Extends -> comment. Discovered -> new issue.
 Return output. PROCEED
