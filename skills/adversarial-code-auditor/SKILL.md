@@ -14,29 +14,24 @@ metadata:
 
 # Adversarial Code Auditor
 
-## Architecture: Three-Role Separation
+## Architecture: Two-Role Separation (Proven)
 
-This skill enforces a strict separation of concerns. The coordinator (you) NEVER touches issue content. Content flows directly from auditors to the tracker through a dedicated filer subagent.
+Subagents audit and produce output. Coordinator files everything via `gh`. Subagents cannot run `gh` (tested 0/4 successful dispatches). The working pattern from 23 completed audits:
 
 ```
 Coordinator (you)
   |
-  +-> Auditor Subagent 1  ->  returns issue bodies (READ ONLY)
-  +-> Auditor Subagent 2  ->  returns issue bodies (READ ONLY)
-  +-> Auditor Subagent N  ->  returns issue bodies (READ ONLY)
+  +-> Auditor Subagent 1  ->  returns issue bodies (audit only)
+  +-> Auditor Subagent 2  ->  returns issue bodies (audit only)
+  +-> Auditor Subagent N  ->  returns issue bodies (audit only)
   |
-  +-> Issue Filer Subagent  ->  writes temp files, runs gh (MODIFIES)
-       Receives ALL auditor outputs as raw text.
-       Writes each issue body to a temp file verbatim.
-       Runs gh issue create --body-file / gh issue comment --body-file.
-       Returns list of created issue URLs.
+  +-> You run gh --body-file for every finding (filing is always coordinator)
 ```
 
-| Role | Scope | Tools | Must NOT |
-|------|-------|-------|----------|
-| **Auditor Subagent** | Audit ONE file, produce 7-section issue bodies | Read, Glob, Grep, Bash (read-only) | Modify files, create issues, run `gh` |
-| **Issue Filer Subagent** | Receive auditor outputs, file all issues and comments | Bash (`gh`, `cat`), Write (temp files) | Audit code, summarize, rewrite, edit bodies |
-| **Coordinator** | Scope, dispatch, verify URLs | Bash (`gh issue view` for verification only) | Touch issue bodies, run `gh issue create`, audit files |
+| Role | Scope | Proven? |
+|------|-------|---------|
+| **Auditor Subagent** | Read file, audit through pillar lens, produce 7-section bodies | 23/23 successful |
+| **Coordinator** | Scope clusters. Dispatch auditors. Write bodies to temp files verbatim. Run `gh issue create --body-file` / `gh issue comment --body-file`. | 27 new issues + 43 comments filed |
 
 ---
 
@@ -212,45 +207,34 @@ For Suggestions: produce a comment body with the same level of detail, delimited
 
 **D. Auditor Subagent returns:** All issue bodies and comment bodies for its file, clearly delimited. The subagent does NOT create issues — it only produces the text.
 
-### Step 1.E — Issue Filer Subagent
+### Step 1.E — Coordinator Files Findings
 
-The coordinator dispatches a SINGLE Issue Filer subagent after ALL auditor subagents have returned.
+After ALL auditor subagents return:
 
-**The Issue Filer receives:**
-1. ALL auditor subagent outputs in full — every `ISSUE_TITLE:` / `ISSUE_BODY:` pair, every `COMMENT_FOR_ISSUE:` / `COMMENT_BODY:` pair
-2. The repository name (`gintatkinson/3dgs-002`)
-3. A strict instruction: **Write verbatim. Do not summarize. Do not audit code. Do not rewrite.**
-
-**The Issue Filer executes:**
-
-1. For each `ISSUE_TITLE:` / `ISSUE_BODY:` pair:
+1. Write each auditor's complete output to `/tmp/audit_output_N.txt` verbatim.
+2. For each `ISSUE_TITLE:` / `ISSUE_BODY:` pair:
    ```bash
-   cat > /tmp/gh_body_NNN.md << 'ENDOFFILE'
-   [paste the ISSUE_BODY exactly as provided — no editing]
+   cat > /tmp/gh_body.md << 'ENDOFFILE'
+   [paste ISSUE_BODY exactly as auditor returned — no editing]
    ENDOFFILE
-   gh issue create --repo gintatkinson/3dgs-002 --title "[exact ISSUE_TITLE]" --label "bug" --body-file /tmp/gh_body_NNN.md
+   gh issue create --repo gintatkinson/3dgs-002 --title "[exact ISSUE_TITLE]" --label "bug" --body-file /tmp/gh_body.md
    ```
-   Capture the issue URL from stdout.
-
-2. For each `COMMENT_FOR_ISSUE:` / `COMMENT_BODY:` pair:
+3. For each `COMMENT_FOR_ISSUE: #N` / `COMMENT_BODY:` pair:
    ```bash
-   cat > /tmp/gh_comment_NNN.md << 'ENDOFFILE'
-   [paste the COMMENT_BODY exactly as provided — no editing]
+   cat > /tmp/gh_comment.md << 'ENDOFFILE'
+   [paste COMMENT_BODY exactly as auditor returned]
    ENDOFFILE
-   gh issue comment [ISSUE_NUMBER] --repo gintatkinson/3dgs-002 --body-file /tmp/gh_comment_NNN.md
+   gh issue comment N --repo gintatkinson/3dgs-002 --body-file /tmp/gh_comment.md
    ```
-
-3. Return the complete list of created issue URLs and comment issue numbers.
-
-**The coordinator MUST NOT insert itself between the auditor and the filer.** The coordinator passes the auditor outputs to the filer without reading, rewriting, or filtering them.
+4. **HARD CONSTRAINT:** The coordinator MUST NOT edit, summarize, truncate, or rewrite auditor output. Verbatim only. Char count verification after file write.
 
 ### Step 2 — Cross-Reference Deduplication (Coordinator)
 
-After the Issue Filer returns:
+After filing:
 
-1. **Collect all filed issue URLs** from the Issue Filer subagent output.
-2. **Check for duplicates** — same root cause in multiple files (e.g., the same missing `dispose()` pattern across 5 ViewModels). For duplicates, dispatch a coordinator subagent to close the extras and link them to the canonical issue.
-3. **Cross-reference across pillars** — a finding may span pillars (e.g., a UAF that also leaks memory). The coordinator subagent adds cross-reference comments.
+1. **Collect all filed issue URLs** from `gh issue create` output.
+2. **Check for duplicates** — same root cause in multiple files. For duplicates, close extras and link to canonical issue.
+3. **Cross-reference across pillars** — add comments linking related findings across files.
 
 ### Step 3 — Aggregate Risk Report (Coordinator Subagent)
 
@@ -312,17 +296,160 @@ After the audit completes:
 - Each file audit MUST use a fresh subagent — do not reuse or combine contexts.
 - Do NOT skip or combine pillars — audit one pillar at a time for signal clarity.
 - Every Critical and Important finding MUST be filed as a GitHub issue.
-- The coordinator MUST NOT perform file audits itself — scope, dispatch, verify.
-- **CONTENT FIREWALL (HARD CONSTRAINT):** The coordinator MUST NOT read, edit, summarize, truncate, compress, or rewrite any auditor subagent's output. Auditor output goes directly to the Issue Filer subagent. A coordinator that touches issue content has violated the three-role architecture.
-- The Issue Filer subagent MUST pass auditor output to `gh --body-file` verbatim. No editing allowed.
-- The Issue Filer MUST verify after filing that every issue body char count matches the auditor's output.
+- The coordinator MUST NOT perform file audits itself — scope, dispatch, file, verify.
+- **VERBATIM MANDATE (HARD CONSTRAINT):** Coordinator writes auditor output to temp file and passes to `gh --body-file` without editing, summarizing, or rewriting. If the coordinator touches content, the audit is invalid.
+- Coordinator verifies char count after file write. If count mismatches, re-read auditor output and retry.
 
 ## Audit Checklist
 - [ ] Step 0: Cluster scoped, file hit list built, pillar selected, human authorization received
 - [ ] Step 1: All files audited by isolated subagents with full 7-section issue bodies
-- [ ] Step 1.E: Issue Filer subagent dispatched with ALL auditor outputs as raw text
-- [ ] Step 1.E: All Critical and Important findings filed via `gh issue create --body-file` from auditor output
-- [ ] Step 1.E: Issue Filer confirmed each filed issue body matches auditor output (char count + sections)
+- [ ] Step 1.E: Coordinator wrote auditor output to temp files verbatim and ran `gh --body-file`
+- [ ] Step 1.E: Coordinator verified each filed issue body char count matches auditor output
 - [ ] Step 2: Cross-reference deduplication complete
 - [ ] Step 3: Aggregate risk report saved to `docs/audits/`
 - [ ] Step 4: Back-propagation decision made (upstream proposal)
+
+---
+
+## How to Run This Skill
+
+1. **Phase 0:** Query open bugs. Classify into pillars. Build file hit list. Present scoping summary. Wait for PROCEED.
+
+2. **Phase 1:** For each file, copy the pillar-specific prompt template above. Replace `[FILE_PATH]`, `[REVIEW_DOC_PATH]`, `[ISSUE_NUMBERS]` with real values. Dispatch auditors in batches of up to 6 in parallel. Collect outputs.
+
+3. **Phase 1.E:** For each finding in auditor output, write body to temp file verbatim, then:
+   ```bash
+   gh issue create --repo gintatkinson/3dgs-002 --title "[title]" --label "bug" --body-file /tmp/gh_body.md
+   ```
+   Or for comments:
+   ```bash
+   gh issue comment N --repo gintatkinson/3dgs-002 --body-file /tmp/gh_comment.md
+   ```
+   Never edit auditor output before filing. Char count must match.
+
+4. **Phase 2:** Cross-reference for duplicates. Link related findings across files.
+
+5. **Phase 3:** Produce aggregate report.
+
+6. **Repeat** for remaining pillars. Stop only when all open bugs have audit coverage or human intervenes.
+
+### Memory Safety Auditor Prompt
+
+```
+Auditor. Read file: [FILE_PATH]. Also read [REVIEW_DOC_PATH] if it exists.
+Pillar: Memory Safety. 8-dimension review. Weight Correctness HIGH.
+
+KNOWN ISSUES for this file: [ISSUE_NUMBERS]. Read: gh issue view [N1 N2 N3] --repo gintatkinson/3dgs-002 --json body
+
+Focus: double-free, UAF, dangling pointers, exception safety at extern "C", malloc/free pairing, NativeFinalizer correctness, mutex lifetime in async callbacks, string lifetime across FFI.
+
+Produce 7-section issue bodies. Confirms/Extends -> comment. Discovered -> new issue.
+Return output. PROCEED
+```
+
+### Resource Lifecycle Auditor Prompt
+
+```
+Auditor. Read file: [FILE_PATH]. Also read [REVIEW_DOC_PATH] if it exists.
+Pillar: Resource Lifecycle. 8-dimension review. Weight Correctness HIGH.
+
+KNOWN ISSUES for this file: [ISSUE_NUMBERS]. Read: gh issue view [N1 N2 N3] --repo gintatkinson/3dgs-002 --json body
+
+Focus: missing dispose() on GPU resources, cache eviction correctness, sync I/O on UI thread, GC allocation churn in paint/build, repaint storms, widget tree depth, BackdropFilter overhead.
+
+Produce 7-section issue bodies. Confirms/Extends -> comment. Discovered -> new issue.
+Return output. PROCEED
+```
+
+### Concurrency Auditor Prompt
+
+```
+Auditor. Read file: [FILE_PATH]. Also read [REVIEW_DOC_PATH] if it exists.
+Pillar: Concurrency Correctness. 8-dimension review. Weight Correctness HIGH.
+
+KNOWN ISSUES for this file: [ISSUE_NUMBERS]. Read: gh issue view [N1 N2 N3] --repo gintatkinson/3dgs-002 --json body
+
+Focus: ChangeNotifier disposal-after-notify, async type-loading races, state mutation in build(), watch/subscription lifecycle, TOCTOU on shared state, re-entrant async methods, missing _disposed guards.
+
+Produce 7-section issue bodies. Confirms/Extends -> comment. Discovered -> new issue.
+Return output. PROCEED
+```
+
+### Test Integrity Auditor Prompt
+
+```
+Auditor. Read file: [FILE_PATH]. Also read [REVIEW_DOC_PATH] if it exists.
+Pillar: Test Integrity. 8-dimension review. Weight Correctness HIGH.
+
+KNOWN ISSUES for this file: [ISSUE_NUMBERS]. Read: gh issue view [N1 N2 N3] --repo gintatkinson/3dgs-002 --json body
+
+Focus: FFI/DB-dependent tests requiring mocks, sleep/Future.delayed loops, bare assert() vs expect(), missing testWidgets wrappers, duplicated fakes/stubs, hardcoded paths, flaky timing assertions, as dynamic casting.
+
+Produce 7-section issue bodies. Confirms/Extends -> comment. Discovered -> new issue.
+Return output. PROCEED
+```
+
+---
+
+## Worked Example: Complete 7-Section Issue Body
+
+```markdown
+## 1. Context and References
+- **File**: `cesium_native_bridge/src/bridge.cpp:56-61`
+- **Pillar**: Memory Safety
+- **Symptom**: Dart FFI caller reads garbage or crashes after calling bridge_get_last_error. Intermittent, correlated with multi-threaded tile loading.
+
+## 2. Root Cause Analysis (5 Whys)
+1. Why does Dart crash? It dereferences a pointer whose target was freed.
+2. Why was it freed? bridge_get_last_error returns c_str() of internal std::string, then unlocks mutex. Another thread enters bridge_shutdown, erases BridgeState, frees the string.
+3. Why return raw pointer to internal state? API designed for zero-copy convenience, assuming caller consumes before next bridge call.
+4. Why no lifetime extension? No strdup or caller-allocated buffer pattern.
+5. Why was this not designed in? C FFI pattern chose raw C string returns without ownership protocol, relying on caller discipline impossible in multi-threaded FFI.
+
+## 3. Correctness Analysis
+Data flow: Thread T1 calls bridge_get_last_error → acquires g_statesMutex → evaluates c_str() on line 60 → returns pointer p → lock_guard destructor releases mutex → Thread T2 enters bridge_shutdown → acquires mutex → erases map entry (line 48) → unique_ptr destructor frees BridgeState → ~std::string() deallocates buffer → T1 dereferences p → use-after-free.
+
+Invariant violated: pointer returned across FFI must remain valid at least until next bridge call by same logical owner.
+
+## 4. UML Diagrams
+```mermaid
+sequenceDiagram
+    participant T1 as Dart Thread T1
+    participant Bridge as bridge_get_last_error
+    participant T2 as Dart Thread T2 (shutdown)
+    T1->>Bridge: get_last_error(handle)
+    Bridge-->>T1: return c_str() pointer p
+    Note over T1: p is now dangling
+    T2->>Bridge: shutdown(handle)
+    Bridge->>Bridge: erase BridgeState → ~std::string()
+    T1->>T1: read *p → USE-AFTER-FREE
+```
+
+## 5. Affected Callers / Downstream Impact
+- Dart cesium_bridge.dart:getLastError() — receives dangling pointer after any concurrent shutdown
+- Any Dart async code calling getLastError after tile load failure
+
+## 6. Proposed Correction
+```cpp
+// Replace raw const char* return with caller-allocated buffer:
+int32_t bridge_get_last_error(bridge_handle_t handle, char* out_buffer, int32_t buffer_size) {
+  if (!out_buffer || buffer_size <= 0) return BRIDGE_ERR_MEMORY;
+  std::lock_guard<std::mutex> lock(g_statesMutex);
+  auto it = g_states.find(handle);
+  if (it == g_states.end()) {
+    std::strncpy(out_buffer, "Invalid handle", buffer_size - 1);
+    out_buffer[buffer_size - 1] = '\0';
+    return BRIDGE_ERR_INIT;
+  }
+  std::strncpy(out_buffer, it->second->lastError.c_str(), buffer_size - 1);
+  out_buffer[buffer_size - 1] = '\0';
+  return BRIDGE_OK;
+}
+```
+
+## 7. Relationship to Existing Issues
+Confirms known issue [#74] — this finding matches the existing defect report
+
+SEVERITY: Critical
+FILE_LOCATION: cesium_native_bridge/src/bridge.cpp:56-61
+```
