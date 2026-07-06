@@ -449,9 +449,45 @@ HARD RULES:
 - Stub functions that cannot throw have no exception risk. Do not flag.
 - Section 4 UML diagram is MANDATORY for every Critical and Important finding. Select diagram type from the UML Diagram Requirements table. Use file:line references from Section 3 as lifeline/transition annotations.
 
-For each finding: write the complete 7-section ISSUE_BODY to /tmp/gh_body.md, then run:
+For each finding, produce the complete 7-section ISSUE_BODY using this template. ALL 7 sections mandatory. No abbreviations.
+
+```
+## 1. Context and References
+- **File**: `path/to/file.ext:line-line`
+- **Pillar**: [Pillar]
+- **Symptom**: [Observable failure]
+
+## 2. Root Cause Analysis (5 Whys)
+1. **Why ...?** Because ...
+2. **Why ...?** Because ...
+3. **Why ...?** Because ...
+4. **Why ...?** Because ...
+5. **Why ...?** Because ...
+
+## 3. Correctness Analysis
+[Trace data flow. Identify invariant violated. Reference specific source lines.]
+
+## 4. UML Diagrams (MANDATORY for Critical & Important)
+```mermaid
+[sequenceDiagram | classDiagram | stateDiagram-v2 — see UML Requirements table]
+```
+
+## 5. Affected Callers / Downstream Impact
+- [Caller] — [how affected]
+
+## 6. Proposed Correction
+[Code snippet]
+
+## 7. Relationship to Existing Issues
+- **Discovered in audit** — clean-slate audit.
+
+SEVERITY: [Critical | Important | Suggestion | Nitpick]
+FILE_LOCATION: [path:line-line]
+```
+
+Write each completed body to /tmp/gh_body.md. File via:
   gh issue create --repo gintatkinson/3dgs-002 --title "[ISSUE_TITLE]" --label "bug" --body-file /tmp/gh_body.md
-Return the list of created issue URLs. PROCEED
+Return the list of created issue URLs with severities. PROCEED
 ```
 
 ### Resource Lifecycle Auditor Prompt
@@ -472,7 +508,45 @@ HARD RULES:
 - Verify facts against source. Read the code before claiming a pattern is missing.
 - Section 4 UML diagram is MANDATORY for every Critical and Important finding. Select diagram type from the UML Diagram Requirements table. Use file:line references from Section 3 as lifeline/transition annotations.
 
-For each finding: write body to /tmp/gh_body.md, run gh issue create --body-file (or gh issue comment for existing). Return URLs. PROCEED
+For each finding, produce the complete 7-section body using this template. ALL 7 sections mandatory. No abbreviations.
+
+For new issues use ISSUE_TITLE/ISSUE_BODY. For existing issue comments use COMMENT_FOR_ISSUE:#N/COMMENT_BODY.
+
+ISSUE_BODY TEMPLATE:
+```
+## 1. Context and References
+- **File**: `path/to/file.ext:line-line`
+- **Pillar**: [Pillar]
+- **Symptom**: [Observable failure]
+
+## 2. Root Cause Analysis (5 Whys)
+1. **Why ...?** Because ...
+2. **Why ...?** Because ...
+3. **Why ...?** Because ...
+4. **Why ...?** Because ...
+5. **Why ...?** Because ...
+
+## 3. Correctness Analysis
+[Trace data flow. Identify invariant violated. Reference source lines.]
+
+## 4. UML Diagrams (MANDATORY for Critical & Important)
+```mermaid
+[diagram]
+
+## 5. Affected Callers / Downstream Impact
+
+## 6. Proposed Correction
+
+## 7. Relationship to Existing Issues
+- Confirms known issue [#NNN] — if already tracked
+- Extends [#NNN] — if adds new dimensions
+- **Discovered in audit** — if new finding
+
+SEVERITY: [Critical|Important|Suggestion|Nitpick]
+FILE_LOCATION: [path:line-line]
+```
+
+Write to /tmp/gh_body.md (or /tmp/gh_comment.md), file via gh issue create --body-file (or gh issue comment). Return URLs with severities. PROCEED
 ```
 
 **Clean-slate mode:**
@@ -491,9 +565,45 @@ HARD RULES:
 - Verify facts against source. Read the code before claiming a pattern is missing.
 - Section 4 UML diagram MANDATORY for Critical/Important.
 
-For each finding: write the complete 7-section ISSUE_BODY to /tmp/gh_body.md, then run:
+For each finding, produce the complete 7-section ISSUE_BODY using this template. ALL 7 sections mandatory. No abbreviations.
+
+```
+## 1. Context and References
+- **File**: `path/to/file.ext:line-line`
+- **Pillar**: [Pillar]
+- **Symptom**: [Observable failure]
+
+## 2. Root Cause Analysis (5 Whys)
+1. **Why ...?** Because ...
+2. **Why ...?** Because ...
+3. **Why ...?** Because ...
+4. **Why ...?** Because ...
+5. **Why ...?** Because ...
+
+## 3. Correctness Analysis
+[Trace data flow. Identify invariant violated. Reference specific source lines.]
+
+## 4. UML Diagrams (MANDATORY for Critical & Important)
+```mermaid
+[sequenceDiagram | classDiagram | stateDiagram-v2 — see UML Requirements table]
+```
+
+## 5. Affected Callers / Downstream Impact
+- [Caller] — [how affected]
+
+## 6. Proposed Correction
+[Code snippet]
+
+## 7. Relationship to Existing Issues
+- **Discovered in audit** — clean-slate audit.
+
+SEVERITY: [Critical | Important | Suggestion | Nitpick]
+FILE_LOCATION: [path:line-line]
+```
+
+Write each completed body to /tmp/gh_body.md. File via:
   gh issue create --repo gintatkinson/3dgs-002 --title "[ISSUE_TITLE]" --label "bug" --body-file /tmp/gh_body.md
-Return the list of created issue URLs. PROCEED
+Return the list of created issue URLs with severities. PROCEED
 ```
 
 ### Concurrency Auditor Prompt
@@ -514,7 +624,45 @@ HARD RULES:
 - Verify facts against source. Read the code before claiming a guard is missing.
 - Section 4 UML diagram is MANDATORY for every Critical and Important finding. Select diagram type from the UML Diagram Requirements table. Use file:line references from Section 3 as lifeline/transition annotations.
 
-For each finding: write body to /tmp/gh_body.md, run gh issue create --body-file (or gh issue comment for existing). Return URLs. PROCEED
+For each finding, produce the complete 7-section body using this template. ALL 7 sections mandatory. No abbreviations.
+
+For new issues use ISSUE_TITLE/ISSUE_BODY. For existing issue comments use COMMENT_FOR_ISSUE:#N/COMMENT_BODY.
+
+ISSUE_BODY TEMPLATE:
+```
+## 1. Context and References
+- **File**: `path/to/file.ext:line-line`
+- **Pillar**: [Pillar]
+- **Symptom**: [Observable failure]
+
+## 2. Root Cause Analysis (5 Whys)
+1. **Why ...?** Because ...
+2. **Why ...?** Because ...
+3. **Why ...?** Because ...
+4. **Why ...?** Because ...
+5. **Why ...?** Because ...
+
+## 3. Correctness Analysis
+[Trace data flow. Identify invariant violated. Reference source lines.]
+
+## 4. UML Diagrams (MANDATORY for Critical & Important)
+```mermaid
+[diagram]
+
+## 5. Affected Callers / Downstream Impact
+
+## 6. Proposed Correction
+
+## 7. Relationship to Existing Issues
+- Confirms known issue [#NNN] — if already tracked
+- Extends [#NNN] — if adds new dimensions
+- **Discovered in audit** — if new finding
+
+SEVERITY: [Critical|Important|Suggestion|Nitpick]
+FILE_LOCATION: [path:line-line]
+```
+
+Write to /tmp/gh_body.md (or /tmp/gh_comment.md), file via gh issue create --body-file (or gh issue comment). Return URLs with severities. PROCEED
 ```
 
 **Clean-slate mode:**
@@ -527,7 +675,39 @@ CLEAN-SLATE AUDIT: No known issues. All findings new — use ISSUE_TITLE / ISSUE
 Focus: ChangeNotifier disposal-after-notify, async type-loading races, state mutation in build(), watch/subscription lifecycle, TOCTOU on shared state, re-entrant async methods, missing _disposed guards.
 
 HARD RULES: cite file:line, apply Severity Calibration, verify against source, UML mandatory for Critical/Important.
-For each finding: write body to /tmp/gh_body.md, run gh issue create --body-file. Return URLs. PROCEED
+7-SECTION BODY TEMPLATE (all sections mandatory for every finding):
+```
+## 1. Context and References
+- **File**: `path/to/file.ext:line-line`
+- **Pillar**: [Pillar]
+- **Symptom**: [Observable failure]
+
+## 2. Root Cause Analysis (5 Whys)
+1. **Why ...?** Because ...
+2. **Why ...?** Because ...
+3. **Why ...?** Because ...
+4. **Why ...?** Because ...
+5. **Why ...?** Because ...
+
+## 3. Correctness Analysis
+[Trace data flow. Identify invariant violated. Reference source lines.]
+
+## 4. UML Diagrams (MANDATORY for Critical & Important)
+```mermaid
+[diagram]
+
+## 5. Affected Callers / Downstream Impact
+
+## 6. Proposed Correction
+
+## 7. Relationship to Existing Issues
+- **Discovered in audit**
+
+SEVERITY: [Critical|Important|Suggestion|Nitpick]
+FILE_LOCATION: [path:line-line]
+```
+
+Write each body to /tmp/gh_body.md, file via gh issue create --body-file. Return URLs with severities. PROCEED
 ```
 
 ### Test Integrity Auditor Prompt
@@ -548,7 +728,45 @@ HARD RULES:
 - Verify facts against source. If a test file exists at the expected path, acknowledge it.
 - Section 4 UML diagram is MANDATORY for every Critical and Important finding. Select diagram type from the UML Diagram Requirements table. Use file:line references from Section 3 as lifeline/transition annotations.
 
-For each finding: write body to /tmp/gh_body.md, run gh issue create --body-file (or gh issue comment for existing). Return URLs. PROCEED
+For each finding, produce the complete 7-section body using this template. ALL 7 sections mandatory. No abbreviations.
+
+For new issues use ISSUE_TITLE/ISSUE_BODY. For existing issue comments use COMMENT_FOR_ISSUE:#N/COMMENT_BODY.
+
+ISSUE_BODY TEMPLATE:
+```
+## 1. Context and References
+- **File**: `path/to/file.ext:line-line`
+- **Pillar**: [Pillar]
+- **Symptom**: [Observable failure]
+
+## 2. Root Cause Analysis (5 Whys)
+1. **Why ...?** Because ...
+2. **Why ...?** Because ...
+3. **Why ...?** Because ...
+4. **Why ...?** Because ...
+5. **Why ...?** Because ...
+
+## 3. Correctness Analysis
+[Trace data flow. Identify invariant violated. Reference source lines.]
+
+## 4. UML Diagrams (MANDATORY for Critical & Important)
+```mermaid
+[diagram]
+
+## 5. Affected Callers / Downstream Impact
+
+## 6. Proposed Correction
+
+## 7. Relationship to Existing Issues
+- Confirms known issue [#NNN] — if already tracked
+- Extends [#NNN] — if adds new dimensions
+- **Discovered in audit** — if new finding
+
+SEVERITY: [Critical|Important|Suggestion|Nitpick]
+FILE_LOCATION: [path:line-line]
+```
+
+Write to /tmp/gh_body.md (or /tmp/gh_comment.md), file via gh issue create --body-file (or gh issue comment). Return URLs with severities. PROCEED
 ```
 
 **Clean-slate mode:**
@@ -561,7 +779,39 @@ CLEAN-SLATE AUDIT: No known issues. All findings new — use ISSUE_TITLE / ISSUE
 Focus: FFI/DB-dependent tests requiring mocks, sleep/Future.delayed loops, bare assert() vs expect(), missing testWidgets wrappers, duplicated fakes/stubs, hardcoded paths, flaky timing assertions, as dynamic casting.
 
 HARD RULES: cite file:line, apply Severity Calibration (missing coverage = Suggestion), verify against source, UML mandatory for Critical/Important.
-For each finding: write body to /tmp/gh_body.md, run gh issue create --body-file. Return URLs. PROCEED
+7-SECTION BODY TEMPLATE (all sections mandatory):
+```
+## 1. Context and References
+- **File**: `path/to/file.ext:line-line`
+- **Pillar**: Test Integrity
+- **Symptom**: [Observable failure]
+
+## 2. Root Cause Analysis (5 Whys)
+1. **Why ...?** Because ...
+2. **Why ...?** Because ...
+3. **Why ...?** Because ...
+4. **Why ...?** Because ...
+5. **Why ...?** Because ...
+
+## 3. Correctness Analysis
+[Trace data flow. Reference source lines.]
+
+## 4. UML Diagrams (MANDATORY for Critical & Important)
+```mermaid
+[diagram]
+
+## 5. Affected Callers / Downstream Impact
+
+## 6. Proposed Correction
+
+## 7. Relationship to Existing Issues
+- **Discovered in audit**
+
+SEVERITY: [Critical|Important|Suggestion|Nitpick]
+FILE_LOCATION: [path:line-line]
+```
+
+Write each body to /tmp/gh_body.md, file via gh issue create --body-file. Return URLs with severities. PROCEED
 ```
 
 ---
