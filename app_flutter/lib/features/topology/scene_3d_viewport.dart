@@ -1592,19 +1592,15 @@ class Scene3DViewportPainter extends CustomPainter {
             final Color textColor = type == 'space'
                 ? const Color(0xFFFFB300)
                 : const Color(0xFF00E5FF);
-            final textPainter = TextPainter(
-              text: TextSpan(
-                text: node.label.isNotEmpty ? node.label : id,
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: 9,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'monospace',
-                ),
+            final textPainter = _TextPainterCache.getOrCreate(
+              node.label.isNotEmpty ? node.label : id,
+              textColor,
+              const TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'monospace',
               ),
-              textDirection: TextDirection.ltr,
             );
-            textPainter.layout();
             final Offset textPos = proj.offset + const Offset(8, -4);
             final RRect capsuleRRect = RRect.fromRectAndRadius(
               Rect.fromLTWH(
@@ -1729,5 +1725,46 @@ class Network3DScene {
   bool applyPbrMaterials() {
     isTranslucent = true;
     return true;
+  }
+}
+
+class _TextPainterKey {
+  final String text;
+  final Color color;
+  _TextPainterKey(this.text, this.color);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is _TextPainterKey &&
+          text == other.text &&
+          color == other.color;
+
+  @override
+  int get hashCode => Object.hash(text, color);
+}
+
+class _TextPainterCache {
+  static final Map<_TextPainterKey, TextPainter> _cache = {};
+  static const int _maxEntries = 256;
+
+  static TextPainter getOrCreate(String text, Color color, TextStyle baseStyle) {
+    final key = _TextPainterKey(text, color);
+    final existing = _cache[key];
+    if (existing != null) return existing;
+
+    if (_cache.length >= _maxEntries) {
+      _cache.remove(_cache.keys.first);
+    }
+    final painter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: baseStyle.copyWith(color: color),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    painter.layout();
+    _cache[key] = painter;
+    return painter;
   }
 }
