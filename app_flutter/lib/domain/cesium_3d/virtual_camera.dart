@@ -23,6 +23,14 @@ class VirtualCamera {
     required this.pitch,
     required this.roll,
   }) {
+    if (latitude.isNaN || latitude.isInfinite ||
+        longitude.isNaN || longitude.isInfinite ||
+        altitude.isNaN || altitude.isInfinite ||
+        heading.isNaN || heading.isInfinite ||
+        pitch.isNaN || pitch.isInfinite ||
+        roll.isNaN || roll.isInfinite) {
+      throw CoordinateValidationException('Coordinates and orientation values must be finite numbers.');
+    }
     if (latitude < -90.0 || latitude > 90.0) {
       throw CoordinateValidationException('Latitude must be in the range [-90.0, 90.0].');
     }
@@ -44,16 +52,23 @@ class VirtualCamera {
     required double pitch,
     required double roll,
   }) {
-    final double clampedLat = latitude.clamp(-90.0, 90.0);
-    final double clampedLng = longitude.clamp(-180.0, 180.0);
-    final double clampedAlt = altitude < -100.0 ? -100.0 : altitude;
+    final double lat = (latitude.isNaN || latitude.isInfinite) ? 0.0 : latitude;
+    final double lng = (longitude.isNaN || longitude.isInfinite) ? 0.0 : longitude;
+    final double alt = (altitude.isNaN || altitude.isInfinite) ? 0.0 : altitude;
+    final double head = (heading.isNaN || heading.isInfinite) ? 0.0 : heading;
+    final double pit = (pitch.isNaN || pitch.isInfinite) ? 0.0 : pitch;
+    final double rl = (roll.isNaN || roll.isInfinite) ? 0.0 : roll;
+
+    final double clampedLat = lat.clamp(-90.0, 90.0);
+    final double clampedLng = lng.clamp(-180.0, 180.0);
+    final double clampedAlt = alt < -100.0 ? -100.0 : alt;
     return VirtualCamera(
       latitude: clampedLat,
       longitude: clampedLng,
       altitude: clampedAlt,
-      heading: heading,
-      pitch: pitch,
-      roll: roll,
+      heading: head,
+      pitch: pit,
+      roll: rl,
     );
   }
 

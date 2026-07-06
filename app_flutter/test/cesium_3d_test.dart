@@ -83,6 +83,49 @@ void main() {
       expect(camera.longitude, -180.0);
       expect(camera.altitude, -100.0);
     });
+
+    test('Throws validation exception for NaN or Infinite inputs', () {
+      expect(
+        () => VirtualCamera(
+          latitude: double.nan,
+          longitude: -122.4194,
+          altitude: 500.0,
+          heading: 0.0,
+          pitch: -45.0,
+          roll: 0.0,
+        ),
+        throwsA(isA<CoordinateValidationException>()),
+      );
+      expect(
+        () => VirtualCamera(
+          latitude: 37.7749,
+          longitude: double.infinity,
+          altitude: 500.0,
+          heading: 0.0,
+          pitch: -45.0,
+          roll: 0.0,
+        ),
+        throwsA(isA<CoordinateValidationException>()),
+      );
+    });
+
+    test('clamped factory sanitizes NaN and Infinite inputs to 0.0', () {
+      final camera = VirtualCamera.clamped(
+        latitude: double.nan,
+        longitude: double.infinity,
+        altitude: double.nan,
+        heading: double.nan,
+        pitch: double.infinity,
+        roll: double.nan,
+      );
+
+      expect(camera.latitude, 0.0);
+      expect(camera.longitude, 0.0);
+      expect(camera.altitude, 0.0);
+      expect(camera.heading, 0.0);
+      expect(camera.pitch, 0.0);
+      expect(camera.roll, 0.0);
+    });
   });
 
   group('CoordinateTransformer Tests', () {

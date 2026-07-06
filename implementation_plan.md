@@ -26,6 +26,21 @@ We will systematically process the following open bug backlog in order of oldest
 
 ### Backlog Queue:
 * **Issue #58**: 3D Geospatial Engine FFI Memory Leak and Infinite Loop Vulnerabilities
+  - File: `app_flutter/lib/domain/cesium_3d/camera_controller.dart`
+    - Update `_wrapLngStatic`, `_wrapHeadingStatic`, `_wrapPitchStatic`, and `_wrapLng` to use modulo arithmetic instead of `while` loops for wrapping. Explicitly return `0.0` if input values are `isNaN` or `isInfinite`.
+  - File: `app_flutter/lib/domain/cesium_3d/virtual_camera.dart`
+    - In the constructor, explicitly check `isNaN` and `isInfinite` for all coordinate doubles and throw `CoordinateValidationException` if any are invalid.
+    - In `VirtualCamera.clamped` factory, fallback to `0.0` for any `isNaN` or `isInfinite` input before clamping.
+  - File: `app_flutter/lib/domain/cesium_3d/globe_tile_renderer.dart`
+    - In `setProvider`, dispose of all active images in `_loadedImages` before clearing.
+    - In `_fetchAndDecode`, when evicting an image, call `.dispose()` on it.
+    - Add a public `dispose()` method to dispose of all loaded images and clear the map.
+  - File: `app_flutter/lib/domain/cesium_3d/native/native_resource.dart`
+    - Add `_isReleased` flag/getter and safety checks in `release()` to prevent double-free and detach finalizers.
+  - File: `app_flutter/test/cesium_3d_test.dart`
+    - Add regression tests for `VirtualCamera` handling of `NaN` and infinity.
+  - File: `app_flutter/test/cesium_3d/native_resource_test.dart`
+    - Create a new test file to verify `NativeResource.release()` safety.
 * **Issue #59**: Workspace Controls, Table Rendering, and Theme Compilation Failures
 * **Issue #60**: Platform Initialization Crashes on Web and Hardcoded Path in FFI Tests
 * **Issue #61**: Table View Sorting Crash, Swatch Misalignment, and Focus State Rebuilding Failures

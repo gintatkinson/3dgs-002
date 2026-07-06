@@ -63,9 +63,20 @@ class GlobeTileRenderer {
   void setProvider(ImageryProvider provider) {
     if (_activeProvider == provider) return;
     _activeProvider = provider;
+    for (final img in _loadedImages.values) {
+      img.dispose();
+    }
     _loadedImages.clear();
     _pendingFetches.clear();
     _fetcher.clearCache();
+  }
+
+  /// Disposes all loaded tile images and clears the cache.
+  void dispose() {
+    for (final img in _loadedImages.values) {
+      img.dispose();
+    }
+    _loadedImages.clear();
   }
 
   /// Converts degrees to radians.
@@ -216,7 +227,9 @@ class GlobeTileRenderer {
         final image = frame.image;
         _loadedImages[tile.key] = image;
         if (_loadedImages.length > 64) {
-          _loadedImages.remove(_loadedImages.keys.first);
+          final firstKey = _loadedImages.keys.first;
+          final evicted = _loadedImages.remove(firstKey);
+          evicted?.dispose();
         }
         onTileLoaded?.call();
       }

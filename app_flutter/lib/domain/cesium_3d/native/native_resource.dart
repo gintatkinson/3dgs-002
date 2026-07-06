@@ -6,6 +6,9 @@ final _finalizer = NativeFinalizer(calloc.nativeFree);
 final class NativeResource implements Finalizable {
   final Pointer<Void> pointer;
   final int sizeBytes;
+  bool _isReleased = false;
+
+  bool get isReleased => _isReleased;
 
   NativeResource._(this.pointer, this.sizeBytes) {
     _finalizer.attach(this, pointer, detach: this, externalSize: sizeBytes);
@@ -17,6 +20,8 @@ final class NativeResource implements Finalizable {
   }
 
   void release() {
+    if (_isReleased) return;
+    _isReleased = true;
     _finalizer.detach(this);
     calloc.free(pointer);
   }

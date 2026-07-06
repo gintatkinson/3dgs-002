@@ -91,24 +91,21 @@ class CameraController extends ChangeNotifier {
   }
 
   static double _wrapLngStatic(double lng) {
-    if (!lng.isFinite) return 0.0;
-    if (lng.abs() > 360.0) {
-      lng = lng % 360.0;
+    if (lng.isNaN || !lng.isFinite) return 0.0;
+    double wrapped = (lng + 180.0) % 360.0;
+    if (wrapped < 0.0) wrapped += 360.0;
+    double val = wrapped - 180.0;
+    if (val == -180.0) {
+      return lng >= 0.0 ? 180.0 : -180.0;
     }
-    while (lng > 180.0) lng -= 360.0;
-    while (lng < -180.0) lng += 360.0;
-    return lng;
+    return val;
   }
 
   static double _wrapHeadingStatic(double heading) {
-    if (!heading.isFinite) return 0.0;
-    if (heading.abs() > 360.0) {
-      heading = heading % 360.0;
-    }
-    double h = heading;
-    while (h >= 360.0) h -= 360.0;
-    while (h < 0.0) h += 360.0;
-    return h;
+    if (heading.isNaN || !heading.isFinite) return 0.0;
+    double wrapped = heading % 360.0;
+    if (wrapped < 0.0) wrapped += 360.0;
+    return wrapped;
   }
 
   void pan(Offset delta, [double shortestSide = 800.0]) {
@@ -207,13 +204,14 @@ class CameraController extends ChangeNotifier {
   }
 
   double _wrapLng(double lng) {
-    if (!lng.isFinite) return 0.0;
-    if (lng.abs() > 360.0) {
-      lng = lng % 360.0;
+    if (lng.isNaN || !lng.isFinite) return 0.0;
+    double wrapped = (lng + 180.0) % 360.0;
+    if (wrapped < 0.0) wrapped += 360.0;
+    double val = wrapped - 180.0;
+    if (val == -180.0) {
+      return lng >= 0.0 ? 180.0 : -180.0;
     }
-    while (lng > 180.0) lng -= 360.0;
-    while (lng < -180.0) lng += 360.0;
-    return lng;
+    return val;
   }
 
   double _wrapHeading(double heading) => _wrapHeadingStatic(heading);
@@ -221,14 +219,14 @@ class CameraController extends ChangeNotifier {
   double _wrapPitch(double pitch) => _wrapPitchStatic(pitch);
 
   static double _wrapPitchStatic(double pitch) {
-    if (!pitch.isFinite) return 0.0;
-    if (pitch.abs() > 360.0) {
-      pitch = pitch % 360.0;
+    if (pitch.isNaN || !pitch.isFinite) return 0.0;
+    double wrapped = (pitch + 180.0) % 360.0;
+    if (wrapped < 0.0) wrapped += 360.0;
+    double val = wrapped - 180.0;
+    if (val == -180.0) {
+      return pitch >= 0.0 ? 180.0 : -180.0;
     }
-    double p = pitch;
-    while (p > 180.0) p -= 360.0;
-    while (p < -180.0) p += 360.0;
-    return p;
+    return val;
   }
 
   @visibleForTesting
