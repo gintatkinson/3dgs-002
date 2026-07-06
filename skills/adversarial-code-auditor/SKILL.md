@@ -9,29 +9,29 @@ metadata:
   category: auditing
   risk: low
   source: custom
-  version: "1.5"
+  version: "2.0"
 ---
 
 # Adversarial Code Auditor
 
-## Architecture: Two-Role Separation (Proven)
+## Architecture: Autonomous Subagent Filing
 
-Subagents audit and produce output. Coordinator files everything via `gh`. Subagents cannot run `gh` (tested 0/4 successful dispatches). The working pattern from 23 completed audits:
+Each auditor subagent independently reads, audits, and files its own findings. The coordinator scopes and dispatches only. No coordinator extraction corrupts objectivity.
 
 ```
 Coordinator (you)
   |
-  +-> Auditor Subagent 1  ->  returns issue bodies (audit only)
-  +-> Auditor Subagent 2  ->  returns issue bodies (audit only)
-  +-> Auditor Subagent N  ->  returns issue bodies (audit only)
+  +-> Auditor Subagent 1  ->  audits file → writes temp body → gh issue create → returns URLs
+  +-> Auditor Subagent 2  ->  audits file → writes temp body → gh issue create → returns URLs
+  +-> Auditor Subagent N  ->  audits file → writes temp body → gh issue create → returns URLs
   |
-  +-> You run gh --body-file for every finding (filing is always coordinator)
+  +-> Collect URLs, validate, produce aggregate report
 ```
 
-| Role | Scope | Proven? |
-|------|-------|---------|
-| **Auditor Subagent** | Read file, audit through pillar lens, produce 7-section bodies | 23/23 successful |
-| **Coordinator** | Scope clusters. Dispatch auditors. Write bodies to temp files verbatim. Run `gh issue create --body-file` / `gh issue comment --body-file`. | 27 new issues + 43 comments filed |
+| Role | Scope |
+|------|-------|
+| **Auditor Subagent** | Read file. Audit through pillar lens. Apply severity rubric. Produce 7-section body. Write body to temp file verbatim. Run `gh issue create --body-file`. Return issue URL. |
+| **Coordinator** | Scope clusters. Dispatch auditors. Collect issue URLs. Validate (spot-check 1-2 bodies). Cross-reference dedup. Produce aggregate report. Coordinator NEVER touches issue body text. |
 
 ---
 
@@ -263,41 +263,37 @@ The Output MUST be clearly delimited with `ISSUE_TITLE:` and `ISSUE_BODY:` marke
 - **Bug-based mode:** produce a comment body delimited with `COMMENT_FOR_ISSUE: #NNN` and `COMMENT_BODY:`.
 - **Clean-slate mode:** produce a standard 7-section ISSUE_BODY with severity Suggestion. All findings are new issues since no existing issues exist to comment on.
 
-**D. Auditor Subagent returns:** All issue bodies and comment bodies for its file, clearly delimited. The subagent does NOT create issues — it only produces the text.
+**D. Auditor Subagent files its own findings:**
 
-**D.1 — Coordinator Quality Gate (BEFORE FILING)**
-
-Before writing any temp file or running `gh`, the coordinator MUST verify each finding:
-1. Every Critical/Important finding cites at least one exact `file:line` reference.
-2. The severity matches the Severity Calibration rubric (Critical = crashes/leaks from current callers; not forward-looking; not stubs that can't throw).
-3. The code at the cited lines actually exists and contains the claimed defect.
-4. Any claim of "no validation" or "lacks check" is accurate — if the code has a guard, the finding is wrong.
-5. **UML Diagram present** — Critical and Important findings MUST include a Mermaid UML diagram in section 4. The diagram type must match the UML Diagram Requirements table. Reject placeholder diagrams (empty participants, no lifelines, no transitions).
-
-A finding that fails any check: REJECT it. Do not file. Report the rejection reason in the aggregate report.
-
-A finding that passes all checks: write to temp file and file via `gh --body-file` as specified in Step 1.E.
-
-### Step 1.E — Coordinator Files Findings
-
-After ALL auditor subagents return:
-
-1. Write each auditor's complete output to `/tmp/audit_output_N.txt` verbatim.
-2. For each `ISSUE_TITLE:` / `ISSUE_BODY:` pair:
+For each finding, the auditor subagent MUST:
+1. Write the complete 7-section issue body to a temp file verbatim (no summarization):
    ```bash
    cat > /tmp/gh_body.md << 'ENDOFFILE'
-   [paste ISSUE_BODY exactly as auditor returned — no editing]
+   [complete ISSUE_BODY as specified above — all 7 sections, UML if Critical/Important]
    ENDOFFILE
+   ```
+2. File the issue directly:
+   ```bash
    gh issue create --repo gintatkinson/3dgs-002 --title "[exact ISSUE_TITLE]" --label "bug" --body-file /tmp/gh_body.md
    ```
-3. For each `COMMENT_FOR_ISSUE: #N` / `COMMENT_BODY:` pair:
+3. For bug-based mode only — comments on existing issues:
    ```bash
    cat > /tmp/gh_comment.md << 'ENDOFFILE'
-   [paste COMMENT_BODY exactly as auditor returned]
+   [complete COMMENT_BODY]
    ENDOFFILE
    gh issue comment N --repo gintatkinson/3dgs-002 --body-file /tmp/gh_comment.md
    ```
-4. **HARD CONSTRAINT:** The coordinator MUST NOT edit, summarize, truncate, or rewrite auditor output. Verbatim only. Char count verification after file write.
+4. Return the issue URL(s) from stdout. The subagent's output to the coordinator is the list of created issue URLs and their severities.
+
+**Quality rules are embedded in the auditor's HARD RULES prompt.** No separate coordinator gate. The auditor applies the Severity Calibration rubric, UML requirements, and fact-verification at audit time — before filing.
+
+### Step 1.E — Coordinator Collects URLs
+
+After ALL auditor subagents return:
+
+1. Collect the issue URLs from each subagent's output.
+2. Spot-check 1-2 issue bodies by fetching via `gh issue view N --json body` — verify sections are complete, UML exists for Critical/Important. Do NOT edit bodies. If a body is truncated or malformed, ask that subagent to refile.
+3. Compile the URL list for dedup and report.
 
 ### Step 2 — Cross-Reference Deduplication (Coordinator)
 
@@ -364,19 +360,16 @@ After the audit completes:
 ---
 
 ## Persistence Rules
-- Each file audit MUST use a fresh subagent — do not reuse or combine contexts.
+- Each file audit MUST use a fresh, independent subagent — do not reuse or combine contexts.
 - Do NOT skip or combine pillars — audit one pillar at a time for signal clarity.
-- The coordinator MUST NOT perform file audits itself — scope, dispatch, verify, file.
-- **Quality Gate (HARD CONSTRAINT):** After auditors return, the coordinator MUST verify each finding against the Severity Calibration rubric. Reject findings that: lack exact file:line citations, classify forward-looking risks as Critical, flag impossible scenarios (stubs that can't throw), or make claims contradicted by the actual source code.
-- **Verbatim for passed findings:** Findings that pass the quality gate are written to temp file and passed to `gh --body-file` without editing, summarizing, or rewriting. Verbatim char count verified after write.
-- **Rejected findings:** Documented with rejection reason in the aggregate report. Not filed. Ask the auditor to correct and resubmit if warranted.
+- **Subagents file their own findings.** Each auditor writes its 7-section body to a temp file and runs `gh issue create --body-file` itself. No coordinator extraction. No body touching.
+- The coordinator MUST NOT write, edit, summarize, or extract issue bodies. Coordinator only collects URLs, spot-checks for completeness, cross-references, and produces the aggregate report.
+- Quality rules (severity calibration, file:line citations, UML requirements, fact-verification) are embedded in the auditor prompt's HARD RULES. The auditor applies them before filing.
 
 ## Audit Checklist
 - [ ] Step 0: Cluster scoped, file hit list built, pillar selected, scoping summary produced
-- [ ] Step 1: All files audited by isolated subagents with full 7-section issue bodies
-- [ ] Step D.1: Coordinator quality-gated each finding (line citations, severity rubric, fact-checked)
-- [ ] Step 1.E: Findings that passed quality gate filed via `gh --body-file`
-- [ ] Step 1.E: Rejected findings documented with reasons in aggregate report
+- [ ] Step 1: All files audited by isolated subagents — each filed its own issues via `gh --body-file`
+- [ ] Step 1.E: Coordinator collected all issue URLs, spot-checked 1-2 bodies for completeness
 - [ ] Step 2: Cross-reference deduplication complete
 - [ ] Step 3: Aggregate risk report saved to `docs/audits/`
 - [ ] Step 4: Back-propagation decision made (upstream proposal)
@@ -397,25 +390,21 @@ After the audit completes:
 
 2. **Phase 1-B:** For each file, copy the pillar-specific "Clean-slate mode" prompt template. Replace `[FILE_PATH]` with real values. No `[ISSUE_NUMBERS]` to substitute. Dispatch auditors in batches of up to 6 in parallel. All findings use ISSUE_TITLE/ISSUE_BODY — no COMMENT_FOR_ISSUE needed.
 
-**Both paths continue the same from here:**
+**Both paths continue the same from here. Each auditor subagent independently:**
+- Reads the file
+- Audits through pillar lens applying severity rubric + UML requirements + fact-verification
+- Writes the complete 7-section issue body to `/tmp/gh_body.md`
+- Runs `gh issue create --repo gintatkinson/3dgs-002 --title "[title]" --label "bug" --body-file /tmp/gh_body.md`
+- Returns the issue URL to the coordinator
+- For Path A only: comments on existing issues via `gh issue comment`
 
-3. **Phase D.1 (Quality Gate):** Review each auditor finding. Verify line citations exist and point to real code. Check severity against the Calibration rubric. Reject findings that: lack line numbers, flag stubs as Critical, claim "no validation" when guards exist, or conflate forward-looking risks with current bugs.
+3. **Phase 1.E (Coordinator):** Collect all issue URLs from subagent output. Spot-check 1-2 bodies via `gh issue view N --json body`. Do not touch bodies.
 
-4. **Phase 1.E:** For findings that passed the quality gate, write body to temp file verbatim, then:
-   ```bash
-   gh issue create --repo gintatkinson/3dgs-002 --title "[title]" --label "bug" --body-file /tmp/gh_body.md
-   ```
-   Or for comments (Path A only — Path B has no comments since there are no existing issues):
-   ```bash
-   gh issue comment N --repo gintatkinson/3dgs-002 --body-file /tmp/gh_comment.md
-   ```
-   Passed findings go verbatim. Char count verification required.
+4. **Phase 2:** Cross-reference for duplicates. Link related findings across files.
 
-5. **Phase 2:** Cross-reference for duplicates. Link related findings across files.
+5. **Phase 3:** Produce aggregate report. Include all filed issue URLs with severities.
 
-6. **Phase 3:** Produce aggregate report. Include both filed issues and rejected findings with reasons.
-
-7. **Repeat** for remaining pillars. Stop only when all open bugs have audit coverage or human intervenes.
+6. **Repeat** for remaining pillars. Stop only when all open bugs have audit coverage or human intervenes.
 
 ### Memory Safety Auditor Prompt
 
@@ -436,8 +425,11 @@ HARD RULES:
 - Stub functions that cannot throw have no exception risk. Do not flag.
 - Section 4 UML diagram is MANDATORY for every Critical and Important finding. Select diagram type from the UML Diagram Requirements table. Use file:line references from Section 3 as lifeline/transition annotations.
 
-Produce 7-section issue bodies. Confirms/Extends -> comment. Discovered -> new issue.
-Return output. PROCEED
+For each finding: write the complete 7-section ISSUE_BODY to /tmp/gh_body.md, then run:
+  gh issue create --repo gintatkinson/3dgs-002 --title "[ISSUE_TITLE]" --label "bug" --body-file /tmp/gh_body.md
+For comments on existing issues: write COMMENT_BODY to /tmp/gh_comment.md, then run:
+  gh issue comment N --repo gintatkinson/3dgs-002 --body-file /tmp/gh_comment.md
+Return the list of created issue URLs and comment references. PROCEED
 ```
 
 **Clean-slate mode (no known issues):**
@@ -457,8 +449,9 @@ HARD RULES:
 - Stub functions that cannot throw have no exception risk. Do not flag.
 - Section 4 UML diagram is MANDATORY for every Critical and Important finding. Select diagram type from the UML Diagram Requirements table. Use file:line references from Section 3 as lifeline/transition annotations.
 
-Produce 7-section issue bodies. All findings are Discovered in audit.
-Return output. PROCEED
+For each finding: write the complete 7-section ISSUE_BODY to /tmp/gh_body.md, then run:
+  gh issue create --repo gintatkinson/3dgs-002 --title "[ISSUE_TITLE]" --label "bug" --body-file /tmp/gh_body.md
+Return the list of created issue URLs. PROCEED
 ```
 
 ### Resource Lifecycle Auditor Prompt
@@ -479,8 +472,7 @@ HARD RULES:
 - Verify facts against source. Read the code before claiming a pattern is missing.
 - Section 4 UML diagram is MANDATORY for every Critical and Important finding. Select diagram type from the UML Diagram Requirements table. Use file:line references from Section 3 as lifeline/transition annotations.
 
-Produce 7-section issue bodies. Confirms/Extends -> comment. Discovered -> new issue.
-Return output. PROCEED
+For each finding: write body to /tmp/gh_body.md, run gh issue create --body-file (or gh issue comment for existing). Return URLs. PROCEED
 ```
 
 **Clean-slate mode:**
@@ -499,8 +491,9 @@ HARD RULES:
 - Verify facts against source. Read the code before claiming a pattern is missing.
 - Section 4 UML diagram MANDATORY for Critical/Important.
 
-Produce 7-section issue bodies. All findings are Discovered in audit.
-Return output. PROCEED
+For each finding: write the complete 7-section ISSUE_BODY to /tmp/gh_body.md, then run:
+  gh issue create --repo gintatkinson/3dgs-002 --title "[ISSUE_TITLE]" --label "bug" --body-file /tmp/gh_body.md
+Return the list of created issue URLs. PROCEED
 ```
 
 ### Concurrency Auditor Prompt
@@ -521,8 +514,7 @@ HARD RULES:
 - Verify facts against source. Read the code before claiming a guard is missing.
 - Section 4 UML diagram is MANDATORY for every Critical and Important finding. Select diagram type from the UML Diagram Requirements table. Use file:line references from Section 3 as lifeline/transition annotations.
 
-Produce 7-section issue bodies. Confirms/Extends -> comment. Discovered -> new issue.
-Return output. PROCEED
+For each finding: write body to /tmp/gh_body.md, run gh issue create --body-file (or gh issue comment for existing). Return URLs. PROCEED
 ```
 
 **Clean-slate mode:**
@@ -535,7 +527,7 @@ CLEAN-SLATE AUDIT: No known issues. All findings new — use ISSUE_TITLE / ISSUE
 Focus: ChangeNotifier disposal-after-notify, async type-loading races, state mutation in build(), watch/subscription lifecycle, TOCTOU on shared state, re-entrant async methods, missing _disposed guards.
 
 HARD RULES: cite file:line, apply Severity Calibration, verify against source, UML mandatory for Critical/Important.
-Produce 7-section issue bodies. All findings Discovered in audit. Return output. PROCEED
+For each finding: write body to /tmp/gh_body.md, run gh issue create --body-file. Return URLs. PROCEED
 ```
 
 ### Test Integrity Auditor Prompt
@@ -556,8 +548,7 @@ HARD RULES:
 - Verify facts against source. If a test file exists at the expected path, acknowledge it.
 - Section 4 UML diagram is MANDATORY for every Critical and Important finding. Select diagram type from the UML Diagram Requirements table. Use file:line references from Section 3 as lifeline/transition annotations.
 
-Produce 7-section issue bodies. Confirms/Extends -> comment. Discovered -> new issue.
-Return output. PROCEED
+For each finding: write body to /tmp/gh_body.md, run gh issue create --body-file (or gh issue comment for existing). Return URLs. PROCEED
 ```
 
 **Clean-slate mode:**
@@ -570,7 +561,7 @@ CLEAN-SLATE AUDIT: No known issues. All findings new — use ISSUE_TITLE / ISSUE
 Focus: FFI/DB-dependent tests requiring mocks, sleep/Future.delayed loops, bare assert() vs expect(), missing testWidgets wrappers, duplicated fakes/stubs, hardcoded paths, flaky timing assertions, as dynamic casting.
 
 HARD RULES: cite file:line, apply Severity Calibration (missing coverage = Suggestion), verify against source, UML mandatory for Critical/Important.
-Produce 7-section issue bodies. All findings Discovered in audit. Return output. PROCEED
+For each finding: write body to /tmp/gh_body.md, run gh issue create --body-file. Return URLs. PROCEED
 ```
 
 ---
