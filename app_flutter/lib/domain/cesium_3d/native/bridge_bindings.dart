@@ -1,6 +1,7 @@
 import 'dart:ffi';
 import 'dart:io' show Platform;
 import 'package:ffi/ffi.dart';
+import 'package:flutter/foundation.dart';
 
 final class BridgeCamera extends Struct {
   @Double()
@@ -188,6 +189,9 @@ class CesiumNativeBindings {
   }
 
   static CesiumNativeBindings load() {
+    if (kIsWeb) {
+      throw UnsupportedError('Cesium native bridge is not supported on Web');
+    }
     if (Platform.isMacOS) {
       final lib = DynamicLibrary.open('libcesium_native_bridge.dylib');
       return CesiumNativeBindings(lib);

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -48,18 +49,23 @@ class DatabaseInitializer {
   /// Throws on I/O errors (path resolution, file creation) or SQL
   /// execution failures.
   static Future<Database> create({String? dbPath, bool seed = true}) async {
-    final isTest = Platform.environment.containsKey('FLUTTER_TEST');
-    if (isTest || Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    final isTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
+    if (!kIsWeb && (isTest || Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
       sqfliteFfiInit();
       databaseFactory = databaseFactoryFfi;
     }
 
-    final path = dbPath != null
-        ? (dbPath == inMemoryDatabasePath ? dbPath : p.absolute(dbPath))
-        : p.join(
-            (await getApplicationSupportDirectory()).path,
-            'properties_db.db',
-          );
+    final String path;
+    if (kIsWeb) {
+      path = dbPath ?? inMemoryDatabasePath;
+    } else {
+      path = dbPath != null
+          ? (dbPath == inMemoryDatabasePath ? dbPath : p.absolute(dbPath))
+          : p.join(
+              (await getApplicationSupportDirectory()).path,
+              'properties_db.db',
+            );
+    }
 
     final db = await databaseFactory.openDatabase(path);
     await db.execute('PRAGMA journal_mode = WAL;');
@@ -175,7 +181,7 @@ class DatabaseInitializer {
       await attrBatch.commit(noResult: true);
     }
 
-    final isTest = Platform.environment.containsKey('FLUTTER_TEST');
+    final isTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
     final int maxMasters = isTest ? 20 : 1000;
     for (int chunkStart = 0; chunkStart < maxMasters; chunkStart += 50) {
       final chunkEnd = (chunkStart + 50) > maxMasters ? maxMasters : (chunkStart + 50);

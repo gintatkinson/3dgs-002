@@ -10,7 +10,7 @@ import 'data_source.dart';
 import 'data_sources/firebase_data_source.dart';
 import 'data_sources/sqlite_data_source.dart';
 import 'database_initializer.dart';
-import 'package:flutter/foundation.dart' show compute;
+import 'package:flutter/foundation.dart';
 
 
 /// Resolves the data-access backend at app startup.
@@ -111,16 +111,21 @@ class RepositoryResolver {
     String? dbAssetPath,
     bool inMemory = false,
   }) async {
-    final isTest = Platform.environment.containsKey('FLUTTER_TEST');
-    if (isTest || Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    final isTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
+    if (!kIsWeb && (isTest || Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
       sqfliteFfiInit();
       databaseFactory = databaseFactoryFfi;
     }
 
-    final dir = await getApplicationSupportDirectory();
-    final dbPath = inMemory ? inMemoryDatabasePath : p.join(dir.path, 'properties_db.db');
+    final String dbPath;
+    if (kIsWeb) {
+      dbPath = inMemoryDatabasePath;
+    } else {
+      final dir = await getApplicationSupportDirectory();
+      dbPath = inMemory ? inMemoryDatabasePath : p.join(dir.path, 'properties_db.db');
+    }
 
-    if (!inMemory) {
+    if (!kIsWeb && !inMemory) {
       final dbFile = File(dbPath);
       bool isOutdated = false;
       final exists = await dbFile.exists();
