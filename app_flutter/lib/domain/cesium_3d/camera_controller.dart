@@ -91,19 +91,30 @@ class CameraController extends ChangeNotifier {
   }
 
   static double _wrapLngStatic(double lng) {
-    while (lng > 180) lng -= 360;
-    while (lng < -180) lng += 360;
+    if (!lng.isFinite) return 0.0;
+    if (lng.abs() > 360.0) {
+      lng = lng % 360.0;
+    }
+    while (lng > 180.0) lng -= 360.0;
+    while (lng < -180.0) lng += 360.0;
     return lng;
   }
 
   static double _wrapHeadingStatic(double heading) {
+    if (!heading.isFinite) return 0.0;
+    if (heading.abs() > 360.0) {
+      heading = heading % 360.0;
+    }
     double h = heading;
-    while (h >= 360) h -= 360;
-    while (h < 0) h += 360;
+    while (h >= 360.0) h -= 360.0;
+    while (h < 0.0) h += 360.0;
     return h;
   }
 
   void pan(Offset delta, [double shortestSide = 800.0]) {
+    if (shortestSide <= 0.0 || shortestSide.isNaN) {
+      shortestSide = 800.0;
+    }
     final double factor = (_camera.altitude + 500000.0) * 2.8074e-5 / shortestSide;
     
     // Rotate the drag delta by the camera heading to align panning with the screen axes
@@ -196,8 +207,12 @@ class CameraController extends ChangeNotifier {
   }
 
   double _wrapLng(double lng) {
-    while (lng > 180) lng -= 360;
-    while (lng < -180) lng += 360;
+    if (!lng.isFinite) return 0.0;
+    if (lng.abs() > 360.0) {
+      lng = lng % 360.0;
+    }
+    while (lng > 180.0) lng -= 360.0;
+    while (lng < -180.0) lng += 360.0;
     return lng;
   }
 
@@ -206,9 +221,25 @@ class CameraController extends ChangeNotifier {
   double _wrapPitch(double pitch) => _wrapPitchStatic(pitch);
 
   static double _wrapPitchStatic(double pitch) {
+    if (!pitch.isFinite) return 0.0;
+    if (pitch.abs() > 360.0) {
+      pitch = pitch % 360.0;
+    }
     double p = pitch;
     while (p > 180.0) p -= 360.0;
     while (p < -180.0) p += 360.0;
     return p;
   }
+
+  @visibleForTesting
+  static double wrapLngStaticForTesting(double lng) => _wrapLngStatic(lng);
+
+  @visibleForTesting
+  static double wrapHeadingStaticForTesting(double heading) => _wrapHeadingStatic(heading);
+
+  @visibleForTesting
+  double wrapLngForTesting(double lng) => _wrapLng(lng);
+
+  @visibleForTesting
+  static double wrapPitchStaticForTesting(double pitch) => _wrapPitchStatic(pitch);
 }

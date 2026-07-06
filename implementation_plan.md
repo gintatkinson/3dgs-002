@@ -1951,3 +1951,28 @@ This phase details changes to add testing keys to settings widgets, use key-base
   ```
 
 
+## Phase 33: Camera Controller Coordinate Wrapping and division-by-zero protection (Issue #133)
+
+This phase implements robust coordinate wrapping for camera variables and division-by-zero protection for viewport parameters.
+
+### Core App Code
+
+#### [MODIFY] [camera_controller.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/lib/domain/cesium_3d/camera_controller.dart)
+- Update `pan` to protect against `shortestSide <= 0` or `NaN` values by defaulting to `800.0`.
+- Implement modulo-based, non-finite-safe coordinate wrapping in `_wrapLngStatic`, `_wrapHeadingStatic`, `_wrapLng`, and `_wrapPitchStatic`. If input is not finite, return `0.0`. Otherwise, use `% 360.0` modulo arithmetic to wrap values larger than 360 in O(1) time, then apply standard loops for boundary compatibility.
+
+### Unit Tests
+
+#### [CREATE] [camera_controller_angle_wrapping_test.dart](file:///Users/perkunas/jail/3dgs-002/app_flutter/test/cesium_3d/camera_controller_angle_wrapping_test.dart)
+- Create a new unit/regression test file testing all wrapping functions with standard boundary values, extremely large values (e.g. `1e15`), and non-finite values (`double.nan`, `double.infinity`, `double.negativeInfinity`).
+
+### Phase 33 Verification Plan
+
+#### Automated Tests
+- Run the new angle wrapping test:
+  ```bash
+  flutter test test/cesium_3d/camera_controller_angle_wrapping_test.dart
+  ```
+
+
+
