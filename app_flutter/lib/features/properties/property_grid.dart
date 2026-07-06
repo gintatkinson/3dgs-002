@@ -132,6 +132,7 @@ class _PropertyGridState extends State<PropertyGrid> {
   final Map<String, FocusNode> _focusNodes = {};
   Map<String, String> _errors = const {};
   final Map<String, bool> _hadFocus = {};
+  bool _isDisposingFields = false;
 
   late Map<String, dynamic> committedData;
 
@@ -161,6 +162,7 @@ class _PropertyGridState extends State<PropertyGrid> {
 
       if (field.type != 'enum') {
         focusNode.addListener(() {
+          if (_isDisposingFields) return;
           final bool currentlyHasFocus = focusNode.hasFocus;
           final bool previouslyHadFocus = _hadFocus[field.key] ?? false;
           _hadFocus[field.key] = currentlyHasFocus;
@@ -180,6 +182,7 @@ class _PropertyGridState extends State<PropertyGrid> {
   /// changes. After this method returns the widget is left in a clean state
   /// ready for [_initializeFields] to re-create everything.
   void _disposeAllFields() {
+    _isDisposingFields = true;
     for (final controller in _controllers.values) {
       controller.dispose();
     }
@@ -190,6 +193,7 @@ class _PropertyGridState extends State<PropertyGrid> {
     _focusNodes.clear();
     _hadFocus.clear();
     _errors = const {};
+    _isDisposingFields = false;
   }
 
   @override
@@ -309,6 +313,7 @@ class _PropertyGridState extends State<PropertyGrid> {
   /// displayed inline below the input. The callback is NOT fired on failure so
   /// that callers only see consistent, valid state snapshots.
   void _triggerBlurSave(String key, FieldDescriptor field) {
+    if (!mounted) return;
     final valueString = field.type == 'enum'
         ? (committedData[key]?.toString() ?? '')
         : (_controllers[key]?.text ?? '');
