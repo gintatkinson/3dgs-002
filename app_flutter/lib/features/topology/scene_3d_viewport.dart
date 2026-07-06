@@ -1019,8 +1019,8 @@ class Scene3DViewportPainter extends CustomPainter {
     Size size,
   ) {
     final CesiumEngine? engine = CesiumEngine.instance;
-    final double radLng = camera.longitude * math.pi / 180.0;
-    final double radLat = camera.latitude * math.pi / 180.0;
+    final double radLng = -rotationY;
+    final double radLat = -tilt;
 
     final double R = 6378137.0;
 
