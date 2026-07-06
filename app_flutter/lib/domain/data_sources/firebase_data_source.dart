@@ -24,6 +24,7 @@ class FirebaseDataSource implements DataSource {
   /// correct project before calling any data methods.
   FirebaseDataSource(this._firestore);
   final FirebaseFirestore _firestore;
+  List<TypeDescriptor>? _cachedTypes;
   final StreamController<Map<String, dynamic>> _propertiesController =
       StreamController<Map<String, dynamic>>.broadcast();
 
@@ -45,6 +46,7 @@ class FirebaseDataSource implements DataSource {
   /// triggers a Firestore read.
   @override
   Future<List<TypeDescriptor>> discoverTypes() async {
+    if (_cachedTypes != null) return _cachedTypes!;
     try {
       final snapshot = await _firestore.collection('schema').doc('types').get();
       final data = snapshot.data();
@@ -64,6 +66,7 @@ class FirebaseDataSource implements DataSource {
           parentTypes: _parseRelations(def['parentTypes'] as List<dynamic>?),
         ));
       }
+      _cachedTypes = types;
       return types;
     } catch (e, stackTrace) {
       debugPrint('Error in discoverTypes: $e\n$stackTrace');
@@ -165,13 +168,14 @@ class FirebaseDataSource implements DataSource {
   /// Firestore writes from other clients; only in-process calls to
   /// [saveProperties] trigger stream events.
   @override
-  Stream<Map<String, dynamic>> watchProperties(String nodeId) async* {
-    yield await fetchProperties(nodeId);
-    await for (final event in _propertiesController.stream) {
-      if (event['nodeId'] == nodeId) {
-        yield event['data'] as Map<String, dynamic>;
-      }
-    }
+  Stream<Map<String, dynamic>> watchProperties(String nodeId) {
+    return _firestore
+        .collection('data')
+        .doc(nodeId)
+        .snapshots()
+        .map((snapshot) {
+          return Map<String, dynamic>.from(snapshot.data() as Map? ?? {});
+        });
   }
 
   @override
