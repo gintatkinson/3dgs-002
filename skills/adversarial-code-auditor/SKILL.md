@@ -9,7 +9,7 @@ metadata:
   category: auditing
   risk: low
   source: custom
-  version: "1.4"
+  version: "1.5"
 ---
 
 # Adversarial Code Auditor
@@ -42,6 +42,7 @@ Use this skill to perform pre-emptive adversarial review of source files identif
 - A cluster of related high-risk defects exists (e.g., 5+ open FFI memory bugs in related source files).
 - The defects are static/fundamental in nature (UAF, double-free, missing dispose, racy state mutation, non-isolated tests) — not transient runtime symptoms.
 - You want to get ahead of the backlog by auditing the correctness of code before symptoms escalate.
+- **The user provides explicit file paths to audit** — no prior issues required. Dispatch auditors directly against the specified files. All findings are "Discovered in audit."
 
 ## When NOT to Invoke
 
@@ -132,7 +133,7 @@ Every Critical and Important finding MUST include a Mermaid UML diagram in secti
 
 This skill runs end-to-end once authorized. No internal gates after start.
 
-Before dispatching auditors, scope the target cluster:
+**Path A — Bug-based scoping (cluster enrichment):** Use when open bugs exist.
 
 1. **Query the tracker** for all open issues labeled `bug`:
    ```bash
@@ -143,6 +144,14 @@ Before dispatching auditors, scope the target cluster:
 4. **Build a per-file hit list**: deduplicate and group by source file. Rank by issue count (most-referenced files first).
 5. **Select the target pillar** — if the user specified one, use it. Otherwise, audit the highest-density pillar.
 6. **Produce scoping summary** with target pillar, file hit list, and issue count. Then proceed directly to Step 1 — no intermediate gate.
+
+**Path B — Direct file scoping (clean-slate audit):** Use when the user provides explicit file paths and a pillar. No prior bugs required.
+
+1. Accept the file paths and pillar from the user. If no pillar specified, default to Memory Safety.
+2. Skip the issue query — there are no known issues to read.
+3. The file hit list IS the user-provided file paths.
+4. **Produce scoping summary** with pillar and file list. Note: "Clean-slate audit — zero known issues. All findings are new discoveries."
+5. Proceed directly to Step 1.
 
 ### Step 1 — Per-File Adversarial Audit (Auditor Subagents)
 
@@ -250,7 +259,9 @@ Each issue body MUST include all 7 sections. Section 4 (UML Diagram) is MANDATOR
 The Output MUST be clearly delimited with `ISSUE_TITLE:` and `ISSUE_BODY:` markers.
 ```
 
-For Suggestions: produce a comment body with the same level of detail, delimited with `COMMENT_FOR_ISSUE: #NNN` and `COMMENT_BODY:`.
+**For Suggestions:**
+- **Bug-based mode:** produce a comment body delimited with `COMMENT_FOR_ISSUE: #NNN` and `COMMENT_BODY:`.
+- **Clean-slate mode:** produce a standard 7-section ISSUE_BODY with severity Suggestion. All findings are new issues since no existing issues exist to comment on.
 
 **D. Auditor Subagent returns:** All issue bodies and comment bodies for its file, clearly delimited. The subagent does NOT create issues — it only produces the text.
 
@@ -374,9 +385,19 @@ After the audit completes:
 
 ## How to Run This Skill
 
-1. **Phase 0:** Query open bugs. Classify into pillars. Build file hit list. Produce scoping summary. Proceed directly to Phase 1 (no intermediate PROCEED gate — the user triggered this skill, it runs end-to-end).
+**Path A — Bug-based scoping:** Use when open bugs exist.
 
-2. **Phase 1:** For each file, copy the pillar-specific prompt template above. Replace `[FILE_PATH]`, `[REVIEW_DOC_PATH]`, `[ISSUE_NUMBERS]` with real values. Dispatch auditors in batches of up to 6 in parallel. Collect outputs.
+1. **Phase 0:** Query open bugs. Classify into pillars. Build file hit list. Produce scoping summary. Proceed directly to Phase 1.
+
+2. **Phase 1:** For each file, copy the pillar-specific "Bug-based mode" prompt template. Replace `[FILE_PATH]`, `[REVIEW_DOC_PATH]`, `[ISSUE_NUMBERS]` with real values. Dispatch auditors in batches of up to 6 in parallel. Collect outputs.
+
+**Path B — Clean-slate scoping:** Use when zero open bugs exist, or user provides explicit file paths.
+
+1. **Phase 0-B:** Accept file paths and pillar from the user. No issue query needed. File hit list = user-provided paths. Produce scoping summary noting "Clean-slate audit — zero known issues."
+
+2. **Phase 1-B:** For each file, copy the pillar-specific "Clean-slate mode" prompt template. Replace `[FILE_PATH]` with real values. No `[ISSUE_NUMBERS]` to substitute. Dispatch auditors in batches of up to 6 in parallel. All findings use ISSUE_TITLE/ISSUE_BODY — no COMMENT_FOR_ISSUE needed.
+
+**Both paths continue the same from here:**
 
 3. **Phase D.1 (Quality Gate):** Review each auditor finding. Verify line citations exist and point to real code. Check severity against the Calibration rubric. Reject findings that: lack line numbers, flag stubs as Critical, claim "no validation" when guards exist, or conflate forward-looking risks with current bugs.
 
@@ -384,7 +405,7 @@ After the audit completes:
    ```bash
    gh issue create --repo gintatkinson/3dgs-002 --title "[title]" --label "bug" --body-file /tmp/gh_body.md
    ```
-   Or for comments:
+   Or for comments (Path A only — Path B has no comments since there are no existing issues):
    ```bash
    gh issue comment N --repo gintatkinson/3dgs-002 --body-file /tmp/gh_comment.md
    ```
@@ -398,6 +419,7 @@ After the audit completes:
 
 ### Memory Safety Auditor Prompt
 
+**Bug-based mode (known issues exist):**
 ```
 Auditor. Read file: [FILE_PATH]. Also read [REVIEW_DOC_PATH] if it exists.
 Pillar: Memory Safety. 8-dimension review. Weight Correctness HIGH.
@@ -418,8 +440,30 @@ Produce 7-section issue bodies. Confirms/Extends -> comment. Discovered -> new i
 Return output. PROCEED
 ```
 
+**Clean-slate mode (no known issues):**
+```
+Auditor. Read file: [FILE_PATH]. Also read [REVIEW_DOC_PATH] if it exists.
+Pillar: Memory Safety. 8-dimension review. Weight Correctness HIGH.
+
+CLEAN-SLATE AUDIT: No known issues for this file. All findings are new discoveries — use ISSUE_TITLE / ISSUE_BODY for every finding.
+
+Focus: double-free, UAF, dangling pointers, exception safety at extern "C", malloc/free pairing, NativeFinalizer correctness, mutex lifetime in async callbacks, string lifetime across FFI.
+
+HARD RULES:
+- Every finding MUST cite exact file:line. No line = no report.
+- ALL findings are "Discovered in audit" — no COMMENT_FOR_ISSUE needed.
+- Apply Severity Calibration rubric. Only reachable-from-current-callers is Critical. Forward-looking/future-risk is Suggestion.
+- Verify facts against source. "No validation" is only true if zero checks exist. If a NaN guard exists, say so.
+- Stub functions that cannot throw have no exception risk. Do not flag.
+- Section 4 UML diagram is MANDATORY for every Critical and Important finding. Select diagram type from the UML Diagram Requirements table. Use file:line references from Section 3 as lifeline/transition annotations.
+
+Produce 7-section issue bodies. All findings are Discovered in audit.
+Return output. PROCEED
+```
+
 ### Resource Lifecycle Auditor Prompt
 
+**Bug-based mode:**
 ```
 Auditor. Read file: [FILE_PATH]. Also read [REVIEW_DOC_PATH] if it exists.
 Pillar: Resource Lifecycle. 8-dimension review. Weight Correctness HIGH.
@@ -439,8 +483,29 @@ Produce 7-section issue bodies. Confirms/Extends -> comment. Discovered -> new i
 Return output. PROCEED
 ```
 
+**Clean-slate mode:**
+```
+Auditor. Read file: [FILE_PATH]. Also read [REVIEW_DOC_PATH] if it exists.
+Pillar: Resource Lifecycle. 8-dimension review. Weight Correctness HIGH.
+
+CLEAN-SLATE AUDIT: No known issues. All findings are new discoveries — use ISSUE_TITLE / ISSUE_BODY for every finding.
+
+Focus: missing dispose() on GPU resources, cache eviction correctness, sync I/O on UI thread, GC allocation churn in paint/build, repaint storms, widget tree depth, BackdropFilter overhead.
+
+HARD RULES:
+- Every finding MUST cite exact file:line. No line = no report.
+- ALL findings are "Discovered in audit."
+- Apply Severity Calibration rubric. Only reachable-from-current-callers is Critical.
+- Verify facts against source. Read the code before claiming a pattern is missing.
+- Section 4 UML diagram MANDATORY for Critical/Important.
+
+Produce 7-section issue bodies. All findings are Discovered in audit.
+Return output. PROCEED
+```
+
 ### Concurrency Auditor Prompt
 
+**Bug-based mode:**
 ```
 Auditor. Read file: [FILE_PATH]. Also read [REVIEW_DOC_PATH] if it exists.
 Pillar: Concurrency Correctness. 8-dimension review. Weight Correctness HIGH.
@@ -460,8 +525,22 @@ Produce 7-section issue bodies. Confirms/Extends -> comment. Discovered -> new i
 Return output. PROCEED
 ```
 
+**Clean-slate mode:**
+```
+Auditor. Read file: [FILE_PATH]. Also read [REVIEW_DOC_PATH] if it exists.
+Pillar: Concurrency Correctness. 8-dimension review. Weight Correctness HIGH.
+
+CLEAN-SLATE AUDIT: No known issues. All findings new — use ISSUE_TITLE / ISSUE_BODY.
+
+Focus: ChangeNotifier disposal-after-notify, async type-loading races, state mutation in build(), watch/subscription lifecycle, TOCTOU on shared state, re-entrant async methods, missing _disposed guards.
+
+HARD RULES: cite file:line, apply Severity Calibration, verify against source, UML mandatory for Critical/Important.
+Produce 7-section issue bodies. All findings Discovered in audit. Return output. PROCEED
+```
+
 ### Test Integrity Auditor Prompt
 
+**Bug-based mode:**
 ```
 Auditor. Read file: [FILE_PATH]. Also read [REVIEW_DOC_PATH] if it exists.
 Pillar: Test Integrity. 8-dimension review. Weight Correctness HIGH.
@@ -479,6 +558,19 @@ HARD RULES:
 
 Produce 7-section issue bodies. Confirms/Extends -> comment. Discovered -> new issue.
 Return output. PROCEED
+```
+
+**Clean-slate mode:**
+```
+Auditor. Read file: [FILE_PATH]. Also read [REVIEW_DOC_PATH] if it exists.
+Pillar: Test Integrity. 8-dimension review. Weight Correctness HIGH.
+
+CLEAN-SLATE AUDIT: No known issues. All findings new — use ISSUE_TITLE / ISSUE_BODY.
+
+Focus: FFI/DB-dependent tests requiring mocks, sleep/Future.delayed loops, bare assert() vs expect(), missing testWidgets wrappers, duplicated fakes/stubs, hardcoded paths, flaky timing assertions, as dynamic casting.
+
+HARD RULES: cite file:line, apply Severity Calibration (missing coverage = Suggestion), verify against source, UML mandatory for Critical/Important.
+Produce 7-section issue bodies. All findings Discovered in audit. Return output. PROCEED
 ```
 
 ---
