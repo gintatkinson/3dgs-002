@@ -1,8 +1,25 @@
 # Round 3 — Resource Lifecycle + Concurrency + Test Integrity Execution Plan
 
-## Phase 0 — Pre-flight
+## Phase 0 — Pre-flight + Mine Prior Rounds
 
-- Verify all target files exist
+### 0.1 — File all unfiled round 2 content
+Round 2 auditors produced full 8-dimension outputs. Only Critical and Important findings were filed as new issues or comments. Remaining unfiled:
+- Suggestions and Nitpicks from all 6 auditors — to be filed as comments on the most relevant known issue
+- Truncated A1 output (58KB saved to tool-output) — full content to be mined for additional findings
+- 5 cross-cutting systemic patterns — to be filed as 5 new issues linking all affected files
+
+### 0.2 — File cross-cutting patterns as new issues
+1. **Pattern: No try/finally on calloc allocations** — affected: cesium_engine.dart, native_resource.dart, resource_manager.cpp
+2. **Pattern: No exception guards on extern "C" boundaries** — affected: bridge.cpp (12 entry points), resource_manager.cpp (3 entry points)
+3. **Pattern: No input validation before FFI boundary** — affected: virtual_camera.dart, cesium_engine.dart, resource_manager.cpp
+4. **Pattern: Zero test coverage for FFI error paths** — affected: all 6 audited files
+5. **Pattern: Raw pointer exposure enabling UAF** — affected: native_resource.dart, cesium_engine.dart
+
+### 0.3 — Verify round 1 baseline gaps
+Round 1 produced 62 findings. Most were confirmed by round 2 and filed as comments. Any round 1 finding NOT covered by a round 2 comment gets filed as a new comment on the relevant issue.
+
+### 0.4 — Standard pre-flight
+- Verify all Phase 1/2/3 target files exist
 - Confirm all listed open bugs are OPEN
 - Stage /tmp/audit_r3/
 - Wait for PROCEED from human
